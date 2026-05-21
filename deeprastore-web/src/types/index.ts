@@ -16,6 +16,7 @@ export interface Customer {
     risk_level: 'Low' | 'Medium' | 'High';
     loyalty_level: 'Bronze' | 'Silver' | 'Gold' | 'Platinum';
     notes?: string;
+    measurements?: Record<string, any>;
     created_at: string;
 }
 
@@ -42,6 +43,7 @@ export interface Order {
     created_at: string;
     delivery_date?: string;
     notes?: string;
+    measurements?: Record<string, any>;
 }
 
 export interface OrderItem {
@@ -58,10 +60,13 @@ export interface Complaint {
     id: string;
     order_id: string;
     customer_id: string;
-    type: string;
+    issue_type: string;
+    issue_reason: string;
+    expected_resolution_date?: string;
+    refund_amount?: number;
+    refund_status?: string;
     status: string;
-    description: string;
-    evidence_urls?: string[];
-    resolution?: string;
     created_at: string;
+    orders?: Order;
+    customers?: Customer;
 }

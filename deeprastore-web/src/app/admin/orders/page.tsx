@@ -54,7 +54,7 @@ export default function OrdersPage() {
             <div className="table-container">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
                     <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 4 }}>
-                        {['All', 'Pending', 'Paid', 'Processing', 'Shipped', 'Delivered', 'Cancelled'].map(status => (
+                        {['All', 'Payment Pending', 'Confirmed', 'To Stitching', 'In Stitching', 'Ready', 'Dispatched', 'Delivered', 'Cancelled'].map(status => (
                             <button 
                                 key={status}
                                 onClick={() => setFilter(status)}

@@ -2,8 +2,9 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Customer, Product } from '@/types';
-import { Search, Plus, Trash2, Link as LinkIcon, UserPlus, Store, CheckCircle, PackagePlus, X, Upload } from 'lucide-react';
+import { Search, Plus, Trash2, Link as LinkIcon, UserPlus, Store, CheckCircle, PackagePlus, X, Upload, Scissors } from 'lucide-react';
 import Link from 'next/link';
+import MeasurementsForm from '@/components/admin/MeasurementsForm';
 
 export default function CreateOrderPage() {
     const [phoneSearch, setPhoneSearch] = useState('');
@@ -17,6 +18,8 @@ export default function CreateOrderPage() {
     ]);
     const [stitchingCharge, setStitchingCharge] = useState(0);
     const [deliveryCharge, setDeliveryCharge] = useState(0);
+    const [orderMeasurements, setOrderMeasurements] = useState<Record<string, any>>({});
+    const [showMeasurements, setShowMeasurements] = useState(false);
     
     // New state for POS / Omnichannel
     const [orderSource, setOrderSource] = useState<'whatsapp' | 'instore'>('whatsapp');
@@ -45,6 +48,10 @@ export default function CreateOrderPage() {
             if (data) {
                 setFoundCustomer(data);
                 setShowNewCustomerForm(false);
+                if (data.measurements) {
+                    setOrderMeasurements(data.measurements);
+                    setShowMeasurements(true);
+                }
             } else {
                 setFoundCustomer(null);
                 setShowNewCustomerForm(true);
@@ -192,7 +199,8 @@ export default function CreateOrderPage() {
                     status: isInstore ? 'Confirmed' : 'Payment Pending',
                     payment_status: isInstore ? 'Paid' : 'Pending',
                     source: orderSource,
-                    notes: isInstore ? `Paid via ${paymentMethod} in-store.` : ''
+                    notes: isInstore ? `Paid via ${paymentMethod} in-store.` : '',
+                    measurements: orderMeasurements
                 }
             ]).select().single();
             if (orderErr) throw orderErr;
@@ -395,7 +403,27 @@ export default function CreateOrderPage() {
                     </div>
                 </div>
 
-                {/* 4. Generate Link or Mark Paid */}
+                {/* 4. Measurements */}
+                <div style={{ background: '#FFF', padding: '24px', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: showMeasurements ? '16px' : '0' }}>
+                        <h2 style={{ fontSize: '1.1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Scissors size={18} /> 4. Customer Measurements
+                        </h2>
+                        {!showMeasurements && (
+                            <button onClick={() => setShowMeasurements(true)} className="btn btn-outline btn-sm">
+                                Add Measurements
+                            </button>
+                        )}
+                    </div>
+                    {showMeasurements && (
+                        <MeasurementsForm 
+                            initialData={orderMeasurements}
+                            onChange={setOrderMeasurements}
+                        />
+                    )}
+                </div>
+
+                {/* 5. Generate Link or Mark Paid */}
                 <div style={{ background: '#FFF', padding: '24px', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
                     {generatedLink ? (
                         <div style={{ textAlign: 'center' }}>

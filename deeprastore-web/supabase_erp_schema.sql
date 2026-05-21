@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS public.customers (
     risk_level text DEFAULT 'Low', -- 'Low', 'Medium', 'High'
     loyalty_level text DEFAULT 'Bronze', -- 'Bronze', 'Silver', 'Gold', 'Platinum'
     notes text,
+    measurements jsonb,
     created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -40,6 +41,7 @@ CREATE TABLE IF NOT EXISTS public.orders (
     source text DEFAULT 'website',
     delivery_date timestamp with time zone,
     notes text,
+    measurements jsonb,
     created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -124,3 +126,22 @@ USING (bucket_id = 'product-images');
 CREATE POLICY "Allow authenticated users to upload images" 
 ON storage.objects FOR INSERT 
 WITH CHECK (bucket_id = 'product-images' AND auth.role() = 'authenticated');
+
+-- 7. Complaints & Issues Table
+CREATE TABLE IF NOT EXISTS public.complaints (
+    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    order_id uuid REFERENCES public.orders(id),
+    customer_id uuid REFERENCES public.customers(id),
+    issue_type text NOT NULL,
+    issue_reason text NOT NULL,
+    expected_resolution_date timestamp with time zone,
+    refund_amount numeric DEFAULT 0,
+    refund_status text,
+    status text DEFAULT 'Open',
+    created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.complaints ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow authenticated users to manage complaints" 
+ON public.complaints FOR ALL 
+USING (auth.role() = 'authenticated');
