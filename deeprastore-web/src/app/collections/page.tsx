@@ -1,7 +1,7 @@
 "use client";
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useWishlistStore } from '@/store/useWishlistStore';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { CartDrawer } from '@/components/CartDrawer';
@@ -11,46 +11,49 @@ import { motion } from 'framer-motion';
 export default function Collections() {
     const [products, setProducts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [filter, setFilter] = useState('All');
+    
+    // Filter States
     const [searchQuery, setSearchQuery] = useState('');
     const [sortBy, setSortBy] = useState('new');
+    const [selectedCategory, setSelectedCategory] = useState<string>('All');
+    const [priceRange, setPriceRange] = useState<number>(50000);
+    
+    const { addItem: addWishlist, removeItem: removeWishlist, isInWishlist } = useWishlistStore();
+
+    const categories = ['All', 'Sarees', 'Lehengas', 'Dresses', 'Jewellery', 'Fabric'];
 
     useEffect(() => {
         async function fetchProducts() {
             setLoading(true);
             let query = supabase.from('products').select('*');
             
-            // Sorting
-            if (sortBy === 'price_asc') {
-                query = query.order('price', { ascending: true });
-            } else if (sortBy === 'price_desc') {
-                query = query.order('price', { ascending: false });
-            } else if (sortBy === 'best_seller') {
-                // Fake best sellers by ordering by movement_velocity
-                query = query.order('movement_velocity', { ascending: false });
-            } else {
-                // New Collections
-                query = query.order('sku', { ascending: false });
-            }
+            if (sortBy === 'price_asc') query = query.order('price', { ascending: true });
+            else if (sortBy === 'price_desc') query = query.order('price', { ascending: false });
+            else if (sortBy === 'best_seller') query = query.order('movement_velocity', { ascending: false });
+            else query = query.order('created_at', { ascending: false });
 
-            const { data, error } = await query;
+            const { data } = await query;
             if (data) {
                 let filteredData = data;
 
-                // Category Filtering based on title/category matches (since shopify categories are long strings)
-                if (filter === 'Sarees') {
-                    filteredData = filteredData.filter(p => p.title?.toLowerCase().includes('saree') || p.category?.toLowerCase().includes('sari'));
-                } else if (filter === 'Lehengas') {
-                    filteredData = filteredData.filter(p => p.title?.toLowerCase().includes('lehenga') || p.category?.toLowerCase().includes('lehenga'));
-                } else if (filter === 'Dresses') {
-                    filteredData = filteredData.filter(p => p.title?.toLowerCase().includes('dress') || p.category?.toLowerCase().includes('dress'));
-                } else if (filter === 'Jewellery') {
-                    filteredData = filteredData.filter(p => p.title?.toLowerCase().includes('necklace') || p.title?.toLowerCase().includes('earring') || p.category?.toLowerCase().includes('jewel') || p.sku?.startsWith('SB'));
-                } else if (filter === 'Fabric') {
-                    filteredData = filteredData.filter(p => p.title?.toLowerCase().includes('fabric') || p.category?.toLowerCase().includes('fabric'));
+                // Category
+                if (selectedCategory !== 'All') {
+                    filteredData = filteredData.filter(p => {
+                        const t = p.title?.toLowerCase() || '';
+                        const c = p.category?.toLowerCase() || '';
+                        if (selectedCategory === 'Sarees') return t.includes('saree') || c.includes('sari');
+                        if (selectedCategory === 'Lehengas') return t.includes('lehenga') || c.includes('lehenga');
+                        if (selectedCategory === 'Dresses') return t.includes('dress') || c.includes('dress');
+                        if (selectedCategory === 'Jewellery') return t.includes('necklace') || t.includes('earring') || c.includes('jewel') || p.sku?.startsWith('SB');
+                        if (selectedCategory === 'Fabric') return t.includes('fabric') || c.includes('fabric');
+                        return true;
+                    });
                 }
 
-                // SKU/Title Search Filtering
+                // Price Slider (Filter products with price <= slider value)
+                filteredData = filteredData.filter(p => p.price <= priceRange);
+
+                // Search
                 if (searchQuery.trim() !== '') {
                     const lowerQuery = searchQuery.toLowerCase().trim();
                     filteredData = filteredData.filter(p => 
@@ -64,99 +67,134 @@ export default function Collections() {
             setLoading(false);
         }
         fetchProducts();
-    }, [filter, sortBy, searchQuery]);
+    }, [selectedCategory, priceRange, sortBy, searchQuery]);
 
     return (
-        <main className="relative bg-surface">
+        <main className="relative bg-surface min-h-screen">
             <Navbar />
             
-            <div className="max-w-7xl mx-auto px-6 py-20">
-                <div className="text-center mb-16">
+            {/* Header */}
+            <div className="bg-bg py-20 px-6">
+                <div className="max-w-7xl mx-auto text-center">
                     <motion.h1 
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         className="text-5xl md:text-6xl font-bold font-display mb-6 italic text-fg"
                     >
-                        Our <span className="text-accent">Collections.</span>
+                        The <span className="text-accent">Collection</span>
                     </motion.h1>
-                    <p className="text-muted text-lg max-w-2xl mx-auto">
-                        Explore our curated selection of premium Indian fabrics, handcrafted sarees, and luxury ready-to-wear pieces.
+                    <p className="text-muted text-lg max-w-2xl mx-auto font-light">
+                        Curated elegance for the modern Indian woman.
                     </p>
                 </div>
+            </div>
 
-                <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-12">
-                    <div className="flex flex-wrap justify-center md:justify-start gap-3">
-                        {['All', 'Sarees', 'Lehengas', 'Dresses', 'Jewellery', 'Fabric'].map(cat => (
-                            <button 
-                                key={cat}
-                                onClick={() => setFilter(cat)}
-                                className={`px-5 py-2 rounded-full font-bold text-xs tracking-widest uppercase transition-all ${filter === cat ? 'bg-accent text-white shadow-lg shadow-accent/30' : 'bg-white text-muted hover:bg-gray-50 border border-border'}`}
-                            >
-                                {cat}
-                            </button>
-                        ))}
-                    </div>
-                    
-                    <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
-                        <div className="relative">
+            <div className="max-w-7xl mx-auto px-6 py-12 flex flex-col lg:flex-row gap-12">
+                {/* Sidebar Filters */}
+                <aside className="w-full lg:w-64 shrink-0">
+                    <div className="sticky top-24 space-y-10">
+                        
+                        {/* Search */}
+                        <div>
+                            <h3 className="text-sm font-bold uppercase tracking-widest mb-4">Search</h3>
                             <input 
                                 type="text"
-                                placeholder="Search by Code or Name..."
+                                placeholder="Search SKUs or names..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-10 pr-4 py-3 rounded-xl border border-border bg-white text-sm focus:outline-none focus:border-accent w-full sm:w-64"
+                                className="w-full border-b border-border py-2 bg-transparent focus:outline-none focus:border-black text-sm"
                             />
-                            <svg xmlns="http://www.w3.org/2000/svg" className="absolute left-3 top-3.5 text-muted" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/></svg>
                         </div>
-                        
+
+                        {/* Categories */}
+                        <div>
+                            <h3 className="text-sm font-bold uppercase tracking-widest mb-4">Category</h3>
+                            <div className="space-y-3">
+                                {categories.map(cat => (
+                                    <label key={cat} className="flex items-center gap-3 cursor-pointer group">
+                                        <input 
+                                            type="radio" 
+                                            name="category" 
+                                            value={cat} 
+                                            checked={selectedCategory === cat}
+                                            onChange={() => setSelectedCategory(cat)}
+                                            className="hidden"
+                                        />
+                                        <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${selectedCategory === cat ? 'border-accent' : 'border-gray-300 group-hover:border-black'}`}>
+                                            {selectedCategory === cat && <div className="w-2 h-2 rounded-full bg-accent"></div>}
+                                        </div>
+                                        <span className={`text-sm transition-colors ${selectedCategory === cat ? 'text-accent font-medium' : 'text-gray-500 group-hover:text-black'}`}>{cat}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Price Range Slider */}
+                        <div>
+                            <h3 className="text-sm font-bold uppercase tracking-widest mb-4">Max Price: ₹{priceRange.toLocaleString('en-IN')}</h3>
+                            <input 
+                                type="range" 
+                                min="1000" 
+                                max="50000" 
+                                step="1000" 
+                                value={priceRange} 
+                                onChange={(e) => setPriceRange(Number(e.target.value))}
+                                className="w-full accent-accent"
+                            />
+                        </div>
+
+                    </div>
+                </aside>
+
+                {/* Product Grid */}
+                <div className="flex-1">
+                    <div className="flex justify-between items-center mb-8 pb-4 border-b border-border">
+                        <span className="text-sm text-muted">Showing {products.length} Products</span>
                         <select 
                             value={sortBy}
                             onChange={(e) => setSortBy(e.target.value)}
-                            className="px-4 py-3 rounded-xl border border-border bg-white text-sm font-bold text-fg focus:outline-none focus:border-accent w-full sm:w-auto"
+                            className="bg-transparent text-sm font-bold uppercase tracking-widest focus:outline-none cursor-pointer"
                         >
-                            <option value="new">New Collections</option>
+                            <option value="new">Newest Arrivals</option>
                             <option value="best_seller">Best Sellers</option>
                             <option value="price_asc">Price: Low to High</option>
                             <option value="price_desc">Price: High to Low</option>
                         </select>
                     </div>
-                </div>
 
-                {loading ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
-                        {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
-                            <div key={i} className="animate-pulse">
-                                <div className="aspect-[3/4] bg-gray-200 rounded-2xl mb-4"></div>
-                                <div className="h-6 bg-gray-200 rounded-md mb-2 w-3/4"></div>
-                                <div className="h-4 bg-gray-200 rounded-md w-1/4"></div>
-                            </div>
-                        ))}
-                    </div>
-                ) : products.length === 0 ? (
-                    <div className="text-center py-20 bg-white rounded-3xl border border-border">
-                        <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6 text-muted">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/></svg>
+                    {loading ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
+                            {[1, 2, 3, 4, 5, 6].map(i => (
+                                <div key={i} className="animate-pulse">
+                                    <div className="aspect-[3/4] bg-gray-200 rounded-2xl mb-4"></div>
+                                    <div className="h-6 bg-gray-200 rounded-md mb-2 w-3/4"></div>
+                                    <div className="h-4 bg-gray-200 rounded-md w-1/4"></div>
+                                </div>
+                            ))}
                         </div>
-                        <h3 className="text-2xl font-bold text-fg mb-2">No products found.</h3>
-                        <p className="text-muted mb-6">We couldn't find anything matching your filters or search.</p>
-                        <button 
-                            onClick={() => { setFilter('All'); setSearchQuery(''); }}
-                            className="text-accent font-bold hover:underline"
+                    ) : products.length === 0 ? (
+                        <div className="text-center py-20 bg-bg rounded-3xl">
+                            <h3 className="text-2xl font-bold font-display text-fg mb-2">No pieces found.</h3>
+                            <p className="text-muted mb-6">Try adjusting your filters to discover more.</p>
+                            <button 
+                                onClick={() => { setSelectedCategory('All'); setPriceRange(50000); setSearchQuery(''); }}
+                                className="text-xs font-bold uppercase tracking-widest border-b border-black pb-1 hover:text-accent hover:border-accent transition-colors"
+                            >
+                                Clear Filters
+                            </button>
+                        </div>
+                    ) : (
+                        <motion.div 
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12"
                         >
-                            Clear all filters
-                        </button>
-                    </div>
-                ) : (
-                    <motion.div 
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10"
-                    >
-                        {products.map(product => (
-                            <ProductCard key={product.id} product={product} />
-                        ))}
-                    </motion.div>
-                )}
+                            {products.map(product => (
+                                <ProductCard key={product.id} product={product} />
+                            ))}
+                        </motion.div>
+                    )}
+                </div>
             </div>
 
             <Footer />

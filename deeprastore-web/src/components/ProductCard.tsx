@@ -3,9 +3,12 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useCartStore } from '@/store/useCartStore';
+import { useWishlistStore } from '@/store/useWishlistStore';
 
 export const ProductCard = ({ product }: { product: any }) => {
     const { addItem } = useCartStore();
+
+    const { addItem: addWishlist, removeItem: removeWishlist, isInWishlist } = useWishlistStore();
 
     const handleAddToCart = (e: React.MouseEvent) => {
         e.preventDefault(); // prevent navigation to product detail
@@ -15,6 +18,18 @@ export const ProductCard = ({ product }: { product: any }) => {
             price: product.price,
             qty: 1,
             img: product.images && product.images.length > 0 ? product.images[0] : 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&q=80&w=600'
+        });
+    };
+
+    const toggleWishlist = (e: React.MouseEvent) => {
+        e.preventDefault();
+        const inWishlist = isInWishlist(product.id);
+        if (inWishlist) removeWishlist(product.id);
+        else addWishlist({ 
+            id: product.id, 
+            name: product.title, 
+            price: product.price, 
+            img: product.images && product.images.length > 0 ? product.images[0] : 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&q=80&w=600' 
         });
     };
 
@@ -33,6 +48,14 @@ export const ProductCard = ({ product }: { product: any }) => {
                             {product.movement_velocity}
                         </span>
                     )}
+                    
+                    <button 
+                        onClick={toggleWishlist}
+                        className="absolute top-4 right-4 w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg opacity-0 translate-y-[-10px] group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 hover:scale-110"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill={isInWishlist(product.id) ? "#ef4444" : "none"} stroke={isInWishlist(product.id) ? "#ef4444" : "currentColor"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+                    </button>
+
                     <button 
                         onClick={handleAddToCart}
                         className="absolute bottom-4 right-4 bg-accent text-white p-3 rounded-full shadow-lg opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 hover:scale-110">

@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-
+import Link from 'next/link';
 export default function OrdersPage() {
     const [orders, setOrders] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -41,9 +41,14 @@ export default function OrdersPage() {
 
     return (
         <div>
-            <div className="content-header">
-                <h1>Omnichannel Orders</h1>
-                <p>Manage orders from Web, App, WhatsApp, and POS.</p>
+            <div className="content-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                    <h1>Omnichannel Orders</h1>
+                    <p>Manage orders from Web, App, WhatsApp, and POS.</p>
+                </div>
+                <Link href="/admin/orders/new" className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <i className="fas fa-plus"></i> Create New Order
+                </Link>
             </div>
 
             <div className="table-container">

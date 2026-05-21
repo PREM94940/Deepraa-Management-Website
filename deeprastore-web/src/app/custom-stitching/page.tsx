@@ -8,7 +8,19 @@ import { useState } from 'react';
 
 export default function CustomStitching() {
     const [formState, setFormState] = useState({ name: '', email: '', phone: '', requirements: '' });
+    const [referenceImage, setReferenceImage] = useState<string | null>(null);
     const [submitted, setSubmitted] = useState(false);
+
+    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setReferenceImage(reader.result as string);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -111,6 +123,23 @@ export default function CustomStitching() {
                                             placeholder="E.g., A bridal lehenga in Banarasi silk..."
                                             className="w-full bg-gray-50 border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-accent"
                                         ></textarea>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-muted mb-2 uppercase tracking-widest">Reference Design (Optional)</label>
+                                        <div className="flex items-center justify-center w-full">
+                                            <label htmlFor="dropzone-file" className="flex flex-col items-center justify-center w-full h-32 border-2 border-border border-dashed rounded-xl cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors overflow-hidden">
+                                                {referenceImage ? (
+                                                    <img src={referenceImage} alt="Reference" className="h-full object-contain" />
+                                                ) : (
+                                                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                                        <svg className="w-8 h-8 mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                                                        <p className="mb-2 text-sm text-gray-500"><span className="font-semibold">Click to upload</span></p>
+                                                        <p className="text-xs text-gray-500">PNG, JPG up to 5MB</p>
+                                                    </div>
+                                                )}
+                                                <input id="dropzone-file" type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+                                            </label>
+                                        </div>
                                     </div>
                                     <button type="submit" className="w-full bg-accent text-white py-4 rounded-xl font-bold text-lg shadow-xl shadow-accent/20 hover:scale-[1.02] transition-all">
                                         Request Consultation

@@ -14,8 +14,10 @@ export default function AdminLayout({
   const sidebarItems = [
     { id: 'overview', label: 'Overview', icon: 'fa-chart-line', path: '/admin' },
     { id: 'orders', label: 'Orders', icon: 'fa-shopping-bag', path: '/admin/orders' },
+    { id: 'workflow', label: 'Workflow', icon: 'fa-tasks', path: '/admin/workflow' },
     { id: 'products', label: 'Products', icon: 'fa-tshirt', path: '/admin/products' },
-    { id: 'customers', label: 'Customers', icon: 'fa-users', path: '/admin/customers' },
+    { id: 'customers', label: 'Customers CRM', icon: 'fa-users', path: '/admin/customers' },
+    { id: 'complaints', label: 'Complaints', icon: 'fa-exclamation-triangle', path: '/admin/complaints' },
     { id: 'analytics', label: 'Analytics', icon: 'fa-chart-bar', path: '/admin/analytics' },
     { id: 'settings', label: 'Settings', icon: 'fa-cog', path: '/admin/settings' },
   ];
