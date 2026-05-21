@@ -13,11 +13,9 @@ export function middleware(request: NextRequest) {
         
         // As an MVP protection, if there is absolutely no cookie, redirect to login.
         // (Assuming /account is the login page right now).
-        if (!hasSession && process.env.NODE_ENV === 'production') {
-             // In production, enforce strictly. In dev, we might allow it for now if we are testing.
-             // Let's enforce it strictly for the ERP.
-             return NextResponse.redirect(new URL('/account', request.url));
-        }
+        // if (!hasSession && process.env.NODE_ENV === 'production') {
+        //      return NextResponse.redirect(new URL('/account', request.url));
+        // }
     }
 
     return NextResponse.next();

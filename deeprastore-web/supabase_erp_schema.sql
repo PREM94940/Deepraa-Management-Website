@@ -89,3 +89,38 @@ USING (auth.role() = 'authenticated');
 
 -- Note: For public customers creating an order on the website, 
 -- you will need an 'INSERT' policy for anon users, or use a secure backend API route.
+
+-- 5. Products Table (Omnichannel Inventory)
+CREATE TABLE IF NOT EXISTS public.products (
+    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    sku text UNIQUE NOT NULL,
+    title text NOT NULL,
+    description text,
+    price numeric NOT NULL,
+    images text[],
+    category text,
+    status text DEFAULT 'Active', -- 'Active', 'Draft', 'Out of Stock'
+    created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow authenticated users to manage products" 
+ON public.products FOR ALL 
+USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Allow public to view products" 
+ON public.products FOR SELECT 
+USING (true);
+
+-- 6. Storage Bucket for Product Images
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('product-images', 'product-images', true)
+ON CONFLICT (id) DO NOTHING;
+
+CREATE POLICY "Public Access for Product Images" 
+ON storage.objects FOR SELECT 
+USING (bucket_id = 'product-images');
+
+CREATE POLICY "Allow authenticated users to upload images" 
+ON storage.objects FOR INSERT 
+WITH CHECK (bucket_id = 'product-images' AND auth.role() = 'authenticated');
