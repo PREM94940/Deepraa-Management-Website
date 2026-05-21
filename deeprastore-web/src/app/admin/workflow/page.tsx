@@ -2,7 +2,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Order } from '@/types';
-import { Phone, Calendar, Clock, MoreVertical, Search } from 'lucide-react';
+import { Phone, Calendar, Clock, MoreVertical, Search, ExternalLink } from 'lucide-react';
+import Link from 'next/link';
 
 const COLUMNS = [
     'Payment Pending',
@@ -155,7 +156,9 @@ export default function WorkflowPage() {
                                     >
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
                                             <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{order.customers?.full_name || 'Unknown'}</div>
-                                            <button style={{ background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer' }}><MoreVertical size={16} /></button>
+                                            <Link href={`/admin/orders/${order.id}`} style={{ color: '#3B82F6' }} title="View Order Details">
+                                                <ExternalLink size={16} />
+                                            </Link>
                                         </div>
                                         
                                         <div style={{ fontSize: '0.8rem', color: '#64748B', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
