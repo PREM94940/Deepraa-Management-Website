@@ -99,9 +99,9 @@ export default function ProductsPage() {
     }
 
     function duplicateProduct(product: Product) {
-        const copy = { ...product };
+        const copy: any = { ...product };
         delete copy.id;
-        delete (copy as any).created_at;
+        delete copy.created_at;
         copy.sku = `${copy.sku || 'SKU'}-COPY`;
         copy.title = `${copy.title} (Copy)`;
         openModal(copy);
