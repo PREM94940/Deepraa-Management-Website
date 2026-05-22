@@ -51,7 +51,8 @@ export default function AnalyticsDashboard() {
                 // Process Revenue Data for Bar Chart (Last 6 months approx, or just by month)
                 const revByMonth = orders.reduce((acc: any, o) => {
                     const date = new Date(o.created_at);
-                    const month = date.toLocaleString('default', { month: 'short' });
+                    const monthsList = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                    const month = monthsList[date.getMonth()];
                     acc[month] = (acc[month] || 0) + Number(o.total_amount || 0);
                     return acc;
                 }, {});

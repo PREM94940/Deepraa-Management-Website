@@ -13,27 +13,49 @@
 .avatar { width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 16px; }
 .user-info h4 { font-size: 14px; font-weight: 600; margin: 0; }
 .user-info p { font-size: 12px; color: #6B7280; margin: 0; }
-.content { margin-left: 260px; padding: 32px; background: #0F172A; min-height: 100vh;}
-.content-header { margin-bottom: 32px; }
-.content-header h1 { font-size: 28px; font-weight: 700; margin: 0 0 8px 0; color: white; }
-.content-header p { font-size: 16px; color: #94A3B8; margin: 0; }
-.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; margin-bottom: 32px; }
-.card { background: white; border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
-.stat-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
-.stat-icon { font-size: 24px; }
-.stat-badge { font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 12px; }
-.stat-label { font-size: 14px; font-weight: 500; color: #6B7280; margin-bottom: 8px; }
-.stat-value { font-size: 28px; font-weight: 700; color: #111111; }
-.table-container { overflow-x: auto; background: white; border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+.content { margin-left: 260px; padding: 16px 24px; background: #0F172A; min-height: 100vh;}
+.content-header { margin-bottom: 16px; }
+.content-header h1 { font-size: 24px; font-weight: 700; margin: 0 0 4px 0; color: white; }
+.content-header p { font-size: 14px; color: #94A3B8; margin: 0; }
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
+.card { background: white; border-radius: 12px; padding: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+.stat-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+.stat-icon { font-size: 20px; }
+.stat-badge { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 12px; }
+.stat-label { font-size: 13px; font-weight: 500; color: #6B7280; margin-bottom: 4px; }
+.stat-value { font-size: 24px; font-weight: 700; color: #111111; }
+.table-container { overflow-x: auto; background: white; border-radius: 12px; padding: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
 .admin-table { width: 100%; border-collapse: collapse; }
-.admin-table th { text-align: left; padding: 12px; font-size: 12px; font-weight: 600; color: #6B7280; border-bottom: 2px solid #E5E7EB; }
-.admin-table td { padding: 16px; border-bottom: 1px solid #E5E7EB; font-size: 14px; }
+.admin-table th { text-align: left; padding: 10px 12px; font-size: 12px; font-weight: 600; color: #6B7280; border-bottom: 2px solid #E5E7EB; }
+.admin-table td { padding: 12px; border-bottom: 1px solid #E5E7EB; font-size: 13px; }
 .badge { padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: 600; }
 .badge-pending { background: #FEF3C7; color: #92400E; }
 .badge-processing { background: #DBEAFE; color: #1E40AF; }
 .badge-shipped { background: #E0E7FF; color: #3730A3; }
 .badge-delivered { background: #D1FAE5; color: #065F46; }
-.btn { padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px; }
+.btn { padding: 8px 16px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 13px; }
 .btn-primary { background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%); color: white; }
 .btn-outline { background: transparent; color: #6B7280; border: 2px solid #E5E7EB; }
 .btn-success { background: #10B981; color: white; }
+.btn-sm { padding: 4px 10px; font-size: 12px; }
+
+/* Stat cards */
+.stat-card { background: #FFF; border-radius: 12px; padding: 20px; border: 1px solid #E2E8F0; }
+.stat-title { font-size: 0.8rem; color: #64748B; margin-bottom: 4px; font-weight: 500; }
+
+/* Empty state */
+.empty-state { padding: 48px 24px; text-align: center; color: #94A3B8; }
+
+/* DataTable wrapper */
+.data-table-wrapper { overflow-x: auto; }
+
+/* Badge variants for all order statuses */
+.badge-confirmed { background: #D1FAE5; color: #065F46; }
+.badge-ready { background: #DBEAFE; color: #1E40AF; }
+.badge-cancelled { background: #FEE2E2; color: #991B1B; }
+.badge-payment-pending { background: #FEF3C7; color: #92400E; }
+.badge-pending-approval { background: #FEF3C7; color: #92400E; }
+.badge-pending-verification { background: #FEF3C7; color: #92400E; }
+.badge-to-stitching { background: #E0E7FF; color: #3730A3; }
+.badge-in-stitching { background: #EDE9FE; color: #5B21B6; }
+.badge-dispatched { background: #CFFAFE; color: #155E75; }

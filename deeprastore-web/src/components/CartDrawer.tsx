@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useCartStore } from '@/store/useCartStore';
+import { supabase } from '@/lib/supabase';
 
 export const CartDrawer = () => {
     const { items, isOpen, setIsOpen, updateQty, removeItem, getTotal } = useCartStore();
@@ -58,7 +59,37 @@ export const CartDrawer = () => {
                 name: "Deeprastore",
                 description: "Luxury Fabric Purchase",
                 order_id: data.id,
-                handler: function (response: any) {
+                handler: async function (response: any) {
+                    try {
+                        const items = useCartStore.getState().items;
+                        const total = useCartStore.getState().getTotal();
+                        
+                        const { data: order, error: orderErr } = await supabase.from('orders').insert({
+                            order_number: `WEB-${Date.now().toString().slice(-6)}`,
+                            total_amount: total,
+                            status: 'Confirmed',
+                            approval_status: 'Approved',
+                            payment_status: 'Paid',
+                            source: 'web',
+                            payment_screenshot: response.razorpay_payment_id
+                        }).select().single();
+                        
+                        if (orderErr) throw orderErr;
+                        
+                        if (items.length > 0 && order) {
+                            const orderItems = items.map(item => ({
+                                order_id: order.id,
+                                product_id: item.id,
+                                product_name: item.name,
+                                price: item.price,
+                                quantity: item.qty
+                            }));
+                            await supabase.from('order_items').insert(orderItems);
+                        }
+                    } catch (err) {
+                        console.error('Failed to create order in DB:', err);
+                    }
+
                     alert(`Payment successful! Payment ID: ${response.razorpay_payment_id}`);
                     useCartStore.getState().clearCart();
                     setIsOpen(false);

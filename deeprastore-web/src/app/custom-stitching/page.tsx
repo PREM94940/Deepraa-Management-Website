@@ -5,6 +5,7 @@ import { Footer } from '@/components/Footer';
 import { CartDrawer } from '@/components/CartDrawer';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
+import { supabase } from '@/lib/supabase';
 
 export default function CustomStitching() {
     const [formState, setFormState] = useState({ name: '', email: '', phone: '', requirements: '' });
@@ -22,10 +23,41 @@ export default function CustomStitching() {
         }
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        // In a real app, send to Supabase or email service
-        setSubmitted(true);
+        try {
+            // Find or create customer
+            let customerId = null;
+            const { data: existingCust } = await supabase.from('customers').select('id').eq('phone_number', formState.phone).single();
+            if (existingCust) {
+                customerId = existingCust.id;
+            } else {
+                const { data: newCust, error: custErr } = await supabase.from('customers').insert([{
+                    full_name: formState.name,
+                    phone_number: formState.phone,
+                    email: formState.email
+                }]).select().single();
+                if (!custErr && newCust) customerId = newCust.id;
+            }
+
+            // Create order for consultation
+            await supabase.from('orders').insert([{
+                order_number: `STITCH-${Date.now().toString().slice(-6)}`,
+                customer_id: customerId,
+                total_amount: 0,
+                status: 'pending',
+                approval_status: 'Pending Approval',
+                payment_status: 'Pending',
+                source: 'web',
+                reference_image: referenceImage, // This will be base64, might be large but works for MVP
+                notes: `CUSTOM STITCHING REQUEST:\n\n${formState.requirements}`
+            }]);
+            
+            setSubmitted(true);
+        } catch (err) {
+            console.error("Error submitting request:", err);
+            alert("Failed to submit request. Please try again or contact us via WhatsApp.");
+        }
     };
 
     return (

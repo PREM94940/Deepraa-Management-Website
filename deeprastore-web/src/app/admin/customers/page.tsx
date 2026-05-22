@@ -2,12 +2,13 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Customer } from '@/types';
-import { Search, Plus, Phone, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { Plus, Phone, AlertTriangle, ShieldCheck } from 'lucide-react';
+import DataTable from '@/components/admin/DataTable';
+import Link from 'next/link';
 
 export default function CustomersPage() {
     const [customers, setCustomers] = useState<Customer[]>([]);
     const [loading, setLoading] = useState(true);
-    const [searchQuery, setSearchQuery] = useState('');
     const [filterLoyalty, setFilterLoyalty] = useState('All');
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     
@@ -63,10 +64,94 @@ export default function CustomersPage() {
 
     const formatCurrency = (val: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(val);
 
-    const filteredCustomers = customers.filter(c => 
-        c.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        c.phone_number.includes(searchQuery)
-    );
+    async function handleDeleteSelected(ids: string[]) {
+        try {
+            const { error } = await supabase.from('customers').delete().in('id', ids);
+            if (error) throw error;
+            fetchCustomers();
+        } catch (err: any) {
+            alert('Error deleting customers: ' + err.message);
+        }
+    }
+
+    const columns = [
+        {
+            key: 'full_name',
+            header: 'Identity',
+            sortable: true,
+            render: (c: Customer) => (
+                <>
+                    <div style={{ fontWeight: 600 }}>{c.full_name}</div>
+                    <div style={{ fontSize: '0.8rem', color: '#64748B', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                        <Phone size={12} /> {c.phone_number}
+                    </div>
+                </>
+            )
+        },
+        {
+            key: 'loyalty_level',
+            header: 'Loyalty / Risk',
+            sortable: true,
+            render: (c: Customer) => (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
+                    <span style={{
+                        background: c.loyalty_level === 'Platinum' ? '#000' : c.loyalty_level === 'Gold' ? '#FEF3C7' : '#F1F5F9',
+                        color: c.loyalty_level === 'Platinum' ? '#FFF' : c.loyalty_level === 'Gold' ? '#B45309' : '#475569',
+                        padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 600
+                    }}>
+                        {c.loyalty_level}
+                    </span>
+                    {c.risk_level === 'High' && (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#EF4444', fontSize: '0.75rem', fontWeight: 600 }}>
+                            <AlertTriangle size={12} /> High Risk
+                        </span>
+                    )}
+                </div>
+            )
+        },
+        {
+            key: 'total_spent',
+            header: 'Total Spent',
+            sortable: true,
+            render: (c: Customer) => (
+                <span style={{ fontWeight: 600, color: '#10B981' }}>
+                    {formatCurrency(c.total_spent || 0)}
+                </span>
+            )
+        },
+        {
+            key: 'total_orders',
+            header: 'Orders / Issues',
+            sortable: true,
+            render: (c: Customer) => (
+                <>
+                    <div style={{ fontSize: '0.85rem' }}>
+                        <strong>{c.total_orders}</strong> Orders
+                    </div>
+                    {((c.complaint_count || 0) > 0 || (c.refund_count || 0) > 0) && (
+                        <div style={{ fontSize: '0.75rem', color: '#EF4444', marginTop: '2px' }}>
+                            {c.complaint_count} Complaints &middot; {c.refund_count} Refunds
+                        </div>
+                    )}
+                </>
+            )
+        },
+        {
+            key: 'city',
+            header: 'Location',
+            sortable: true,
+            render: (c: Customer) => (
+                <span style={{ fontSize: '0.85rem', color: '#475569' }}>{c.city || '--'}</span>
+            )
+        },
+        {
+            key: 'actions',
+            header: 'Actions',
+            render: (c: Customer) => (
+                <Link href={`/admin/customers/${c.id}`} className="btn btn-outline" style={{ padding: '4px 12px', fontSize: '0.8rem', display: 'inline-block' }}>View Profile</Link>
+            )
+        }
+    ];
 
     return (
         <div>
@@ -81,99 +166,41 @@ export default function CustomersPage() {
             </div>
 
             <div className="table-container">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
-                    <div style={{ display: 'flex', gap: 12 }}>
-                        {['All', 'Platinum', 'Gold', 'Silver', 'Bronze'].map(tier => (
-                            <button 
-                                key={tier}
-                                onClick={() => setFilterLoyalty(tier)}
-                                className={`btn ${filterLoyalty === tier ? 'btn-primary' : 'btn-outline'}`}
-                            >
-                                {tier}
-                            </button>
-                        ))}
-                    </div>
-                    <div className="relative" style={{ display: 'flex', alignItems: 'center', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '0 12px' }}>
-                        <Search size={16} color="#94A3B8" />
-                        <input 
-                            type="text" 
-                            placeholder="Search phone or name..." 
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            style={{ border: 'none', outline: 'none', padding: '10px', fontSize: '0.9rem', width: '250px' }}
-                        />
-                    </div>
+                <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
+                    {['All', 'Platinum', 'Gold', 'Silver', 'Bronze'].map(tier => (
+                        <button 
+                            key={tier}
+                            onClick={() => setFilterLoyalty(tier)}
+                            className={`btn ${filterLoyalty === tier ? 'btn-primary' : 'btn-outline'}`}
+                        >
+                            {tier}
+                        </button>
+                    ))}
                 </div>
 
                 {loading ? (
                     <div style={{ padding: '40px', textAlign: 'center' }}>Loading CRM data...</div>
-                ) : filteredCustomers.length === 0 ? (
-                    <div className="empty-state">
-                        <ShieldCheck size={64} color="#CBD5E1" style={{ margin: '0 auto 20px' }} />
-                        <p>No customers found.</p>
-                    </div>
                 ) : (
-                    <div style={{ overflowX: 'auto' }}>
-                        <table className="admin-table">
-                            <thead>
-                                <tr>
-                                    <th>Identity</th>
-                                    <th>Loyalty / Risk</th>
-                                    <th>Total Spent</th>
-                                    <th>Orders / Issues</th>
-                                    <th>Location</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filteredCustomers.map(cust => (
-                                    <tr key={cust.id}>
-                                        <td>
-                                            <div style={{ fontWeight: 600 }}>{cust.full_name}</div>
-                                            <div style={{ fontSize: '0.8rem', color: '#64748B', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
-                                                <Phone size={12} /> {cust.phone_number}
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
-                                                <span style={{
-                                                    background: cust.loyalty_level === 'Platinum' ? '#000' : cust.loyalty_level === 'Gold' ? '#FEF3C7' : '#F1F5F9',
-                                                    color: cust.loyalty_level === 'Platinum' ? '#FFF' : cust.loyalty_level === 'Gold' ? '#B45309' : '#475569',
-                                                    padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 600
-                                                }}>
-                                                    {cust.loyalty_level}
-                                                </span>
-                                                {cust.risk_level === 'High' && (
-                                                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#EF4444', fontSize: '0.75rem', fontWeight: 600 }}>
-                                                        <AlertTriangle size={12} /> High Risk
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td style={{ fontWeight: 600, color: '#10B981' }}>
-                                            {formatCurrency(cust.total_spent)}
-                                        </td>
-                                        <td>
-                                            <div style={{ fontSize: '0.85rem' }}>
-                                                <strong>{cust.total_orders}</strong> Orders
-                                            </div>
-                                            {(cust.complaint_count > 0 || cust.refund_count > 0) && (
-                                                <div style={{ fontSize: '0.75rem', color: '#EF4444', marginTop: '2px' }}>
-                                                    {cust.complaint_count} Complaints &middot; {cust.refund_count} Refunds
-                                                </div>
-                                            )}
-                                        </td>
-                                        <td style={{ fontSize: '0.85rem', color: '#475569' }}>
-                                            {cust.city || '--'}
-                                        </td>
-                                        <td>
-                                            <button className="btn btn-outline" style={{ padding: '4px 12px', fontSize: '0.8rem' }}>View Profile</button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                    <DataTable 
+                        data={customers}
+                        columns={columns}
+                        searchKey="full_name"
+                        onDeleteSelected={handleDeleteSelected}
+                        getId={(c) => c.id || ''}
+                        filename="customers.csv"
+                        renderGridCard={(c) => (
+                            <div style={{ padding: '16px', background: '#FFF', borderRadius: '12px', border: '1px solid #E2E8F0', height: '100%' }}>
+                                <div style={{ fontWeight: 600, fontSize: '1.1rem', marginBottom: '8px' }}>{c.full_name}</div>
+                                <div style={{ fontSize: '0.85rem', color: '#64748B', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
+                                    <Phone size={14} /> {c.phone_number}
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #E2E8F0', paddingTop: '12px', marginTop: '12px' }}>
+                                    <span style={{ fontWeight: 600, color: '#10B981' }}>{formatCurrency(c.total_spent || 0)}</span>
+                                    <span style={{ fontSize: '0.8rem', color: '#64748B' }}>{c.total_orders} Orders</span>
+                                </div>
+                            </div>
+                        )}
+                    />
                 )}
             </div>
 

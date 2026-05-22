@@ -40,6 +40,10 @@ CREATE TABLE IF NOT EXISTS public.orders (
     payment_status text DEFAULT 'Pending',
     source text DEFAULT 'website',
     delivery_date timestamp with time zone,
+    target_days integer,
+    reference_image text,
+    payment_screenshot text,
+    approval_status text DEFAULT 'Pending Approval',
     notes text,
     measurements jsonb,
     created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL

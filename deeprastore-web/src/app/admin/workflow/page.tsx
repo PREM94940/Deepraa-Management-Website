@@ -166,13 +166,13 @@ export default function WorkflowPage() {
                                         </div>
 
                                         <div style={{ fontSize: '0.85rem', marginBottom: '12px', background: '#F8FAFC', padding: '8px', borderRadius: '6px', border: '1px solid #F1F5F9' }}>
-                                            {(order as any).order_items?.slice(0,2).map((item: any, i: number) => (
+                                            {order.order_items?.slice(0,2).map((item: any, i: number) => (
                                                 <div key={i} style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                     • {item.product_name}
                                                 </div>
                                             ))}
-                                            {((order as any).order_items?.length || 0) > 2 && (
-                                                <div style={{ color: '#94A3B8', marginTop: '4px' }}>+ {((order as any).order_items?.length || 0) - 2} more items</div>
+                                            {(order.order_items?.length || 0) > 2 && (
+                                                <div style={{ color: '#94A3B8', marginTop: '4px' }}>+ {(order.order_items?.length || 0) - 2} more items</div>
                                             )}
                                         </div>
 

@@ -25,7 +25,6 @@ export const Navbar = () => {
                 <Link href="/collections" className="hover:text-accent transition-colors">Collections</Link>
                 <Link href="/collections?category=Fabric" className="hover:text-accent transition-colors">Fabrics</Link>
                 <Link href="/custom-stitching" className="hover:text-accent transition-colors">Stitching</Link>
-                <Link href="/admin" className="text-accent border-b-2 border-accent hover:opacity-80 transition-opacity">Admin Panel</Link>
             </div>
             <div className="flex items-center gap-6">
                 <Link href="/account" className="hover:text-accent transition-colors">

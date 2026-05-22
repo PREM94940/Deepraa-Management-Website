@@ -59,7 +59,7 @@ export default function ConfirmOrderPage() {
             const orderResponse = await fetch('/api/razorpay', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ amount: order.total_amount })
+                body: JSON.stringify({ amount: Math.round(order.total_amount * 100) })
             });
             const orderData = await orderResponse.json();
 

@@ -2,32 +2,31 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { SettingsProvider, useSettings } from '@/components/admin/SettingsProvider';
 import './admin.css';
 
-export default function AdminLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+function AdminSidebar({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { config } = useSettings();
 
-  const sidebarItems = [
-    { id: 'overview', label: 'Overview', icon: 'fa-chart-line', path: '/admin' },
-    { id: 'orders', label: 'Orders', icon: 'fa-shopping-bag', path: '/admin/orders' },
-    { id: 'workflow', label: 'Workflow', icon: 'fa-tasks', path: '/admin/workflow' },
-    { id: 'products', label: 'Products', icon: 'fa-tshirt', path: '/admin/products' },
-    { id: 'customers', label: 'Customers CRM', icon: 'fa-users', path: '/admin/customers' },
-    { id: 'complaints', label: 'Complaints', icon: 'fa-exclamation-triangle', path: '/admin/complaints' },
-    { id: 'analytics', label: 'Analytics', icon: 'fa-chart-bar', path: '/admin/analytics' },
-    { id: 'settings', label: 'Settings', icon: 'fa-cog', path: '/admin/settings' },
+  let sidebarItems = [
+    { id: 'overview', label: config.tabLabels.overview || 'Overview', icon: 'fa-chart-line', path: '/admin' },
+    { id: 'orders', label: config.tabLabels.orders || 'Orders', icon: 'fa-shopping-bag', path: '/admin/orders' },
+    { id: 'workflow', label: config.tabLabels.workflow || 'Workflow', icon: 'fa-tasks', path: '/admin/workflow' },
+    { id: 'products', label: config.tabLabels.products || 'Products', icon: 'fa-tshirt', path: '/admin/products' },
+    { id: 'customers', label: config.tabLabels.customers || 'Customers CRM', icon: 'fa-users', path: '/admin/customers' },
+    { id: 'complaints', label: config.tabLabels.complaints || 'Complaints', icon: 'fa-exclamation-triangle', path: '/admin/complaints' },
+    { id: 'analytics', label: config.tabLabels.analytics || 'Analytics', icon: 'fa-chart-bar', path: '/admin/analytics' },
+    { id: 'settings', label: config.tabLabels.settings || 'Settings', icon: 'fa-cog', path: '/admin/settings' },
   ];
+
+  if (config.hideProducts) sidebarItems = sidebarItems.filter(i => i.id !== 'products');
+  if (config.hideComplaints) sidebarItems = sidebarItems.filter(i => i.id !== 'complaints');
 
   return (
     <div className="admin-body">
       <div className="admin-root">
-        {/* FontAwesome integration for icons based on prototype */}
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-        
         <div className="sidebar">
           <div className="sidebar-header" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'flex-start' }}>
             <span className="logo">
@@ -43,7 +42,7 @@ export default function AdminLayout({
               <Link
                 key={item.id}
                 href={item.path}
-                className={`nav-item ${pathname === item.path ? 'active' : ''}`}
+                className={`nav-item ${item.path === '/admin' ? (pathname === '/admin' ? 'active' : '') : pathname.startsWith(item.path) ? 'active' : ''}`}
               >
                 <i className={`fas ${item.icon}`}></i>
                 {item.label}
@@ -58,11 +57,18 @@ export default function AdminLayout({
             </div>
           </div>
         </div>
-
         <div className="content">
           {children}
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <SettingsProvider>
+      <AdminSidebar>{children}</AdminSidebar>
+    </SettingsProvider>
   );
 }

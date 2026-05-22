@@ -165,7 +165,7 @@ export default function ComplaintsPage() {
                                             </select>
                                         </td>
                                         <td>
-                                            <button className="btn btn-outline btn-sm">View Details</button>
+                                            <button onClick={() => alert('Complaint details coming soon')} className="btn btn-outline btn-sm">View Details</button>
                                         </td>
                                     </tr>
                                 ))}

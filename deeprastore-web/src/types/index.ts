@@ -38,12 +38,18 @@ export interface Order {
     customers?: Customer; // Joined relation
     status: string;
     total_amount: number;
-    payment_status: string;
-    source: 'website' | 'whatsapp' | 'instagram' | 'offline' | 'exhibition' | 'custom';
+    payment_status: 'Pending' | 'Paid' | 'Refunded';
+    source: string;
     created_at: string;
     delivery_date?: string;
+    expected_delivery_date?: string;
+    target_days?: number;
+    reference_image?: string;
+    payment_screenshot?: string;
+    approval_status?: string;
     notes?: string;
     measurements?: Record<string, any>;
+    order_items?: OrderItem[];
 }
 
 export interface OrderItem {
