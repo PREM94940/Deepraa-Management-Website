@@ -9,8 +9,9 @@ function AdminSidebar({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { config } = useSettings();
 
-  let sidebarItems = [
+    let sidebarItems = [
     { id: 'overview', label: config.tabLabels.overview || 'Overview', icon: 'fa-chart-line', path: '/admin' },
+    { id: 'editor', label: 'Theme Editor', icon: 'fa-paint-roller', path: '/admin/editor' },
     { id: 'orders', label: config.tabLabels.orders || 'Orders', icon: 'fa-shopping-bag', path: '/admin/orders' },
     { id: 'workflow', label: config.tabLabels.workflow || 'Workflow', icon: 'fa-tasks', path: '/admin/workflow' },
     { id: 'products', label: config.tabLabels.products || 'Products', icon: 'fa-tshirt', path: '/admin/products' },
