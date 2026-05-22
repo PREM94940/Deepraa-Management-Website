@@ -80,7 +80,7 @@ export default function ThemeEditor() {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [sections]);
 
-    const handleInput = (idx: number, field: string, value: string) => {
+    const handleInput = (idx: number, field: string, value: string | boolean) => {
         setUnsavedChanges(true);
         updateSection(idx, { settings: { ...sections[idx].settings, [field]: value } });
     };
