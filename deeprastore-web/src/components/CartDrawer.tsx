@@ -172,14 +172,30 @@ export const CartDrawer = () => {
                                 <span>₹{getTotal()}</span>
                             </div>
                         </div>
+                        <div className="bg-surface rounded-xl p-4 mb-6 text-xs text-muted flex flex-col gap-2">
+                            <div className="flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-accent"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                <span>Secure Razorpay Payments</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-accent"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg>
+                                <span>Authentic Luxury Collection</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-accent"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                                <span>Easy Return Assistance</span>
+                            </div>
+                        </div>
+
                         <button 
                             onClick={handleCheckout}
                             disabled={loading}
                             className="w-full bg-accent text-white py-5 rounded-2xl font-bold text-lg shadow-xl shadow-accent/20 hover:scale-[1.02] transition-all disabled:opacity-50">
-                            {loading ? 'Processing...' : 'Checkout Now'}
+                            {loading ? 'Processing...' : 'Checkout Securely'}
                         </button>
-                        <p className="text-center text-[10px] font-bold text-muted uppercase tracking-widest mt-6">
-                            ✨ Free Shipping on orders above ₹20,000
+                        <p className="text-center text-[10px] font-bold text-muted uppercase tracking-widest mt-6 flex flex-col gap-1">
+                            <span>✨ Free Shipping on orders above ₹20,000</span>
+                            <span className="opacity-70">Dispatches within 48 hours</span>
                         </p>
                     </div>
                 )}

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 
-export const Footer = () => {
+export const Footer = ({ globalSettings }: { globalSettings?: any }) => {
     return (
         <footer className="bg-fg text-white pt-24 pb-12 px-6">
             <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-16 mb-20">
@@ -45,6 +45,13 @@ export const Footer = () => {
                 </div>
             </div>
             
+            <div className="max-w-7xl mx-auto border-t border-white/20 pt-8 flex flex-col md:flex-row items-center justify-between opacity-60 text-xs tracking-widest uppercase">
+                <p>{globalSettings?.footer_text || 'Deeprastore © 2026. Handcrafted Elegance.'}</p>
+                <div className="flex gap-4 mt-4 md:mt-0">
+                    <Link href="/terms">Terms</Link>
+                    <Link href="/privacy">Privacy</Link>
+                </div>
+            </div>
         </footer>
     );
 };

@@ -1,8 +1,9 @@
 "use client";
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Complaint, Order, Customer } from '@/types';
+import { Complaint, Order } from '@/types';
 import { Search, Plus, X } from 'lucide-react';
+import { updateComplaintStatusAction, createComplaintAction } from '@/lib/actions/complaints';
 
 export default function ComplaintsPage() {
     const [complaints, setComplaints] = useState<Complaint[]>([]);
@@ -22,6 +23,24 @@ export default function ComplaintsPage() {
         fetchComplaints();
         fetchOrdersForDropdown();
     }, [filter]);
+
+    useEffect(() => {
+        const channel = supabase.channel('realtime_complaints')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'complaints' }, async (payload) => {
+                const { data } = await supabase.from('complaints').select(`
+                    *, orders (id, total_amount), customers (id, full_name, phone_number)
+                `).eq('id', payload.new.id).single();
+                if (data) setComplaints(prev => [data, ...prev]);
+            })
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'complaints' }, (payload) => {
+                setComplaints(prev => prev.map(c => c.id === payload.new.id ? { ...c, ...payload.new } : c));
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, []);
 
     async function fetchComplaints() {
         setLoading(true);
@@ -50,7 +69,6 @@ export default function ComplaintsPage() {
         if (!selectedOrderId) return alert('Please select an order');
         
         setSaving(true);
-        // Find customer_id from selected order
         const { data: orderData } = await supabase.from('orders').select('customer_id').eq('id', selectedOrderId).single();
         
         if (!orderData) {
@@ -58,20 +76,19 @@ export default function ComplaintsPage() {
             return alert('Order not found');
         }
 
-        const { error } = await supabase.from('complaints').insert([{
+        const res = await createComplaintAction({
             order_id: selectedOrderId,
             customer_id: orderData.customer_id,
-            issue_type: issueType,
+            issue_type: issueType as any,
             issue_reason: issueReason,
             refund_amount: refundAmount,
             status: 'Open'
-        }]);
+        });
 
         setSaving(false);
-        if (error) return alert(error.message);
+        if (!res.success) return alert(res.error);
         
         setShowModal(false);
-        fetchComplaints();
         // reset form
         setSelectedOrderId('');
         setIssueReason('');
@@ -79,8 +96,8 @@ export default function ComplaintsPage() {
     }
 
     async function updateStatus(id: string, newStatus: string) {
-        const { error } = await supabase.from('complaints').update({ status: newStatus }).eq('id', id);
-        if (!error) fetchComplaints();
+        const res = await updateComplaintStatusAction(id, newStatus);
+        if (!res.success) alert(res.error);
     }
 
     return (
@@ -97,11 +114,12 @@ export default function ComplaintsPage() {
 
             <div className="table-container">
                 <div style={{ display: 'flex', gap: 12, marginBottom: 24, overflowX: 'auto' }}>
-                    {['All', 'Open', 'In Progress', 'Resolved', 'Closed'].map(status => (
+                    {['All', 'URGENT', 'Open', 'In Progress', 'Resolved', 'Closed'].map(status => (
                         <button 
                             key={status}
                             onClick={() => setFilter(status)}
                             className={`btn ${filter === status ? 'btn-primary' : 'btn-outline'}`}
+                            style={status === 'URGENT' ? { borderColor: '#EF4444', color: filter === status ? '#FFF' : '#EF4444', background: filter === status ? '#EF4444' : 'transparent' } : {}}
                         >
                             {status}
                         </button>
@@ -153,12 +171,15 @@ export default function ComplaintsPage() {
                                                 style={{ 
                                                     padding: '4px 8px', 
                                                     borderRadius: '6px', 
-                                                    border: '1px solid #E2E8F0',
-                                                    background: c.status === 'Open' ? '#FEF2F2' : c.status === 'Resolved' ? '#F0FDF4' : '#F8FAFC',
-                                                    color: c.status === 'Open' ? '#EF4444' : c.status === 'Resolved' ? '#10B981' : '#0F172A'
+                                                    border: '1px solid',
+                                                    borderColor: c.status === 'URGENT' ? '#EF4444' : '#E2E8F0',
+                                                    background: c.status === 'URGENT' ? '#EF4444' : c.status === 'Open' ? '#FEF2F2' : c.status === 'Resolved' ? '#F0FDF4' : '#F8FAFC',
+                                                    color: c.status === 'URGENT' ? '#FFFFFF' : c.status === 'Open' ? '#EF4444' : c.status === 'Resolved' ? '#10B981' : '#0F172A',
+                                                    fontWeight: c.status === 'URGENT' ? 'bold' : 'normal'
                                                 }}
                                             >
                                                 <option value="Open">Open</option>
+                                                <option value="URGENT">URGENT</option>
                                                 <option value="In Progress">In Progress</option>
                                                 <option value="Resolved">Resolved</option>
                                                 <option value="Closed">Closed</option>

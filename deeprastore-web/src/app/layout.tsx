@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Playfair_Display, Poppins } from 'next/font/google';
-import { FloatingWhatsApp } from '@/components/FloatingWhatsApp';
+import { WhatsAppConcierge } from '@/components/WhatsAppConcierge';
 import { Analytics } from "@vercel/analytics/react";
 import "./globals.css";
 
@@ -30,7 +30,7 @@ export default function RootLayout({
     <html lang="en" className={`${playfair.variable} ${poppins.variable}`}>
       <body className="font-body min-h-screen bg-bg text-fg">
         {children}
-        <FloatingWhatsApp />
+        <WhatsAppConcierge />
         <Analytics />
       </body>
     </html>

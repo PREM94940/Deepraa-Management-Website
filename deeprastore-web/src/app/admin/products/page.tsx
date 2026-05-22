@@ -2,8 +2,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Product } from '@/types';
-import { LayoutGrid, List as ListIcon, Plus, Edit, Copy, Check, X, Search, Save, Upload, Download, Image as ImageIcon } from 'lucide-react';
+import { LayoutGrid, List as ListIcon, Plus, Edit, Copy, Check, X, Search, Save, Upload, Download, ImageIcon, AlertCircle } from 'lucide-react';
 import Papa from 'papaparse';
+import { upsertProductAction, updateStockAction, processProductChunkAction } from '@/lib/actions/products';
 
 type EditableProduct = Partial<Product> & { id?: string };
 
@@ -11,6 +12,7 @@ export default function ProductsPage() {
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    const [userRole] = useState<'Manager' | 'Staff'>(process.env.NEXT_PUBLIC_SIMULATE_ROLE as any || 'Manager');
     
     // View state
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -24,6 +26,9 @@ export default function ProductsPage() {
     const [saving, setSaving] = useState(false);
     const [uploadingImage, setUploadingImage] = useState(false);
     const [csvUploading, setCsvUploading] = useState(false);
+    const [importStats, setImportStats] = useState<{
+        total: number, success: number, failed: number, skipped: number, errors: any[], chunkIndex: number
+    } | null>(null);
     
     const fileInputRef = useRef<HTMLInputElement>(null);
     const csvInputRef = useRef<HTMLInputElement>(null);
@@ -33,6 +38,24 @@ export default function ProductsPage() {
 
     useEffect(() => {
         fetchProducts();
+    }, []);
+
+    useEffect(() => {
+        const channel = supabase.channel('realtime_products')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'products' }, (payload) => {
+                setProducts(prev => [payload.new as Product, ...prev]);
+            })
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'products' }, (payload) => {
+                setProducts(prev => prev.map(p => p.id === payload.new.id ? { ...p, ...payload.new } : p));
+            })
+            .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'products' }, (payload) => {
+                setProducts(prev => prev.filter(p => p.id !== payload.old.id));
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, []);
 
     async function fetchProducts() {
@@ -74,8 +97,8 @@ export default function ProductsPage() {
     async function handleSaveStock(id: string) {
         if (inlineStock[id] === undefined) return;
         try {
-            const { error } = await supabase.from('products').update({ stock_quantity: inlineStock[id] }).eq('id', id);
-            if (error) throw error;
+            const res = await updateStockAction(id, inlineStock[id]);
+            if (!res.success) throw new Error(res.error);
             setProducts(products.map(p => p.id === id ? { ...p, stock_quantity: inlineStock[id] } : p));
             const newInline = { ...inlineStock };
             delete newInline[id];
@@ -124,14 +147,8 @@ export default function ProductsPage() {
         if (!editingProduct) return;
         setSaving(true);
         try {
-            if (editingProduct.id) {
-                const { id, created_at, ...updateData } = editingProduct as any;
-                const { error } = await supabase.from('products').update(updateData).eq('id', id);
-                if (error) throw error;
-            } else {
-                const { error } = await supabase.from('products').insert([editingProduct]);
-                if (error) throw error;
-            }
+            const res = await upsertProductAction(editingProduct as any);
+            if (!res.success) throw new Error(res.error);
             setIsModalOpen(false);
             fetchProducts();
         } catch (err: any) {
@@ -201,53 +218,72 @@ export default function ProductsPage() {
         const file = e.target.files?.[0];
         if (!file) return;
         setCsvUploading(true);
+        setImportStats({ total: 0, success: 0, failed: 0, skipped: 0, errors: [], chunkIndex: 0 });
+
+        let currentStats = { total: 0, success: 0, failed: 0, skipped: 0, errors: [] as any[], chunkIndex: 0 };
+        let chunkBuffer: any[] = [];
+        const CHUNK_SIZE = 50;
+
+        const processBuffer = async () => {
+            if (chunkBuffer.length === 0) return;
+            const res = await processProductChunkAction(chunkBuffer, currentStats.chunkIndex);
+            
+            if (res.success) {
+                currentStats.success += res.successCount || 0;
+                currentStats.failed += (res.failedRows || []).length;
+                currentStats.skipped += res.skippedDuplicates || 0;
+                currentStats.errors = [...currentStats.errors, ...(res.failedRows || [])];
+            } else {
+                currentStats.failed += chunkBuffer.length;
+                currentStats.errors.push({ sku: 'CHUNK_FAIL', error: res.error });
+            }
+            
+            currentStats.chunkIndex++;
+            setImportStats({ ...currentStats });
+            chunkBuffer = []; // clear buffer
+        };
 
         Papa.parse(file, {
             header: true,
             skipEmptyLines: true,
-            complete: async (results) => {
-                const parsedData = results.data as any[];
-                let successCount = 0;
-                let errorCount = 0;
+            chunk: async (results, parser) => {
+                parser.pause(); // Pause streaming
+                
+                for (const row of results.data as any[]) {
+                    currentStats.total++;
+                    const productData = {
+                        sku: row.sku,
+                        title: row.title,
+                        description: row.description || '',
+                        price: parseFloat(row.price) || 0,
+                        compare_at_price: parseFloat(row.compare_at_price) || 0,
+                        category: row.category || '',
+                        sub_category: row.sub_category || '',
+                        status: row.status || 'Active',
+                        stock_quantity: parseInt(row.stock_quantity) || 0,
+                        movement_velocity: row.movement_velocity || 'Normal',
+                        is_customizable: row.is_customizable === 'true' || row.is_customizable === 'TRUE',
+                        allow_backorders: row.allow_backorders === 'true' || row.allow_backorders === 'TRUE',
+                        video_link: row.video_link || '',
+                        images: row.images ? (typeof row.images === 'string' ? row.images.split(',').map((s:string) => s.trim()) : row.images) : [],
+                        available_sizes: row.available_sizes ? (typeof row.available_sizes === 'string' ? row.available_sizes.split(',').map((s:string) => s.trim()) : row.available_sizes) : []
+                    };
+                    chunkBuffer.push(productData);
 
-                for (const row of parsedData) {
-                    try {
-                        const productData = {
-                            sku: row.sku,
-                            title: row.title,
-                            description: row.description || '',
-                            price: parseFloat(row.price) || 0,
-                            compare_at_price: parseFloat(row.compare_at_price) || 0,
-                            category: row.category || '',
-                            sub_category: row.sub_category || '',
-                            status: row.status || 'Active',
-                            stock_quantity: parseInt(row.stock_quantity) || 0,
-                            movement_velocity: row.movement_velocity || 'Normal',
-                            is_customizable: row.is_customizable === 'true' || row.is_customizable === 'TRUE',
-                            allow_backorders: row.allow_backorders === 'true' || row.allow_backorders === 'TRUE',
-                            video_link: row.video_link || '',
-                            // handle arrays if they are comma separated strings
-                            images: row.images ? (typeof row.images === 'string' ? row.images.split(',').map((s:string) => s.trim()) : row.images) : [],
-                            available_sizes: row.available_sizes ? (typeof row.available_sizes === 'string' ? row.available_sizes.split(',').map((s:string) => s.trim()) : row.available_sizes) : []
-                        };
-
-                        if (!productData.sku) {
-                            errorCount++;
-                            continue; // SKU required
-                        }
-
-                        // Upsert based on SKU
-                        const { error } = await supabase.from('products').upsert(productData, { onConflict: 'sku' });
-                        if (error) throw error;
-                        successCount++;
-                    } catch (err) {
-                        console.error('Row error:', err);
-                        errorCount++;
+                    if (chunkBuffer.length >= CHUNK_SIZE) {
+                        await processBuffer();
                     }
                 }
-                alert(`CSV Import Complete. Success: ${successCount}. Errors/Skipped: ${errorCount}`);
-                fetchProducts();
+                
+                parser.resume(); // Resume streaming
+            },
+            complete: async () => {
+                // Process any remaining rows
+                if (chunkBuffer.length > 0) {
+                    await processBuffer();
+                }
                 setCsvUploading(false);
+                fetchProducts();
                 if (csvInputRef.current) csvInputRef.current.value = '';
             },
             error: (error) => {
@@ -300,10 +336,14 @@ export default function ProductsPage() {
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <input type="file" accept=".csv" ref={csvInputRef} style={{ display: 'none' }} onChange={handleImportCSV} />
-                    <button className="btn btn-outline" disabled={csvUploading} onClick={() => csvInputRef.current?.click()} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Upload size={16} /> {csvUploading ? 'Importing...' : 'Import CSV'}
-                    </button>
+                    {userRole === 'Manager' && (
+                        <>
+                            <input type="file" accept=".csv" ref={csvInputRef} style={{ display: 'none' }} onChange={handleImportCSV} />
+                            <button className="btn btn-outline" disabled={csvUploading} onClick={() => csvInputRef.current?.click()} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <Upload size={16} /> {csvUploading ? 'Importing...' : 'Import CSV'}
+                            </button>
+                        </>
+                    )}
                     <button className="btn btn-outline" onClick={handleExportCSV} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <Download size={16} /> Export CSV
                     </button>
@@ -513,13 +553,13 @@ export default function ProductsPage() {
                             {/* Row 3: Pricing */}
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', background: '#F8FAFC', padding: '16px', borderRadius: '8px' }}>
                                 <div>
-                                    <label className="form-label" style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '0.9rem' }}>Sale Rate (₹) *</label>
-                                    <input required type="number" value={editingProduct.price || 0} onChange={e => updateField('price', Number(e.target.value))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #E2E8F0' }} />
+                                    <label className="form-label" style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '0.9rem' }}>Sale Rate (₹) * {userRole !== 'Manager' && '(Managers Only)'}</label>
+                                    <input required disabled={userRole !== 'Manager'} type="number" value={editingProduct.price || 0} onChange={e => updateField('price', Number(e.target.value))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #E2E8F0', opacity: userRole === 'Manager' ? 1 : 0.6 }} />
                                     <span style={{ fontSize: '0.75rem', color: '#64748B' }}>Price customer pays</span>
                                 </div>
                                 <div>
-                                    <label className="form-label" style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '0.9rem' }}>Actual Rate (MRP ₹)</label>
-                                    <input type="number" value={editingProduct.compare_at_price || 0} onChange={e => updateField('compare_at_price', Number(e.target.value))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #E2E8F0' }} />
+                                    <label className="form-label" style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '0.9rem' }}>Actual Rate (MRP ₹) {userRole !== 'Manager' && '(Managers Only)'}</label>
+                                    <input disabled={userRole !== 'Manager'} type="number" value={editingProduct.compare_at_price || 0} onChange={e => updateField('compare_at_price', Number(e.target.value))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #E2E8F0', opacity: userRole === 'Manager' ? 1 : 0.6 }} />
                                     <span style={{ fontSize: '0.75rem', color: '#64748B' }}>Shown crossed out</span>
                                 </div>
                                 <div>
@@ -635,6 +675,57 @@ export default function ProductsPage() {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* IMPORT PROGRESS MODAL */}
+            {importStats !== null && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ background: '#FFF', borderRadius: '12px', width: '90%', maxWidth: '500px', padding: '32px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
+                        <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '16px' }}>
+                            {csvUploading ? 'Importing Products...' : 'Import Complete'}
+                        </h2>
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', background: '#F8FAFC', borderRadius: '8px' }}>
+                                <span style={{ fontWeight: 600 }}>Total Processed:</span>
+                                <span>{importStats.total}</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', background: '#D1FAE5', color: '#065F46', borderRadius: '8px' }}>
+                                <span style={{ fontWeight: 600 }}>Successfully Inserted:</span>
+                                <span>{importStats.success}</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', background: '#FEF3C7', color: '#92400E', borderRadius: '8px' }}>
+                                <span style={{ fontWeight: 600 }}>Skipped (Duplicates):</span>
+                                <span>{importStats.skipped}</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', background: '#FEE2E2', color: '#991B1B', borderRadius: '8px' }}>
+                                <span style={{ fontWeight: 600 }}>Failed (Validation):</span>
+                                <span>{importStats.failed}</span>
+                            </div>
+                        </div>
+
+                        {importStats.errors.length > 0 && !csvUploading && (
+                            <div style={{ marginBottom: '24px', maxHeight: '150px', overflowY: 'auto', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '12px', fontSize: '0.85rem' }}>
+                                <h4 style={{ fontWeight: 700, marginBottom: '8px', color: '#DC2626', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <AlertCircle size={14} /> Failed Rows Log
+                                </h4>
+                                {importStats.errors.map((e, i) => (
+                                    <div key={i} style={{ paddingBottom: '8px', borderBottom: '1px solid #F1F5F9', marginBottom: '8px' }}>
+                                        <strong>SKU {e.sku}:</strong> {e.error}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {!csvUploading && (
+                            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                <button onClick={() => setImportStats(null)} className="btn btn-primary">
+                                    Close Report
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

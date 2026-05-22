@@ -3,28 +3,53 @@
 import Link from 'next/link';
 import { useCartStore } from '@/store/useCartStore';
 
-export const Navbar = () => {
+export const Navbar = ({ globalSettings }: { globalSettings?: any }) => {
     const { items, setIsOpen } = useCartStore();
+    
+    // Default menu if globalSettings not available
+    const menuItems = globalSettings?.primary_menu || [
+        { label: 'Collections', link: '/collections' },
+        { label: 'Fabrics', link: '/collections?category=Fabric' },
+        { label: 'Stitching', link: '/custom-stitching' }
+    ];
     
     // Calculate total quantity for the badge
     const totalItems = items.reduce((sum, item) => sum + item.qty, 0);
 
     return (
-        <nav className="flex justify-between items-center p-6 lg:px-12 bg-surface sticky top-0 z-40 border-b border-border premium-blur">
-            <div className="flex items-center gap-3">
-                <Link href="/">
-                    <div className="w-10 h-10 bg-accent rounded-xl flex items-center justify-center cursor-pointer shadow-lg shadow-accent/20 hover:scale-105 transition-transform">
-                        <span className="text-white font-bold text-xl">D</span>
-                    </div>
-                </Link>
-                <Link href="/">
-                    <h1 className="text-2xl font-bold font-display tracking-tight uppercase cursor-pointer">Deeprastore</h1>
-                </Link>
-            </div>
-            <div className="hidden md:flex gap-10 font-bold text-sm tracking-widest uppercase items-center">
-                <Link href="/collections" className="hover:text-accent transition-colors">Collections</Link>
-                <Link href="/collections?category=Fabric" className="hover:text-accent transition-colors">Fabrics</Link>
-                <Link href="/custom-stitching" className="hover:text-accent transition-colors">Stitching</Link>
+        <div className="w-full relative z-50">
+            {globalSettings?.announcement_text && (
+                <div className="bg-black text-white text-[10px] md:text-xs font-bold uppercase tracking-widest text-center py-2 px-4">
+                    {globalSettings.announcement_link ? (
+                        <Link href={globalSettings.announcement_link} className="hover:text-gold transition-colors">
+                            {globalSettings.announcement_text}
+                        </Link>
+                    ) : (
+                        <span>{globalSettings.announcement_text}</span>
+                    )}
+                </div>
+            )}
+            <nav className="flex justify-between items-center p-4 md:p-6 lg:px-12 bg-surface sticky top-0 border-b border-border premium-blur">
+                <div className="flex items-center gap-3">
+                    <Link href="/">
+                        {globalSettings?.logo_url ? (
+                            <img src={globalSettings.logo_url} alt="Logo" className="h-10 object-contain" />
+                        ) : (
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-accent rounded-xl flex items-center justify-center cursor-pointer shadow-lg shadow-accent/20 hover:scale-105 transition-transform">
+                                    <span className="text-white font-bold text-xl">D</span>
+                                </div>
+                                <h1 className="text-xl md:text-2xl font-bold font-display tracking-tight uppercase cursor-pointer hidden md:block">Deeprastore</h1>
+                            </div>
+                        )}
+                    </Link>
+                </div>
+                <div className="hidden md:flex gap-10 font-bold text-sm tracking-widest uppercase items-center">
+                    {menuItems.map((item: any, idx: number) => (
+                        <Link key={idx} href={item.link} className="hover:text-accent transition-colors">
+                            {item.label}
+                        </Link>
+                    ))}
                 <div className="h-4 w-[1px] bg-border mx-2"></div>
                 <Link href="/admin/products" className="text-accent hover:text-black transition-colors flex items-center gap-2">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
@@ -51,5 +76,6 @@ export const Navbar = () => {
                 </button>
             </div>
         </nav>
+        </div>
     );
 };

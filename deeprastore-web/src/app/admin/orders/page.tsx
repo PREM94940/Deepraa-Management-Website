@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import DataTable from '@/components/admin/DataTable';
+import { approveOrderAction, deleteOrdersAction } from '@/lib/actions/orders';
 import { CheckCircle, XCircle, Eye, Edit3, CreditCard, Image as ImageIcon } from 'lucide-react';
 
 export default function OrdersPage() {
@@ -14,6 +15,33 @@ export default function OrdersPage() {
     useEffect(() => {
         fetchOrders();
     }, [filter]);
+
+    useEffect(() => {
+        const channel = supabase.channel('realtime_orders')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, async (payload) => {
+                const { data } = await supabase.from('orders').select(`
+                    id, order_number, status, source, total_amount, created_at, expected_delivery_date, 
+                    approval_status, payment_status, reference_image, payment_screenshot, notes,
+                    customers ( id, full_name, phone_number ),
+                    order_items ( product_name, quantity, price )
+                `).eq('id', payload.new.id).single();
+                
+                if (data) {
+                    setOrders(prev => [data, ...prev]);
+                }
+            })
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, (payload) => {
+                setOrders(prev => prev.map(o => o.id === payload.new.id ? { ...o, ...payload.new } : o));
+            })
+            .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'orders' }, (payload) => {
+                setOrders(prev => prev.filter(o => o.id !== payload.old.id));
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, []);
 
     async function fetchOrders() {
         setLoading(true);
@@ -56,8 +84,8 @@ export default function OrdersPage() {
     async function handleApproveOrder(id: string) {
         if (!confirm('Verify and Approve this order?')) return;
         try {
-            const { error } = await supabase.from('orders').update({ approval_status: 'Approved', status: 'confirmed' }).eq('id', id);
-            if (error) throw error;
+            const res = await approveOrderAction(id);
+            if (!res.success) throw new Error(res.error);
             fetchOrders();
         } catch (err: any) {
             alert('Error approving order: ' + err.message);
@@ -66,8 +94,8 @@ export default function OrdersPage() {
 
     async function handleDeleteSelected(ids: string[]) {
         try {
-            const { error } = await supabase.from('orders').delete().in('id', ids);
-            if (error) throw error;
+            const res = await deleteOrdersAction(ids);
+            if (!res.success) throw new Error(res.error);
             fetchOrders();
         } catch (err: any) {
             alert('Error deleting orders: ' + err.message);
