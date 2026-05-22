@@ -1,10 +1,10 @@
 "use client";
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Product } from '@/types';
-import { LayoutGrid, List as ListIcon, Plus, Edit, Copy, Check, X, Search, Save, XCircle } from 'lucide-react';
+import { LayoutGrid, List as ListIcon, Plus, Edit, Copy, Check, X, Search, Save, Upload, Download, Image as ImageIcon } from 'lucide-react';
+import Papa from 'papaparse';
 
-// Using partial to allow for new products without ID
 type EditableProduct = Partial<Product> & { id?: string };
 
 export default function ProductsPage() {
@@ -21,7 +21,12 @@ export default function ProductsPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<EditableProduct | null>(null);
     const [saving, setSaving] = useState(false);
+    const [uploadingImage, setUploadingImage] = useState(false);
+    const [csvUploading, setCsvUploading] = useState(false);
     
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const csvInputRef = useRef<HTMLInputElement>(null);
+
     // Inline stock editing
     const [inlineStock, setInlineStock] = useState<Record<string, number>>({});
 
@@ -48,7 +53,6 @@ export default function ProductsPage() {
 
     const categories = ['All', ...Array.from(new Set(products.map(p => p.category).filter(Boolean)))];
 
-    // Filter and Sort
     let filteredProducts = products.filter(p => {
         const matchesSearch = p.sku?.toLowerCase().includes(search.toLowerCase()) || p.title?.toLowerCase().includes(search.toLowerCase());
         const matchesCategory = categoryFilter === 'All' || p.category === categoryFilter;
@@ -67,10 +71,7 @@ export default function ProductsPage() {
         try {
             const { error } = await supabase.from('products').update({ stock_quantity: inlineStock[id] }).eq('id', id);
             if (error) throw error;
-            // Update local state
             setProducts(products.map(p => p.id === id ? { ...p, stock_quantity: inlineStock[id] } : p));
-            
-            // clear inline state
             const newInline = { ...inlineStock };
             delete newInline[id];
             setInlineStock(newInline);
@@ -87,12 +88,18 @@ export default function ProductsPage() {
                 title: '',
                 sku: '',
                 price: 0,
+                compare_at_price: 0,
                 description: '',
-                category: '',
+                category: 'Half Sarees',
+                sub_category: 'Ready wear',
                 status: 'Active',
                 stock_quantity: 0,
                 movement_velocity: 'Normal',
-                images: []
+                images: [],
+                is_customizable: false,
+                available_sizes: [],
+                allow_backorders: false,
+                video_link: ''
             });
         }
         setIsModalOpen(true);
@@ -113,12 +120,10 @@ export default function ProductsPage() {
         setSaving(true);
         try {
             if (editingProduct.id) {
-                // Update
                 const { id, created_at, ...updateData } = editingProduct as any;
                 const { error } = await supabase.from('products').update(updateData).eq('id', id);
                 if (error) throw error;
             } else {
-                // Create
                 const { error } = await supabase.from('products').insert([editingProduct]);
                 if (error) throw error;
             }
@@ -135,6 +140,117 @@ export default function ProductsPage() {
         if (editingProduct) {
             setEditingProduct({ ...editingProduct, [field]: value });
         }
+    };
+
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files || e.target.files.length === 0) return;
+        setUploadingImage(true);
+        
+        try {
+            const newImageUrls = [];
+            for (let i = 0; i < e.target.files.length; i++) {
+                const file = e.target.files[i];
+                const fileExt = file.name.split('.').pop();
+                const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+                const filePath = `product-uploads/${fileName}`;
+
+                const { error: uploadError } = await supabase.storage.from('product-images').upload(filePath, file);
+                if (uploadError) throw uploadError;
+
+                const { data } = supabase.storage.from('product-images').getPublicUrl(filePath);
+                newImageUrls.push(data.publicUrl);
+            }
+            
+            updateField('images', [...(editingProduct?.images || []), ...newImageUrls]);
+        } catch (error: any) {
+            alert('Image upload failed: ' + error.message);
+        } finally {
+            setUploadingImage(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
+
+    const toggleSize = (size: string) => {
+        const currentSizes = editingProduct?.available_sizes || [];
+        if (currentSizes.includes(size)) {
+            updateField('available_sizes', currentSizes.filter(s => s !== size));
+        } else {
+            updateField('available_sizes', [...currentSizes, size]);
+        }
+    };
+
+    const handleExportCSV = () => {
+        const csv = Papa.unparse(products);
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', 'deeprastore_products.csv');
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const handleImportCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setCsvUploading(true);
+
+        Papa.parse(file, {
+            header: true,
+            skipEmptyLines: true,
+            complete: async (results) => {
+                const parsedData = results.data as any[];
+                let successCount = 0;
+                let errorCount = 0;
+
+                for (const row of parsedData) {
+                    try {
+                        const productData = {
+                            sku: row.sku,
+                            title: row.title,
+                            description: row.description || '',
+                            price: parseFloat(row.price) || 0,
+                            compare_at_price: parseFloat(row.compare_at_price) || 0,
+                            category: row.category || '',
+                            sub_category: row.sub_category || '',
+                            status: row.status || 'Active',
+                            stock_quantity: parseInt(row.stock_quantity) || 0,
+                            movement_velocity: row.movement_velocity || 'Normal',
+                            is_customizable: row.is_customizable === 'true' || row.is_customizable === 'TRUE',
+                            allow_backorders: row.allow_backorders === 'true' || row.allow_backorders === 'TRUE',
+                            video_link: row.video_link || '',
+                            // handle arrays if they are comma separated strings
+                            images: row.images ? (typeof row.images === 'string' ? row.images.split(',').map((s:string) => s.trim()) : row.images) : [],
+                            available_sizes: row.available_sizes ? (typeof row.available_sizes === 'string' ? row.available_sizes.split(',').map((s:string) => s.trim()) : row.available_sizes) : []
+                        };
+
+                        if (!productData.sku) {
+                            errorCount++;
+                            continue; // SKU required
+                        }
+
+                        // Upsert based on SKU
+                        const { error } = await supabase.from('products').upsert(productData, { onConflict: 'sku' });
+                        if (error) throw error;
+                        successCount++;
+                    } catch (err) {
+                        console.error('Row error:', err);
+                        errorCount++;
+                    }
+                }
+                alert(`CSV Import Complete. Success: ${successCount}. Errors/Skipped: ${errorCount}`);
+                fetchProducts();
+                setCsvUploading(false);
+                if (csvInputRef.current) csvInputRef.current.value = '';
+            },
+            error: (error) => {
+                alert('CSV Parse Error: ' + error.message);
+                setCsvUploading(false);
+                if (csvInputRef.current) csvInputRef.current.value = '';
+            }
+        });
     };
 
     return (
@@ -162,13 +278,6 @@ export default function ProductsPage() {
                         {categories.map((c: any) => <option key={c} value={c}>{c}</option>)}
                     </select>
 
-                    <select value={sortBy} onChange={e => setSortBy(e.target.value)} className="btn btn-outline" style={{ background: '#FFF' }}>
-                        <option value="newest">Newest First</option>
-                        <option value="price-asc">Price: Low to High</option>
-                        <option value="price-desc">Price: High to Low</option>
-                        <option value="stock-asc">Stock: Low to High</option>
-                    </select>
-
                     <div style={{ display: 'flex', background: '#F1F5F9', borderRadius: '8px', padding: '4px' }}>
                         <button 
                             onClick={() => setViewMode('grid')} 
@@ -185,9 +294,18 @@ export default function ProductsPage() {
                     </div>
                 </div>
 
-                <button className="btn btn-primary" onClick={() => openModal()} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Plus size={16} /> Add Product
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <input type="file" accept=".csv" ref={csvInputRef} style={{ display: 'none' }} onChange={handleImportCSV} />
+                    <button className="btn btn-outline" disabled={csvUploading} onClick={() => csvInputRef.current?.click()} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Upload size={16} /> {csvUploading ? 'Importing...' : 'Import CSV'}
+                    </button>
+                    <button className="btn btn-outline" onClick={handleExportCSV} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Download size={16} /> Export CSV
+                    </button>
+                    <button className="btn btn-primary" onClick={() => openModal()} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Plus size={16} /> Add Product
+                    </button>
+                </div>
             </div>
 
             {loading ? (
@@ -204,11 +322,11 @@ export default function ProductsPage() {
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
                                 <span style={{ background: '#F1F5F9', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600 }}>{product.sku || 'NO-SKU'}</span>
                                 <span style={{ 
-                                    background: product.movement_velocity === 'High' ? '#D1FAE5' : product.movement_velocity === 'Low' ? '#FEE2E2' : '#FEF3C7',
-                                    color: product.movement_velocity === 'High' ? '#059669' : product.movement_velocity === 'Low' ? '#DC2626' : '#D97706',
+                                    background: product.status === 'Active' ? '#D1FAE5' : '#FEE2E2',
+                                    color: product.status === 'Active' ? '#059669' : '#DC2626',
                                     padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600
                                 }}>
-                                    {product.movement_velocity || 'Normal'}
+                                    {product.status}
                                 </span>
                             </div>
                             
@@ -222,10 +340,18 @@ export default function ProductsPage() {
                                 )}
                             </div>
                             
+                            <div style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 600, textTransform: 'uppercase', marginBottom: '4px' }}>
+                                {product.category} {product.sub_category ? `> ${product.sub_category}` : ''}
+                            </div>
                             <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '8px', flexGrow: 1 }}>{product.title}</h3>
                             
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: '12px', borderTop: '1px solid #E2E8F0', marginBottom: '12px' }}>
-                                <div style={{ fontWeight: 'bold', color: '#0F172A' }}>{formatCurrency(product.price)}</div>
+                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                    <span style={{ fontWeight: 'bold', color: '#0F172A' }}>{formatCurrency(product.price)}</span>
+                                    {product.compare_at_price && product.compare_at_price > product.price && (
+                                        <span style={{ fontSize: '0.75rem', color: '#94A3B8', textDecoration: 'line-through' }}>{formatCurrency(product.compare_at_price)}</span>
+                                    )}
+                                </div>
                                 <div style={{ fontSize: '0.85rem', color: (product.stock_quantity || 0) < 5 ? '#DC2626' : '#64748B', fontWeight: (product.stock_quantity || 0) < 5 ? 700 : 400 }}>
                                     Stock: {product.stock_quantity || 0}
                                 </div>
@@ -245,13 +371,13 @@ export default function ProductsPage() {
             ) : (
                 // LIST VIEW
                 <div className="table-container" style={{ overflowX: 'auto' }}>
-                    <table className="admin-table" style={{ width: '100%', minWidth: '800px' }}>
+                    <table className="admin-table" style={{ width: '100%', minWidth: '900px' }}>
                         <thead>
                             <tr>
                                 <th style={{ width: '60px' }}>Image</th>
                                 <th>SKU</th>
                                 <th>Product Details</th>
-                                <th>Category</th>
+                                <th>Category & Collection</th>
                                 <th>Price</th>
                                 <th>Stock (Quick Edit)</th>
                                 <th>Status</th>
@@ -271,9 +397,18 @@ export default function ProductsPage() {
                                     <td style={{ fontWeight: 600, fontSize: '0.85rem', color: '#475569' }}>{product.sku || '--'}</td>
                                     <td>
                                         <div style={{ fontWeight: 600 }}>{product.title}</div>
+                                        {product.is_customizable && <span style={{ fontSize: '0.7rem', background: '#FEF3C7', color: '#D97706', padding: '2px 6px', borderRadius: '4px' }}>Customizable</span>}
                                     </td>
-                                    <td>{product.category || '--'}</td>
-                                    <td style={{ fontWeight: 600 }}>{formatCurrency(product.price)}</td>
+                                    <td>
+                                        <div style={{ fontSize: '0.85rem' }}>{product.category || '--'}</div>
+                                        <div style={{ fontSize: '0.75rem', color: '#64748B' }}>{product.sub_category}</div>
+                                    </td>
+                                    <td>
+                                        <div style={{ fontWeight: 600 }}>{formatCurrency(product.price)}</div>
+                                        {product.compare_at_price && product.compare_at_price > product.price && (
+                                            <div style={{ fontSize: '0.75rem', color: '#94A3B8', textDecoration: 'line-through' }}>{formatCurrency(product.compare_at_price)}</div>
+                                        )}
+                                    </td>
                                     <td>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                             <input 
@@ -314,7 +449,7 @@ export default function ProductsPage() {
             {/* PRODUCT MODAL */}
             {isModalOpen && editingProduct && (
                 <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <div style={{ background: '#FFF', borderRadius: '12px', width: '90%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto', padding: '32px', position: 'relative', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
+                    <div style={{ background: '#FFF', borderRadius: '12px', width: '95%', maxWidth: '900px', maxHeight: '90vh', overflowY: 'auto', padding: '32px', position: 'relative', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
                         <button onClick={() => setIsModalOpen(false)} style={{ position: 'absolute', top: 24, right: 24, background: 'none', border: 'none', cursor: 'pointer' }}>
                             <X size={24} color="#64748B" />
                         </button>
@@ -323,69 +458,145 @@ export default function ProductsPage() {
                             {editingProduct.id ? 'Edit Product' : 'Create New Product'}
                         </h2>
 
-                        <form onSubmit={handleSaveProduct} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                            {/* Row 1 */}
+                        <form onSubmit={handleSaveProduct} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                            {/* Row 1: Basics */}
                             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px' }}>
                                 <div>
-                                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '0.9rem' }}>Product Title *</label>
+                                    <label className="form-label" style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '0.9rem' }}>Product Title *</label>
                                     <input required type="text" value={editingProduct.title || ''} onChange={e => updateField('title', e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #E2E8F0' }} />
                                 </div>
                                 <div>
-                                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '0.9rem' }}>SKU</label>
-                                    <input type="text" value={editingProduct.sku || ''} onChange={e => updateField('sku', e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #E2E8F0' }} />
+                                    <label className="form-label" style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '0.9rem' }}>SKU *</label>
+                                    <input required type="text" value={editingProduct.sku || ''} onChange={e => updateField('sku', e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #E2E8F0' }} />
                                 </div>
                             </div>
 
-                            {/* Row 2 */}
+                            {/* Row 2: Organization */}
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
                                 <div>
-                                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '0.9rem' }}>Price (₹) *</label>
-                                    <input required type="number" value={editingProduct.price || 0} onChange={e => updateField('price', Number(e.target.value))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #E2E8F0' }} />
+                                    <label className="form-label" style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '0.9rem' }}>Main Category</label>
+                                    <select value={editingProduct.category || ''} onChange={e => updateField('category', e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+                                        <option value="Half Sarees">Half Sarees</option>
+                                        <option value="Sarees">Sarees</option>
+                                        <option value="Dresses">Dresses</option>
+                                        <option value="Jewellery">Jewellery</option>
+                                        <option value="Fabrics">Fabrics</option>
+                                    </select>
                                 </div>
                                 <div>
-                                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '0.9rem' }}>Stock Quantity</label>
-                                    <input type="number" value={editingProduct.stock_quantity || 0} onChange={e => updateField('stock_quantity', Number(e.target.value))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #E2E8F0' }} />
+                                    <label className="form-label" style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '0.9rem' }}>Sub Collection</label>
+                                    <select value={editingProduct.sub_category || ''} onChange={e => updateField('sub_category', e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+                                        <option value="Ready wear">Ready wear</option>
+                                        <option value="Customization">Customization</option>
+                                    </select>
                                 </div>
                                 <div>
-                                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '0.9rem' }}>Category</label>
-                                    <input type="text" value={editingProduct.category || ''} onChange={e => updateField('category', e.target.value)} placeholder="e.g. Sarees, Lehengas" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #E2E8F0' }} />
-                                </div>
-                            </div>
-
-                            {/* Row 3 */}
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                                <div>
-                                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '0.9rem' }}>Status</label>
+                                    <label className="form-label" style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '0.9rem' }}>Status</label>
                                     <select value={editingProduct.status || 'Active'} onChange={e => updateField('status', e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
                                         <option value="Active">Active</option>
                                         <option value="Draft">Draft</option>
                                         <option value="Out of Stock">Out of Stock</option>
                                     </select>
                                 </div>
+                            </div>
+
+                            {/* Row 3: Pricing */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', background: '#F8FAFC', padding: '16px', borderRadius: '8px' }}>
                                 <div>
-                                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '0.9rem' }}>Movement Velocity</label>
-                                    <select value={editingProduct.movement_velocity || 'Normal'} onChange={e => updateField('movement_velocity', e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
-                                        <option value="High">High Velocity (Fast Mover)</option>
-                                        <option value="Normal">Normal Velocity</option>
-                                        <option value="Low">Low Velocity (Slow Mover)</option>
-                                    </select>
+                                    <label className="form-label" style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '0.9rem' }}>Sale Rate (₹) *</label>
+                                    <input required type="number" value={editingProduct.price || 0} onChange={e => updateField('price', Number(e.target.value))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #E2E8F0' }} />
+                                    <span style={{ fontSize: '0.75rem', color: '#64748B' }}>Price customer pays</span>
+                                </div>
+                                <div>
+                                    <label className="form-label" style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '0.9rem' }}>Actual Rate (MRP ₹)</label>
+                                    <input type="number" value={editingProduct.compare_at_price || 0} onChange={e => updateField('compare_at_price', Number(e.target.value))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #E2E8F0' }} />
+                                    <span style={{ fontSize: '0.75rem', color: '#64748B' }}>Shown crossed out</span>
+                                </div>
+                                <div>
+                                    <label className="form-label" style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '0.9rem' }}>Stock Quantity</label>
+                                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                        <input type="number" value={editingProduct.stock_quantity || 0} onChange={e => updateField('stock_quantity', Number(e.target.value))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #E2E8F0' }} />
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
+                                            <input type="checkbox" checked={editingProduct.allow_backorders} onChange={e => updateField('allow_backorders', e.target.checked)} />
+                                            Allow Backorders
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
 
+                            {/* Row 4: Variations & Sizing */}
+                            <div style={{ background: '#F1F5F9', padding: '16px', borderRadius: '8px' }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, fontSize: '0.95rem', marginBottom: '16px' }}>
+                                    <input type="checkbox" checked={editingProduct.is_customizable} onChange={e => updateField('is_customizable', e.target.checked)} style={{ width: '18px', height: '18px' }} />
+                                    This product is Customizable
+                                </label>
+                                
+                                {!editingProduct.is_customizable && (
+                                    <div>
+                                        <label className="form-label" style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '0.9rem' }}>Ready Wear Sizes (Select available)</label>
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                            {['XS', 'S', 'M', 'L', 'XL', 'XXL', 'Free Size'].map(size => {
+                                                const isSelected = (editingProduct.available_sizes || []).includes(size);
+                                                return (
+                                                    <button 
+                                                        type="button" 
+                                                        key={size} 
+                                                        onClick={() => toggleSize(size)}
+                                                        style={{ 
+                                                            padding: '6px 12px', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 600, border: '1px solid',
+                                                            background: isSelected ? '#10B981' : '#FFF',
+                                                            borderColor: isSelected ? '#10B981' : '#CBD5E1',
+                                                            color: isSelected ? '#FFF' : '#475569'
+                                                        }}
+                                                    >
+                                                        {size}
+                                                    </button>
+                                                )
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Row 5: Media (Images & Video) */}
                             <div>
-                                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '0.9rem' }}>Image URLs (comma separated)</label>
-                                <textarea 
-                                    rows={3}
-                                    value={(editingProduct.images || []).join(', ')} 
-                                    onChange={e => updateField('images', e.target.value.split(',').map(s => s.trim()).filter(Boolean))} 
-                                    placeholder="https://example.com/img1.jpg, https://example.com/img2.jpg"
-                                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #E2E8F0', fontSize: '0.85rem', fontFamily: 'monospace' }} 
-                                />
+                                <label className="form-label" style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '0.9rem' }}>Product Images</label>
+                                
+                                <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', marginBottom: '12px' }}>
+                                    <button 
+                                        type="button"
+                                        onClick={() => fileInputRef.current?.click()}
+                                        disabled={uploadingImage}
+                                        className="btn btn-outline"
+                                        style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}
+                                    >
+                                        <ImageIcon size={16} /> {uploadingImage ? 'Uploading...' : 'Upload Files'}
+                                    </button>
+                                    <input 
+                                        type="file" 
+                                        multiple 
+                                        accept="image/*" 
+                                        ref={fileInputRef} 
+                                        style={{ display: 'none' }} 
+                                        onChange={handleImageUpload} 
+                                    />
+                                    <textarea 
+                                        rows={2}
+                                        value={(editingProduct.images || []).join(', ')} 
+                                        onChange={e => updateField('images', e.target.value.split(',').map(s => s.trim()).filter(Boolean))} 
+                                        placeholder="Or paste external image URLs here, comma separated..."
+                                        style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #E2E8F0', fontSize: '0.85rem', fontFamily: 'monospace' }} 
+                                    />
+                                </div>
+                                
                                 {editingProduct.images && editingProduct.images.length > 0 && (
-                                    <div style={{ display: 'flex', gap: '8px', marginTop: '12px', overflowX: 'auto' }}>
+                                    <div style={{ display: 'flex', gap: '12px', marginTop: '12px', overflowX: 'auto', paddingBottom: '8px' }}>
                                         {editingProduct.images.map((img, i) => (
-                                            <div key={i} style={{ width: '60px', height: '60px', borderRadius: '6px', overflow: 'hidden', border: '1px solid #E2E8F0', flexShrink: 0 }}>
+                                            <div key={i} style={{ position: 'relative', width: '80px', height: '80px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #E2E8F0', flexShrink: 0 }}>
                                                 <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                <button type="button" onClick={() => updateField('images', editingProduct.images?.filter((_, idx) => idx !== i))} style={{ position: 'absolute', top: 4, right: 4, background: '#FFF', borderRadius: '50%', padding: '2px', cursor: 'pointer', border: 'none' }}>
+                                                    <X size={12} color="#DC2626" />
+                                                </button>
                                             </div>
                                         ))}
                                     </div>
@@ -393,7 +604,12 @@ export default function ProductsPage() {
                             </div>
 
                             <div>
-                                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '0.9rem' }}>Description</label>
+                                <label className="form-label" style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '0.9rem' }}>Reference Video Link (YouTube / Instagram Reel)</label>
+                                <input type="text" placeholder="https://instagram.com/reel/..." value={editingProduct.video_link || ''} onChange={e => updateField('video_link', e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #E2E8F0' }} />
+                            </div>
+
+                            <div>
+                                <label className="form-label" style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '0.9rem' }}>Description</label>
                                 <textarea 
                                     rows={5}
                                     value={editingProduct.description || ''} 

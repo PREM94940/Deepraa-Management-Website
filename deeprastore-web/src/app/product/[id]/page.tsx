@@ -22,6 +22,7 @@ export default function ProductDetails() {
     // Customization States
     const [needsStitching, setNeedsStitching] = useState(false);
     const [needsFallPico, setNeedsFallPico] = useState(false);
+    const [selectedSize, setSelectedSize] = useState<string>('');
     
     const { addItem } = useCartStore();
     const { addItem: addWishlist, removeItem: removeWishlist, isInWishlist } = useWishlistStore();
@@ -102,6 +103,17 @@ export default function ProductDetails() {
                     
                     {product.images && product.images.length > 1 && (
                         <div className="flex gap-4 overflow-x-auto hide-scrollbar pb-2">
+                            {product.video_link && (
+                                <a 
+                                    href={product.video_link}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="w-20 h-28 flex-shrink-0 relative overflow-hidden bg-black flex items-center justify-center opacity-80 hover:opacity-100 transition-opacity"
+                                >
+                                    <img src={mainImage} alt="Video Thumbnail" className="absolute inset-0 w-full h-full object-cover opacity-50" />
+                                    <svg className="w-8 h-8 text-white relative z-10" fill="currentColor" viewBox="0 0 20 20"><path d="M6.3 2.841A1.5 1.5 0 004 4.11v11.78a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" /></svg>
+                                </a>
+                            )}
                             {product.images.map((img: string, idx: number) => (
                                 <button 
                                     key={idx} 
@@ -143,36 +155,59 @@ export default function ProductDetails() {
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill={isInWishlist(product.id) ? "#ef4444" : "none"} stroke={isInWishlist(product.id) ? "#ef4444" : "currentColor"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
                             </button>
                         </div>
-                        <p className="text-2xl text-fg font-light">
-                            ₹{product.price.toLocaleString('en-IN')}
-                            <span className="text-sm text-muted block mt-1 uppercase tracking-widest">Inclusive of all taxes</span>
-                        </p>
+                        <div className="flex items-end gap-3">
+                            <p className="text-2xl text-fg font-light">
+                                ₹{product.price.toLocaleString('en-IN')}
+                            </p>
+                            {product.compare_at_price && product.compare_at_price > product.price && (
+                                <p className="text-lg text-muted line-through mb-1">
+                                    ₹{product.compare_at_price.toLocaleString('en-IN')}
+                                </p>
+                            )}
+                        </div>
+                        <span className="text-sm text-muted block mt-1 uppercase tracking-widest">Inclusive of all taxes</span>
                     </div>
 
-                    {/* Customization Options */}
-                    <div className="mb-10 space-y-6">
-                        <h3 className="text-sm font-bold uppercase tracking-widest text-fg border-b border-border pb-2">Boutique Services</h3>
-                        
-                        <label className="flex items-start gap-4 cursor-pointer group">
-                            <div className={`mt-1 w-5 h-5 border flex items-center justify-center transition-colors ${needsStitching ? 'bg-black border-black' : 'border-gray-300'}`}>
-                                {needsStitching && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>}
-                            </div>
-                            <div>
-                                <div className="font-bold text-fg">Custom Stitching (+₹1,500)</div>
-                                <div className="text-sm text-muted mt-1">We will contact you for your exact measurements on WhatsApp.</div>
-                            </div>
-                        </label>
+                    {product.is_customizable ? (
+                        <div className="mb-10 space-y-6">
+                            <h3 className="text-sm font-bold uppercase tracking-widest text-fg border-b border-border pb-2">Boutique Services</h3>
+                            
+                            <label className="flex items-start gap-4 cursor-pointer group">
+                                <div className={`mt-1 w-5 h-5 border flex items-center justify-center transition-colors ${needsStitching ? 'bg-black border-black' : 'border-gray-300'}`}>
+                                    {needsStitching && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>}
+                                </div>
+                                <div>
+                                    <div className="font-bold text-fg">Custom Stitching (+₹1,500)</div>
+                                    <div className="text-sm text-muted mt-1">We will contact you for your exact measurements on WhatsApp.</div>
+                                </div>
+                            </label>
 
-                        <label className="flex items-start gap-4 cursor-pointer group">
-                            <div className={`mt-1 w-5 h-5 border flex items-center justify-center transition-colors ${needsFallPico ? 'bg-black border-black' : 'border-gray-300'}`}>
-                                {needsFallPico && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>}
+                            <label className="flex items-start gap-4 cursor-pointer group">
+                                <div className={`mt-1 w-5 h-5 border flex items-center justify-center transition-colors ${needsFallPico ? 'bg-black border-black' : 'border-gray-300'}`}>
+                                    {needsFallPico && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>}
+                                </div>
+                                <div>
+                                    <div className="font-bold text-fg">Fall & Pico (+₹300)</div>
+                                    <div className="text-sm text-muted mt-1">Ready to drape elegance.</div>
+                                </div>
+                            </label>
+                        </div>
+                    ) : product.available_sizes && product.available_sizes.length > 0 && (
+                        <div className="mb-10">
+                            <h3 className="text-sm font-bold uppercase tracking-widest text-fg border-b border-border pb-2 mb-4">Select Size</h3>
+                            <div className="flex flex-wrap gap-3">
+                                {product.available_sizes.map((size: string) => (
+                                    <button 
+                                        key={size}
+                                        onClick={() => setSelectedSize(size)}
+                                        className={`px-6 py-3 border font-bold text-sm transition-colors ${selectedSize === size ? 'border-black bg-black text-white' : 'border-gray-300 bg-white text-fg hover:border-black'}`}
+                                    >
+                                        {size}
+                                    </button>
+                                ))}
                             </div>
-                            <div>
-                                <div className="font-bold text-fg">Fall & Pico (+₹300)</div>
-                                <div className="text-sm text-muted mt-1">Ready to drape elegance.</div>
-                            </div>
-                        </label>
-                    </div>
+                        </div>
+                    )}
 
                     {/* Actions */}
                     <div className="flex flex-col sm:flex-row gap-4 mb-12">

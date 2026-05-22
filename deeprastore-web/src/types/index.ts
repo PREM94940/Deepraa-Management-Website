@@ -27,11 +27,17 @@ export interface Product {
     price: number;
     sku?: string;
     category?: string;
+    sub_category?: string;
     images: string[];
     status: 'Active' | 'Draft' | 'Out of Stock';
     created_at: string;
     stock_quantity?: number;
     movement_velocity?: string;
+    compare_at_price?: number;
+    is_customizable?: boolean;
+    available_sizes?: string[];
+    allow_backorders?: boolean;
+    video_link?: string;
 }
 
 export interface Order {

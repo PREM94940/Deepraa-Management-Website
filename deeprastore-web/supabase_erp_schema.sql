@@ -105,6 +105,14 @@ CREATE TABLE IF NOT EXISTS public.products (
     price numeric NOT NULL,
     images text[],
     category text,
+    sub_category text,
+    compare_at_price numeric DEFAULT 0,
+    is_customizable boolean DEFAULT false,
+    available_sizes text[],
+    allow_backorders boolean DEFAULT false,
+    video_link text,
+    stock_quantity integer DEFAULT 0,
+    movement_velocity text DEFAULT 'Normal',
     status text DEFAULT 'Active', -- 'Active', 'Draft', 'Out of Stock'
     created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );

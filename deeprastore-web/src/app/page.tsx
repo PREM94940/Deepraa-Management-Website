@@ -95,7 +95,7 @@ const BestSellersSlider = () => {
 
     useEffect(() => {
         async function fetchProducts() {
-            const { data } = await supabase.from('products').select('*').limit(6);
+            const { data } = await supabase.from('products').select('*').eq('status', 'Active').limit(6);
             if (data) setProducts(data);
             setLoading(false);
         }
