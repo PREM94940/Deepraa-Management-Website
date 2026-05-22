@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Playfair_Display, Poppins } from 'next/font/google';
 import { FloatingWhatsApp } from '@/components/FloatingWhatsApp';
-import { Analytics } from "@vercel/analytics/react";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 export const metadata: Metadata = {
