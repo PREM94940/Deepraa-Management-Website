@@ -1,6 +1,6 @@
 import { supabaseServer } from './supabase-server';
 
-export type AuditAction = 'INSERT' | 'UPDATE' | 'DELETE' | 'APPROVAL';
+export type AuditAction = 'INSERT' | 'UPDATE' | 'DELETE' | 'APPROVAL' | 'LOGISTICS_UPDATE';
 
 export async function logAuditAction({
     tableName,
