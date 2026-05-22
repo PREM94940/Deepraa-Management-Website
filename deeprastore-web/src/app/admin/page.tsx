@@ -17,6 +17,7 @@ export default function AdminOverviewPage() {
     const [delayedOrders, setDelayedOrders] = useState<any[]>([]);
     const [pendingApprovalOrders, setPendingApprovalOrders] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
     useEffect(() => {
         async function fetchDashboardData() {
@@ -68,8 +69,9 @@ export default function AdminOverviewPage() {
                     .order('expected_delivery_date', { ascending: true });
                 if (delayed) setDelayedOrders(delayed);
 
-            } catch (err) {
+            } catch (err: any) {
                 console.error("Error fetching dashboard data", err);
+                setErrorMsg(err.message || 'Unknown error occurred');
             } finally {
                 setLoading(false);
             }
@@ -80,7 +82,11 @@ export default function AdminOverviewPage() {
     const formatCurrency = (val: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(val);
 
     if (loading) {
-        return <div className="p-8">Loading Smart Dashboard...</div>;
+        return <div className="p-8 text-white">Loading Smart Dashboard...</div>;
+    }
+
+    if (errorMsg) {
+        return <div className="p-8 text-red-500 bg-red-100 m-8 rounded-lg"><strong>Error Loading Dashboard:</strong> {errorMsg}</div>;
     }
 
     return (

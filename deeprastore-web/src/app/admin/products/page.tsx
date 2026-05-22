@@ -10,6 +10,7 @@ type EditableProduct = Partial<Product> & { id?: string };
 export default function ProductsPage() {
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
     
     // View state
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -44,8 +45,10 @@ export default function ProductsPage() {
             
             if (error) throw error;
             setProducts(data || []);
-        } catch (err) {
+            setErrorMsg(null);
+        } catch (err: any) {
             console.error("Error fetching products:", err);
+            setErrorMsg(err.message);
         } finally {
             setLoading(false);
         }
@@ -54,7 +57,9 @@ export default function ProductsPage() {
     const categories = ['All', ...Array.from(new Set(products.map(p => p.category).filter(Boolean)))];
 
     let filteredProducts = products.filter(p => {
-        const matchesSearch = p.sku?.toLowerCase().includes(search.toLowerCase()) || p.title?.toLowerCase().includes(search.toLowerCase());
+        const skuStr = p.sku ? p.sku.toLowerCase() : '';
+        const titleStr = p.title ? p.title.toLowerCase() : '';
+        const matchesSearch = skuStr.includes(search.toLowerCase()) || titleStr.includes(search.toLowerCase());
         const matchesCategory = categoryFilter === 'All' || p.category === categoryFilter;
         return matchesSearch && matchesCategory;
     });
@@ -310,6 +315,11 @@ export default function ProductsPage() {
 
             {loading ? (
                 <div style={{ padding: '40px', textAlign: 'center' }}>Loading inventory...</div>
+            ) : errorMsg ? (
+                <div style={{ padding: '40px', textAlign: 'center', color: '#DC2626', background: '#FEE2E2', borderRadius: '8px' }}>
+                    <p style={{ fontWeight: 'bold' }}>Error Loading Products</p>
+                    <p>{errorMsg}</p>
+                </div>
             ) : filteredProducts.length === 0 ? (
                 <div className="empty-state">
                     <p>No products found matching your criteria.</p>
