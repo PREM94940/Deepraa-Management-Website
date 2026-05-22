@@ -30,6 +30,8 @@ export interface Product {
     images: string[];
     status: 'Active' | 'Draft' | 'Out of Stock';
     created_at: string;
+    stock_quantity?: number;
+    movement_velocity?: string;
 }
 
 export interface Order {
