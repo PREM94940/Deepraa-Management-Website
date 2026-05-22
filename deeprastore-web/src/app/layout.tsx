@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Playfair_Display, Poppins } from 'next/font/google';
 import { FloatingWhatsApp } from '@/components/FloatingWhatsApp';
+import { Analytics } from "@vercel/analytics/react";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -30,6 +31,7 @@ export default function RootLayout({
       <body className="font-body min-h-screen bg-bg text-fg">
         {children}
         <FloatingWhatsApp />
+        <Analytics />
       </body>
     </html>
   );
