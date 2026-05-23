@@ -3,7 +3,7 @@
 import { supabaseServer } from '../supabase-server';
 import { verifyAdminAccess } from './auth';
 import { z } from 'zod';
-import { revalidateTag } from 'next/cache';
+import { revalidatePath } from 'next/cache';
 
 const PageSchema = z.object({
     id: z.string(),
@@ -175,8 +175,8 @@ export async function publishCMSAction(config: any) {
             publish_notes: `Manual Publish. AI Summary: ${autoNotes}`
         });
 
-        // Phase 3: Invalidate edge cache tags for immediate live site update
-        revalidateTag('cms-publish');
+        // Phase 3: Invalidate edge cache for immediate live site update
+        revalidatePath('/', 'layout');
 
         return { success: true };
     } catch (error: any) {
@@ -320,7 +320,7 @@ export async function approveAndPublishCMSAction(config: any, notes: string) {
             publish_notes: finalNotes
         });
 
-        revalidateTag('cms-publish');
+        revalidatePath('/', 'layout');
 
         return { success: true };
     } catch (error: any) {

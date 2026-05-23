@@ -6,7 +6,7 @@ const ipRequestCounts = new Map<string, { count: number, resetTime: number }>();
 
 export async function middleware(request: NextRequest) {
     // 1. Rate Limiting (Pillar 6)
-    const ip = request.ip || request.headers.get('x-forwarded-for') || 'anonymous';
+    const ip = request.headers.get('x-forwarded-for') || 'anonymous';
     const now = Date.now();
     const rateLimitWindow = 60000; // 1 minute
     const maxRequests = 100; // 100 requests per minute
