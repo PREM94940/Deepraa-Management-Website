@@ -4,7 +4,8 @@ import { revalidatePath } from 'next/cache';
 import { supabaseServer } from '../supabase-server';
 import { ComplaintInsertSchema, ComplaintUpdateSchema } from '../validations';
 import { logAuditAction } from '../audit';
-import { verifyAdminAccess, PERMISSIONS } from '../auth';
+import { verifyAdminAccess } from './auth';
+import { PERMISSIONS } from '../auth';
 import { captureOperationalError } from '../monitor';
 import { z } from 'zod';
 

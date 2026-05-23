@@ -1,10 +1,10 @@
 "use client";
-import React, { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import React from 'react';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { CartDrawer } from '@/components/CartDrawer';
 import { SECTION_REGISTRY } from '@/registry/sections';
+import { useStorefrontCMS } from '@/hooks/useStorefrontCMS';
 
 const DEFAULT_SECTIONS = [
     { type: 'cinematic_hero', settings: {} },
@@ -15,60 +15,15 @@ const DEFAULT_SECTIONS = [
 ];
 
 export default function Home() {
-    const [sections, setSections] = useState<any[]>(DEFAULT_SECTIONS);
-    const [globalSettings, setGlobalSettings] = useState<any>({});
+    const { sections, globalSettings, loading } = useStorefrontCMS('homepage');
 
-    useEffect(() => {
-        async function fetchTheme() {
-            try {
-                // Check for ?preview_theme=slug in URL
-                const urlParams = new URLSearchParams(window.location.search);
-                const previewSlug = urlParams.get('preview_theme');
-
-                let query = supabase.from('storefront_themes').select('*');
-                if (previewSlug) {
-                    query = query.eq('slug', previewSlug).eq('status', 'draft');
-                } else {
-                    query = query.eq('status', 'published');
-                }
-
-                const { data, error } = await query.single();
-                
-                if (data) {
-                    if (data.sections && data.sections.length > 0) {
-                        setSections(data.sections);
-                    }
-                    if (data.global_settings) {
-                        setGlobalSettings(data.global_settings);
-                    }
-                }
-            } catch (err) {
-                console.warn('CMS Schema not found or error fetching theme. Falling back to default architecture.', err);
-            }
-        }
-        fetchTheme();
-
-        // Listen for live preview updates from Admin Editor
-        const handleMessage = (event: MessageEvent) => {
-            if (event.data?.type === 'CMS_UPDATE') {
-                if (event.data.payload.sections) {
-                    setSections(event.data.payload.sections);
-                    setGlobalSettings(event.data.payload.globalSettings || {});
-                } else {
-                    // Backwards compatibility if payload is just sections array
-                    setSections(event.data.payload);
-                }
-            } else if (event.data?.type === 'CMS_SCROLL_TO') {
-                const element = document.getElementById(`section-${event.data.payload}`);
-                if (element) {
-                    element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
-            }
-        };
-        window.addEventListener('message', handleMessage);
-        
-        return () => window.removeEventListener('message', handleMessage);
-    }, []);
+    if (loading) {
+        return (
+            <main className="min-h-screen bg-surface flex items-center justify-center">
+                <div className="animate-pulse text-xl font-bold italic font-display text-muted">Preparing your luxury experience...</div>
+            </main>
+        );
+    }
 
     return (
         <main className="w-full">

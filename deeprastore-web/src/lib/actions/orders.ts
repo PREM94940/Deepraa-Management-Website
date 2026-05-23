@@ -5,7 +5,8 @@ import { supabaseServer } from '../supabase-server';
 import { OrderStatusUpdateSchema, DeleteItemsSchema } from '../validations';
 import { logAuditAction } from '../audit';
 import { sendWhatsAppTemplateMessage } from '../whatsapp';
-import { verifyAdminAccess, PERMISSIONS } from '../auth';
+import { verifyAdminAccess } from './auth';
+import { PERMISSIONS } from '../auth';
 import { captureOperationalError } from '../monitor';
 
 export async function approveOrderAction(id: string) {

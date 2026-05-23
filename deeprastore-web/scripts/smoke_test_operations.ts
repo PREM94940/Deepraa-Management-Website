@@ -31,10 +31,8 @@ async function runTests() {
     try {
         const trackingNumber = `TEST-${Date.now()}`;
         const payload = {
-            tracking_data: {
-                shipment_track: [{ current_status: 'Delivered' }],
-                track_url: 'http://test.com'
-            }
+            awb: trackingNumber,
+            current_status: 'DELIVERED'
         };
 
         // Send first time

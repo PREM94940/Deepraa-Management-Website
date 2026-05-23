@@ -4,7 +4,8 @@ import { revalidatePath } from 'next/cache';
 import { supabaseServer } from '../supabase-server';
 import { ProductInsertSchema, ProductUpdateSchema, ProductStockUpdateSchema, DeleteItemsSchema } from '../validations';
 import { logAuditAction } from '../audit';
-import { verifyAdminAccess, PERMISSIONS } from '../auth';
+import { verifyAdminAccess } from './auth';
+import { PERMISSIONS } from '../auth';
 import { captureOperationalError } from '../monitor';
 import { z } from 'zod';
 
@@ -14,7 +15,7 @@ export async function upsertProductAction(data: z.infer<typeof ProductInsertSche
         if (data.id) {
             // Update
             const parsed = ProductUpdateSchema.safeParse(data);
-            if (!parsed.success) return { success: false, error: parsed.error.errors[0].message };
+            if (!parsed.success) return { success: false, error: parsed.error.issues[0].message };
             
             const { data: oldData } = await supabaseServer.from('products').select('*').eq('id', data.id).single();
 
@@ -31,7 +32,7 @@ export async function upsertProductAction(data: z.infer<typeof ProductInsertSche
         } else {
             // Insert
             const parsed = ProductInsertSchema.safeParse(data);
-            if (!parsed.success) return { success: false, error: parsed.error.errors[0].message };
+            if (!parsed.success) return { success: false, error: parsed.error.issues[0].message };
 
             const { data: insertedData, error } = await supabaseServer.from('products').insert([parsed.data]).select('id').single();
             if (error) throw error;
@@ -58,7 +59,7 @@ export async function upsertProductAction(data: z.infer<typeof ProductInsertSche
 
 export async function updateStockAction(id: string, stock_quantity: number) {
     const parsed = ProductStockUpdateSchema.safeParse({ id, stock_quantity });
-    if (!parsed.success) return { success: false, error: parsed.error.errors[0].message };
+    if (!parsed.success) return { success: false, error: parsed.error.issues[0].message };
 
     try {
         await verifyAdminAccess(PERMISSIONS.CAN_EDIT_INVENTORY, 'updateProductStock');
@@ -97,7 +98,7 @@ export async function processProductChunkAction(chunk: any[], chunkIndex: number
         for (const row of chunk) {
             const parsed = ProductInsertSchema.safeParse(row);
             if (!parsed.success) {
-                failedRows.push({ sku: row.sku || 'UNKNOWN', error: parsed.error.errors[0].message });
+                failedRows.push({ sku: row.sku || 'UNKNOWN', error: parsed.error.issues[0].message });
                 continue;
             }
             validProducts.push(parsed.data);

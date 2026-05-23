@@ -45,10 +45,10 @@ export const CinematicHero = ({ data }: { data?: any }) => {
                     transition={{ duration: 0.8, delay: 0.4, ease: "easeOut" }}
                     className="flex flex-col w-full sm:w-auto sm:flex-row gap-4 mb-12"
                 >
-                    <Link href={data?.primary_cta_link || "/collections"} className="bg-white text-black px-10 py-4 text-xs md:text-sm font-bold uppercase tracking-widest hover:bg-gold hover:text-white transition-all duration-300 w-full sm:w-auto">
-                        {data?.primary_cta_text || "Shop The Look"}
+                    <Link href={data?.primary_cta_link || data?.cta_link || "/collections"} className="bg-white text-black px-10 py-4 text-xs md:text-sm font-bold uppercase tracking-widest hover:bg-gold hover:text-white transition-all duration-300 w-full sm:w-auto">
+                        {data?.primary_cta_text || data?.cta_text || "Shop The Look"}
                     </Link>
-                    <Link href={data?.secondary_cta_link || "/custom-stitching"} className="bg-transparent border border-white text-white px-10 py-4 text-xs md:text-sm font-bold uppercase tracking-widest hover:bg-white hover:text-black transition-all duration-300 w-full sm:w-auto">
+                    <Link href={data?.secondary_cta_link || data?.cta_link_secondary || "/custom-stitching"} className="bg-transparent border border-white text-white px-10 py-4 text-xs md:text-sm font-bold uppercase tracking-widest hover:bg-white hover:text-black transition-all duration-300 w-full sm:w-auto">
                         {data?.secondary_cta_text || "Custom Orders"}
                     </Link>
                 </motion.div>
@@ -282,37 +282,399 @@ export const InstagramFeed = ({ data }: { data?: any }) => {
     );
 };
 
-export const ProductHero = ({ data, variant }: { data?: any, variant?: string }) => {
+export const ProductHero = ({ 
+    data, 
+    product, 
+    mainImage, 
+    setMainImage, 
+    qty, 
+    setQty, 
+    needsStitching, 
+    setNeedsStitching, 
+    needsFallPico, 
+    setNeedsFallPico, 
+    selectedSize, 
+    setSelectedSize, 
+    handleAddToCart, 
+    handleWhatsAppOrder 
+}: { 
+    data?: any, 
+    product?: any, 
+    mainImage?: string, 
+    setMainImage?: (img: string) => void, 
+    qty?: number, 
+    setQty?: (qty: number) => void, 
+    needsStitching?: boolean, 
+    setNeedsStitching?: (n: boolean) => void, 
+    needsFallPico?: boolean, 
+    setNeedsFallPico?: (n: boolean) => void, 
+    selectedSize?: string, 
+    setSelectedSize?: (s: string) => void, 
+    handleAddToCart?: () => void, 
+    handleWhatsAppOrder?: () => void 
+}) => {
+    const mockProduct = {
+        id: 'mock-product',
+        title: 'The Royal Banarasi Silk Lehenga',
+        price: 45000,
+        compare_at_price: 55000,
+        category: 'Lehengas',
+        sku: 'DP-LHN-001',
+        is_customizable: true,
+        available_sizes: ['XS', 'S', 'M', 'L', 'XL'],
+        description: '<p>A masterpiece of handloom weaving, crafted by our master weavers in Varanasi. Featuring intricate gold Zari work across premium raw silk, this bridal lehenga is a timeless celebration of Indian heritage and artisanal excellence.</p>',
+        images: [
+            'https://images.unsplash.com/photo-1605000523098-944208a0d7d9?auto=format&fit=crop&q=80&w=800',
+            'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&q=80&w=800',
+            'https://images.unsplash.com/photo-1596455607563-ad6193f76b17?auto=format&fit=crop&q=80&w=800'
+        ]
+    };
+
+    const p = product || mockProduct;
+    const [localMainImage, setLocalMainImage] = useState(p.images?.[0] || '');
+    const [localQty, setLocalQty] = useState(1);
+    const [localNeedsStitching, setLocalNeedsStitching] = useState(false);
+    const [localNeedsFallPico, setLocalNeedsFallPico] = useState(false);
+    const [localSelectedSize, setLocalSelectedSize] = useState('');
+
+    const currentMainImage = mainImage !== undefined ? mainImage : localMainImage;
+    const currentQty = qty !== undefined ? qty : localQty;
+    const currentNeedsStitching = needsStitching !== undefined ? needsStitching : localNeedsStitching;
+    const currentNeedsFallPico = needsFallPico !== undefined ? needsFallPico : localNeedsFallPico;
+    const currentSelectedSize = selectedSize !== undefined ? selectedSize : localSelectedSize;
+
+    const changeMainImage = setMainImage || setLocalMainImage;
+    const changeQty = setQty || setLocalQty;
+    const changeNeedsStitching = setNeedsStitching || setLocalNeedsStitching;
+    const changeNeedsFallPico = setNeedsFallPico || setLocalNeedsFallPico;
+    const changeSelectedSize = setSelectedSize || setLocalSelectedSize;
+
+    useEffect(() => {
+        if (!currentMainImage && p.images?.[0]) {
+            changeMainImage(p.images[0]);
+        }
+    }, [p.images]);
+
+    const onAddToCart = handleAddToCart || (() => {
+        alert(`Added to cart: ${p.title} (Qty: ${currentQty})`);
+    });
+
+    const onWhatsAppOrder = handleWhatsAppOrder || (() => {
+        const msg = `Hello, I want to order ${p.title} (SKU: ${p.sku})`;
+        window.open(`https://wa.me/919876543210?text=${encodeURIComponent(msg)}`, '_blank');
+    });
+
+    const isSplit = data?.layout !== 'full';
+
     return (
-        <section className="py-12 md:py-24 px-6 max-w-7xl mx-auto flex flex-col md:flex-row gap-12 border border-dashed border-gray-300 items-center justify-center bg-gray-50 min-h-[500px]">
-            <div className="text-center">
-                <h2 className="text-2xl font-bold font-display text-muted mb-2">Dynamic Product Hero Placeholder</h2>
-                <p className="text-sm text-gray-400">In production, this automatically pulls context from /product/[slug]</p>
-                {data?.layout && <p className="text-xs mt-4 text-gold font-bold uppercase">Layout: {data.layout}</p>}
+        <section className={`py-12 md:py-20 px-6 max-w-7xl mx-auto ${isSplit ? 'grid lg:grid-cols-2 gap-16' : 'flex flex-col'}`}>
+            <div className="space-y-6">
+                <div className="aspect-[4/5] bg-gray-100 overflow-hidden relative group rounded-sm border border-border">
+                    <img src={currentMainImage} alt={p.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                </div>
+                {p.images && p.images.length > 1 && (
+                    <div className="flex gap-4 overflow-x-auto hide-scrollbar pb-2">
+                        {p.images.map((img: string, idx: number) => (
+                            <button 
+                                key={idx} 
+                                onClick={() => changeMainImage(img)}
+                                className={`w-20 h-28 flex-shrink-0 overflow-hidden transition-all border ${currentMainImage === img ? 'border-accent opacity-100 scale-102 shadow-sm' : 'border-transparent opacity-50 hover:opacity-100'}`}
+                            >
+                                <img src={img} alt="" className="w-full h-full object-cover" />
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            <div className="flex flex-col">
+                <div className="mb-8 border-b border-border pb-8">
+                    <span className="text-accent font-bold tracking-widest uppercase text-xs mb-3 block">
+                        {p.category || 'Premium Collection'}
+                    </span>
+                    <h1 className="text-4xl md:text-5xl font-display leading-[1.2] mb-6 text-fg">
+                        {p.title}
+                    </h1>
+                    <div className="flex items-end gap-3">
+                        <p className="text-2xl text-fg font-light">
+                            ₹{p.price.toLocaleString('en-IN')}
+                        </p>
+                        {p.compare_at_price && p.compare_at_price > p.price && (
+                            <p className="text-lg text-muted line-through mb-1">
+                                ₹{p.compare_at_price.toLocaleString('en-IN')}
+                            </p>
+                        )}
+                    </div>
+                </div>
+
+                {p.is_customizable ? (
+                    <div className="mb-8 space-y-4">
+                        <h3 className="text-xs font-bold uppercase tracking-widest text-muted mb-4">Boutique Services</h3>
+                        
+                        <label className={`flex items-start gap-4 cursor-pointer group border p-4 transition-all ${currentNeedsStitching ? 'border-accent bg-accent/5' : 'border-border bg-white hover:border-gray-400'}`}>
+                            <input 
+                                type="checkbox"
+                                checked={currentNeedsStitching}
+                                onChange={(e) => changeNeedsStitching(e.target.checked)}
+                                className="mt-1 accent-accent"
+                            />
+                            <div>
+                                <div className="font-bold text-fg text-sm">Custom Stitching (+₹1,500)</div>
+                                <div className="text-xs text-muted mt-1 font-light leading-relaxed">Tailored to your exact measurements via WhatsApp.</div>
+                            </div>
+                        </label>
+
+                        <label className={`flex items-start gap-4 cursor-pointer group border p-4 transition-all ${currentNeedsFallPico ? 'border-accent bg-accent/5' : 'border-border bg-white hover:border-gray-400'}`}>
+                            <input 
+                                type="checkbox"
+                                checked={currentNeedsFallPico}
+                                onChange={(e) => changeNeedsFallPico(e.target.checked)}
+                                className="mt-1 accent-accent"
+                            />
+                            <div>
+                                <div className="font-bold text-fg text-sm">Fall & Pico (+₹300)</div>
+                                <div className="text-xs text-muted mt-1 font-light leading-relaxed">Edges finished and fall attached.</div>
+                            </div>
+                        </label>
+                    </div>
+                ) : p.available_sizes && p.available_sizes.length > 0 && (
+                    <div className="mb-10">
+                        <h3 className="text-sm font-bold uppercase tracking-widest text-fg border-b border-border pb-2 mb-4">Select Size</h3>
+                        <div className="flex flex-wrap gap-3">
+                            {p.available_sizes.map((size: string) => (
+                                <button 
+                                    key={size}
+                                    onClick={() => changeSelectedSize(size)}
+                                    className={`px-6 py-3 border font-bold text-sm transition-colors ${currentSelectedSize === size ? 'border-black bg-black text-white' : 'border-gray-300 bg-white text-fg hover:border-black'}`}
+                                >
+                                    {size}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                <div className="flex flex-col sm:flex-row gap-4 mb-8">
+                    <div className="flex items-center border border-black bg-white">
+                        <button onClick={() => changeQty(Math.max(1, currentQty - 1))} className="px-6 py-4 font-bold">-</button>
+                        <span className="px-4 font-bold w-12 text-center">{currentQty}</span>
+                        <button onClick={() => changeQty(currentQty + 1)} className="px-6 py-4 font-bold">+</button>
+                    </div>
+                    <button 
+                        onClick={onAddToCart}
+                        className="flex-1 bg-black text-white py-4 font-bold uppercase tracking-widest hover:bg-gold transition-colors">
+                        Add to Cart
+                    </button>
+                </div>
+
+                <div className="bg-[#25D366]/5 border border-[#25D366]/20 p-5 mb-8 flex gap-4 items-start rounded-sm">
+                    <div className="w-10 h-10 rounded-full bg-[#25D366]/10 flex items-center justify-center shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-[#25D366]">
+                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <p className="text-sm font-bold text-fg mb-1">Need Styling Advice?</p>
+                        <p className="text-xs text-muted leading-relaxed mb-3">Our concierge is available to help you with measurements and styling.</p>
+                        <button onClick={onWhatsAppOrder} className="text-xs font-bold uppercase tracking-widest text-[#25D366] hover:underline flex items-center gap-1">
+                            Chat with Stylist →
+                        </button>
+                    </div>
+                </div>
+
+                <div className="prose prose-p:font-light prose-p:leading-relaxed text-fg text-sm" dangerouslySetInnerHTML={{ __html: p.description || '' }} />
             </div>
         </section>
     );
 };
 
-export const CollectionGrid = ({ data }: { data?: any }) => {
+export const CollectionGrid = ({ 
+    data, 
+    products, 
+    loading, 
+    searchQuery, 
+    setSearchQuery, 
+    sortBy, 
+    setSortBy, 
+    selectedCategory, 
+    setSelectedCategory, 
+    priceRange, 
+    setPriceRange, 
+    categories 
+}: { 
+    data?: any, 
+    products?: any[], 
+    loading?: boolean, 
+    searchQuery?: string, 
+    setSearchQuery?: (q: string) => void, 
+    sortBy?: string, 
+    setSortBy?: (s: string) => void, 
+    selectedCategory?: string, 
+    setSelectedCategory?: (c: string) => void, 
+    priceRange?: number, 
+    setPriceRange?: (p: number) => void, 
+    categories?: string[] 
+}) => {
+    const mockProducts = [
+        { id: '1', title: 'Banarasi Raw Silk Saree', price: 18500, compare_at_price: 24000, images: ['https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=600'], sku: 'DP-SAR-001', category: 'Sarees', status: 'Active' },
+        { id: '2', title: 'Artisanal Banarasi Lehenga', price: 42000, compare_at_price: 49000, images: ['https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&q=80&w=600'], sku: 'DP-LHN-002', category: 'Lehengas', status: 'Active' },
+        { id: '3', title: 'Royal Zardozi Gown', price: 29000, images: ['https://images.unsplash.com/photo-1596455607563-ad6193f76b17?auto=format&fit=crop&q=80&w=600'], sku: 'DP-GWN-003', category: 'Dresses', status: 'Active' },
+        { id: '4', title: 'Zari Border Silk Fabric', price: 2400, images: ['https://images.unsplash.com/photo-1605000523098-944208a0d7d9?auto=format&fit=crop&q=80&w=600'], sku: 'DP-FAB-004', category: 'Fabric', status: 'Active' }
+    ];
+
+    const localCategories = ['All', 'Sarees', 'Lehengas', 'Dresses', 'Jewellery', 'Fabric'];
+    const [localProducts, setLocalProducts] = useState<any[]>(mockProducts);
+    const [localLoading, setLocalLoading] = useState(false);
+    const [localSearchQuery, setLocalSearchQuery] = useState('');
+    const [localSortBy, setLocalSortBy] = useState('new');
+    const [localSelectedCategory, setLocalSelectedCategory] = useState('All');
+    const [localPriceRange, setLocalPriceRange] = useState(50000);
+
+    const currentProducts = products !== undefined ? products : localProducts;
+    const currentLoading = loading !== undefined ? loading : localLoading;
+    const currentSearchQuery = searchQuery !== undefined ? searchQuery : localSearchQuery;
+    const currentSortBy = sortBy !== undefined ? sortBy : localSortBy;
+    const currentSelectedCategory = selectedCategory !== undefined ? selectedCategory : localSelectedCategory;
+    const currentPriceRange = priceRange !== undefined ? priceRange : localPriceRange;
+    const currentCategories = categories !== undefined ? categories : localCategories;
+
+    const changeSearchQuery = setSearchQuery || setLocalSearchQuery;
+    const changeSortBy = setSortBy || setLocalSortBy;
+    const changeSelectedCategory = setSelectedCategory || setLocalSelectedCategory;
+    const changePriceRange = setPriceRange || setLocalPriceRange;
+
+    useEffect(() => {
+        if (products === undefined) {
+            setLocalLoading(true);
+            let filtered = [...mockProducts];
+            if (currentSelectedCategory !== 'All') {
+                filtered = filtered.filter(p => p.category === currentSelectedCategory);
+            }
+            filtered = filtered.filter(p => p.price <= currentPriceRange);
+            if (currentSearchQuery.trim() !== '') {
+                filtered = filtered.filter(p => p.title.toLowerCase().includes(currentSearchQuery.toLowerCase()));
+            }
+            setLocalProducts(filtered);
+            setLocalLoading(false);
+        }
+    }, [currentSelectedCategory, currentPriceRange, currentSearchQuery, products]);
+
     return (
-        <section className="py-16 px-6 max-w-7xl mx-auto border border-dashed border-gray-300 items-center justify-center bg-gray-50 min-h-[400px] flex flex-col">
-            <div className="text-center">
-                <h2 className="text-2xl font-bold font-display text-muted mb-2">Dynamic Collection Grid Placeholder</h2>
-                <p className="text-sm text-gray-400">Automatically pulls products for the current category context</p>
-                <p className="text-xs mt-4 text-gold font-bold uppercase">Columns: {data?.columns || 4} | Filters: {data?.show_filters ? 'Visible' : 'Hidden'}</p>
+        <section className="py-12 px-6 max-w-7xl mx-auto flex flex-col lg:flex-row gap-12">
+            {data?.show_filters !== false && (
+                <aside className="w-full lg:w-64 shrink-0">
+                    <div className="sticky top-24 space-y-10">
+                        <div>
+                            <h3 className="text-xs font-bold uppercase tracking-widest mb-4">Search</h3>
+                            <input 
+                                type="text"
+                                placeholder="Search products..."
+                                value={currentSearchQuery}
+                                onChange={(e) => changeSearchQuery(e.target.value)}
+                                className="w-full border-b border-border py-2 bg-transparent focus:outline-none focus:border-black text-sm"
+                            />
+                        </div>
+
+                        <div>
+                            <h3 className="text-xs font-bold uppercase tracking-widest mb-4">Category</h3>
+                            <div className="space-y-3">
+                                {currentCategories.map(cat => (
+                                    <label key={cat} className="flex items-center gap-3 cursor-pointer group">
+                                        <input 
+                                            type="radio" 
+                                            name="category" 
+                                            value={cat} 
+                                            checked={currentSelectedCategory === cat}
+                                            onChange={() => changeSelectedCategory(cat)}
+                                            className="hidden"
+                                        />
+                                        <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${currentSelectedCategory === cat ? 'border-accent' : 'border-gray-300 group-hover:border-black'}`}>
+                                            {currentSelectedCategory === cat && <div className="w-2 h-2 rounded-full bg-accent"></div>}
+                                        </div>
+                                        <span className={`text-sm transition-colors ${currentSelectedCategory === cat ? 'text-accent font-medium' : 'text-gray-500 group-hover:text-black'}`}>{cat}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 className="text-xs font-bold uppercase tracking-widest mb-4">Max Price: ₹{currentPriceRange.toLocaleString('en-IN')}</h3>
+                            <input 
+                                type="range" 
+                                min="1000" 
+                                max="50000" 
+                                step="1000" 
+                                value={currentPriceRange} 
+                                onChange={(e) => changePriceRange(Number(e.target.value))}
+                                className="w-full accent-accent"
+                            />
+                        </div>
+                    </div>
+                </aside>
+            )}
+
+            <div className="flex-1">
+                <div className="flex justify-between items-center mb-8 pb-4 border-b border-border">
+                    <span className="text-sm text-muted">Showing {currentProducts.length} Products</span>
+                    <select 
+                        value={currentSortBy}
+                        onChange={(e) => changeSortBy(e.target.value)}
+                        className="bg-transparent text-sm font-bold uppercase tracking-widest focus:outline-none cursor-pointer"
+                    >
+                        <option value="new">Newest Arrivals</option>
+                        <option value="best_seller">Best Sellers</option>
+                        <option value="price_asc">Price: Low to High</option>
+                        <option value="price_desc">Price: High to Low</option>
+                    </select>
+                </div>
+
+                {currentLoading ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
+                        {[1, 2, 3].map(i => (
+                            <div key={i} className="animate-pulse">
+                                <div className="aspect-[3/4] bg-gray-200 rounded-sm mb-4"></div>
+                                <div className="h-6 bg-gray-200 rounded-md mb-2 w-3/4"></div>
+                                <div className="h-4 bg-gray-200 rounded-md w-1/4"></div>
+                            </div>
+                        ))}
+                    </div>
+                ) : currentProducts.length === 0 ? (
+                    <div className="text-center py-20 bg-bg rounded-sm border border-border">
+                        <h3 className="text-2xl font-bold font-display text-fg mb-2">No pieces found.</h3>
+                        <p className="text-muted">Adjust your filters to discover more.</p>
+                    </div>
+                ) : (
+                    <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-${data?.columns || 3} gap-x-8 gap-y-12`}>
+                        {currentProducts.map(product => (
+                            <ProductCard key={product.id} product={product} />
+                        ))}
+                    </div>
+                )}
             </div>
         </section>
     );
 };
 
 export const RelatedProducts = ({ data }: { data?: any }) => {
+    const [products, setProducts] = useState<any[]>([]);
+
+    useEffect(() => {
+        async function fetchRelated() {
+            const { data: prods } = await supabase.from('products').select('*').eq('status', 'Active').limit(3);
+            if (prods) setProducts(prods);
+        }
+        fetchRelated();
+    }, []);
+
     return (
-        <section className="py-16 px-6 max-w-7xl mx-auto border border-dashed border-gray-300 items-center justify-center bg-gray-50 min-h-[300px] flex flex-col">
-            <div className="text-center">
-                <h2 className="text-2xl font-bold font-display text-muted mb-2">Related Products Placeholder</h2>
-                <p className="text-sm text-gray-400">Displays cross-sells based on current product tags</p>
-                <p className="text-xs mt-4 text-gold font-bold uppercase">Heading: {data?.headline || 'You May Also Like'}</p>
+        <section className="py-16 md:py-24 bg-bg border-t border-border">
+            <div className="max-w-7xl mx-auto px-6">
+                <h3 className="text-2xl md:text-3xl font-display text-center mb-12" dangerouslySetInnerHTML={{ __html: data?.headline || 'You May Also <span class="italic">Like</span>' }} />
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {products.map(product => (
+                        <ProductCard key={product.id} product={product} />
+                    ))}
+                </div>
             </div>
         </section>
     );
