@@ -11,11 +11,10 @@ export function middleware(request: NextRequest) {
         // Since we are migrating to ERP, we will block unauthenticated users.
         const hasSession = request.cookies.has('sb-access-token') || request.cookies.has('supabase-auth-token');
         
-        // As an MVP protection, if there is absolutely no cookie, redirect to login.
-        // (Assuming /account is the login page right now).
-        // if (!hasSession && process.env.NODE_ENV === 'production') {
-        //      return NextResponse.redirect(new URL('/account', request.url));
-        // }
+        // Enforce authentication for admin routes.
+        if (!hasSession) {
+             return NextResponse.redirect(new URL('/account', request.url));
+        }
     }
 
     return NextResponse.next();
