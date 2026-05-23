@@ -52,7 +52,7 @@ interface CMSState {
     loadFromDatabase: () => Promise<void>;
     saveToDatabase: () => Promise<void>;
     publishToDatabase: () => Promise<void>;
-    rollbackToPublished: () => Promise<void>;
+    rollbackToPublished: (snapshotId?: string) => Promise<void>;
     
     // Approval Workflow Actions
     requestPublishApproval: (notes: string, submitterEmail: string) => Promise<void>;
@@ -462,11 +462,11 @@ export const useCMSStore = create<CMSState>((set, get) => ({
         }
     },
 
-    rollbackToPublished: async () => {
+    rollbackToPublished: async (snapshotId?: string) => {
         set({ isLoading: true, error: null });
         try {
             // Use the secure server action
-            const res = await rollbackCMSAction();
+            const res = await rollbackCMSAction(snapshotId);
             const config = res.config;
             
             set({
