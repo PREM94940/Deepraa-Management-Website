@@ -10,6 +10,8 @@ export default function Account() {
     const [user, setUser] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [usePassword, setUsePassword] = useState(false);
     const [message, setMessage] = useState('');
     const [orders, setOrders] = useState<any[]>([]);
 
@@ -31,15 +33,27 @@ export default function Account() {
         e.preventDefault();
         setLoading(true);
         setMessage('');
-        const { error } = await supabase.auth.signInWithOtp({
-            email,
-            options: {
-                emailRedirectTo: window.location.origin + '/account',
-            }
-        });
         
-        if (error) setMessage(error.message);
-        else setMessage('Check your email for the login link!');
+        if (usePassword) {
+            const { error } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+            });
+            if (error) setMessage(error.message);
+            else {
+                setMessage('Successfully logged in!');
+                window.location.reload();
+            }
+        } else {
+            const { error } = await supabase.auth.signInWithOtp({
+                email,
+                options: {
+                    emailRedirectTo: window.location.origin + '/account',
+                }
+            });
+            if (error) setMessage(error.message);
+            else setMessage('Check your email for the login link!');
+        }
         setLoading(false);
     };
 
@@ -80,12 +94,33 @@ export default function Account() {
                                     placeholder="you@example.com"
                                 />
                             </div>
+                            
+                            {usePassword && (
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-widest mb-2">Password</label>
+                                    <input 
+                                        type="password" 
+                                        required
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        className="w-full border-b border-border py-3 focus:outline-none focus:border-black transition-colors"
+                                        placeholder="Enter your password"
+                                    />
+                                </div>
+                            )}
+
+                            <div className="flex justify-end">
+                                <button type="button" onClick={() => setUsePassword(!usePassword)} className="text-xs font-bold uppercase tracking-widest text-accent hover:underline">
+                                    {usePassword ? 'Use Magic Link Instead' : 'Login with Password'}
+                                </button>
+                            </div>
+
                             <button 
                                 type="submit" 
                                 disabled={loading}
                                 className="w-full bg-black text-white py-4 font-bold uppercase tracking-widest hover:bg-gold transition-colors disabled:opacity-50"
                             >
-                                {loading ? 'Sending...' : 'Send Magic Link'}
+                                {loading ? 'Sending...' : (usePassword ? 'Log In' : 'Send Magic Link')}
                             </button>
                             {message && <p className="text-sm text-accent text-center font-medium mt-4">{message}</p>}
                         </form>
