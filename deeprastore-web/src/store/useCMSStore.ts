@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
+import { saveDraftCMSAction, publishCMSAction, rollbackCMSAction, requestPublishApprovalCMSAction, approveAndPublishCMSAction, rejectPublishRequestCMSAction } from '@/lib/actions/cms';
 
 export interface PageData {
     id: string; // e.g. 'homepage', 'collection', 'product', or custom uuid
@@ -418,16 +419,8 @@ export const useCMSStore = create<CMSState>((set, get) => ({
         const { pages, globalSettings, currentPageId } = get();
         set({ isLoading: true, error: null });
         try {
-            // Save as draft (id: 2)
-            const { error } = await supabase
-                .from('store_ui_settings')
-                .upsert({
-                    id: 2,
-                    config: { pages, globalSettings, currentPageId },
-                    updated_at: new Date().toISOString()
-                });
-
-            if (error) throw error;
+            const config = { pages, globalSettings, currentPageId };
+            await saveDraftCMSAction(config);
         } catch (err: any) {
             console.error('Error saving draft config to DB:', err);
             set({ error: err.message });
@@ -457,24 +450,8 @@ export const useCMSStore = create<CMSState>((set, get) => ({
 
             const config = { pages: updatedPages, globalSettings, currentPageId };
 
-            // Write the exact configuration to BOTH Live (id: 1) and Draft (id: 2)
-            const { error: liveError } = await supabase
-                .from('store_ui_settings')
-                .upsert({
-                    id: 1,
-                    config,
-                    updated_at: new Date().toISOString()
-                });
-            if (liveError) throw liveError;
-
-            const { error: draftError } = await supabase
-                .from('store_ui_settings')
-                .upsert({
-                    id: 2,
-                    config,
-                    updated_at: new Date().toISOString()
-                });
-            if (draftError) throw draftError;
+            // Use the secure server action
+            await publishCMSAction(config);
 
         } catch (err: any) {
             console.error('Error publishing CMS state to DB:', err);
@@ -488,35 +465,16 @@ export const useCMSStore = create<CMSState>((set, get) => ({
     rollbackToPublished: async () => {
         set({ isLoading: true, error: null });
         try {
-            const { data, error } = await supabase
-                .from('store_ui_settings')
-                .select('config')
-                .eq('id', 1)
-                .maybeSingle();
-
-            if (error) throw error;
-
-            if (data && data.config) {
-                const config = data.config;
-                
-                // Write live configuration back to draft row (id: 2)
-                await supabase
-                    .from('store_ui_settings')
-                    .upsert({
-                        id: 2,
-                        config,
-                        updated_at: new Date().toISOString()
-                    });
-
-                set({
-                    pages: config.pages || DEFAULT_PAGES,
-                    globalSettings: config.globalSettings || DEFAULT_GLOBAL_SETTINGS,
-                    currentPageId: config.currentPageId || 'homepage',
-                    sections: (config.pages || DEFAULT_PAGES).find((p: any) => p.id === (config.currentPageId || 'homepage'))?.sections || []
-                });
-            } else {
-                throw new Error("No live configuration found to rollback to.");
-            }
+            // Use the secure server action
+            const res = await rollbackCMSAction();
+            const config = res.config;
+            
+            set({
+                pages: config.pages || DEFAULT_PAGES,
+                globalSettings: config.globalSettings || DEFAULT_GLOBAL_SETTINGS,
+                currentPageId: config.currentPageId || 'homepage',
+                sections: (config.pages || DEFAULT_PAGES).find((p: any) => p.id === (config.currentPageId || 'homepage'))?.sections || []
+            });
         } catch (err: any) {
             console.error('Error rolling back CMS draft to live:', err);
             set({ error: err.message });
@@ -529,7 +487,7 @@ export const useCMSStore = create<CMSState>((set, get) => ({
     requestPublishApproval: async (notes: string, submitterEmail: string) => {
         set({ isLoading: true, error: null });
         try {
-            const { pages, currentPageId } = get();
+            const { pages, currentPageId, globalSettings } = get();
             const updatedPages = pages.map(p => 
                 p.id === currentPageId ? { 
                     ...p, 
@@ -541,8 +499,9 @@ export const useCMSStore = create<CMSState>((set, get) => ({
             );
             
             set({ pages: updatedPages });
-            // Save draft state to DB (id: 2)
-            await get().saveToDatabase();
+            const config = { pages: updatedPages, globalSettings, currentPageId };
+            
+            await requestPublishApprovalCMSAction(config, notes, submitterEmail);
         } catch (err: any) {
             set({ error: err.message });
             throw err;
@@ -569,24 +528,8 @@ export const useCMSStore = create<CMSState>((set, get) => ({
 
             const config = { pages: updatedPages, globalSettings, currentPageId };
 
-            // Write live configuration to BOTH id: 1 and id: 2
-            const { error: liveError } = await supabase
-                .from('store_ui_settings')
-                .upsert({
-                    id: 1,
-                    config,
-                    updated_at: new Date().toISOString()
-                });
-            if (liveError) throw liveError;
-
-            const { error: draftError } = await supabase
-                .from('store_ui_settings')
-                .upsert({
-                    id: 2,
-                    config,
-                    updated_at: new Date().toISOString()
-                });
-            if (draftError) throw draftError;
+            // Use the secure server action
+            await approveAndPublishCMSAction(config, notes);
 
         } catch (err: any) {
             set({ error: err.message });
@@ -599,7 +542,7 @@ export const useCMSStore = create<CMSState>((set, get) => ({
     rejectPublishRequest: async (feedback: string) => {
         set({ isLoading: true, error: null });
         try {
-            const { pages, currentPageId } = get();
+            const { pages, currentPageId, globalSettings } = get();
             const updatedPages = pages.map(p => 
                 p.id === currentPageId ? { 
                     ...p, 
@@ -609,8 +552,9 @@ export const useCMSStore = create<CMSState>((set, get) => ({
             );
 
             set({ pages: updatedPages });
-            // Save draft state to DB (id: 2)
-            await get().saveToDatabase();
+            const config = { pages: updatedPages, globalSettings, currentPageId };
+
+            await rejectPublishRequestCMSAction(config, feedback);
         } catch (err: any) {
             set({ error: err.message });
             throw err;

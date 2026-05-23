@@ -4,7 +4,7 @@ import { useCMSStore } from '@/store/useCMSStore';
 import { 
     Search, Save, Globe, Lock, Unlock, AlertTriangle, 
     ChevronDown, ChevronRight, X, ArrowUp, ArrowDown, 
-    Plus, Trash2, Copy, RotateCcw, Sparkles, AlertCircle, Check
+    Plus, Trash2, Copy, RotateCcw, Sparkles, AlertCircle, Check, History
 } from 'lucide-react';
 import { validateCMSPage } from '@/lib/validations/cms';
 import { getCurrentUserRoleAction, grantManagerRoleAction } from '@/lib/actions/auth';
@@ -60,6 +60,11 @@ export default function ThemeEditor() {
     const [approvalNotes, setApprovalNotes] = useState('');
     const [rejectionModalOpen, setRejectionModalOpen] = useState(false);
     const [rejectionFeedback, setRejectionFeedback] = useState('');
+    
+    // Version History state hooks
+    const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
+    const [snapshots, setSnapshots] = useState<any[]>([]);
+    const [loadingSnapshots, setLoadingSnapshots] = useState(false);
 
     const iframeRef = useRef<HTMLIFrameElement>(null);
 
@@ -209,15 +214,40 @@ export default function ThemeEditor() {
         }
     };
 
-    const handleRollback = async () => {
-        if (confirm("Are you sure you want to discard your draft edits and revert to the live version? This cannot be undone.")) {
+    const handleRollback = async (snapshotId?: string) => {
+        const msg = snapshotId 
+            ? "Are you sure you want to revert the LIVE site and Draft to this historical snapshot? This will immediately alter the production store." 
+            : "Are you sure you want to discard your draft edits and revert to the live version? This cannot be undone.";
+            
+        if (confirm(msg)) {
             try {
-                await rollbackToPublished();
+                await rollbackToPublished(snapshotId);
                 setUnsavedChanges(false);
-                alert("Workspace rolled back to the live published configuration successfully.");
+                setVersionHistoryOpen(false);
+                alert(snapshotId ? "Store reverted to historical snapshot successfully." : "Workspace rolled back to the live published configuration successfully.");
             } catch (err: any) {
                 alert(`Rollback failed: ${err.message}`);
             }
+        }
+    };
+
+    const fetchSnapshots = async () => {
+        setVersionHistoryOpen(true);
+        setLoadingSnapshots(true);
+        try {
+            const { data, error } = await supabase
+                .from('cms_publish_snapshots')
+                .select('id, published_at, publish_notes, rollback_source_metadata, published_by')
+                .order('published_at', { ascending: false })
+                .limit(20);
+                
+            if (error) throw error;
+            setSnapshots(data || []);
+        } catch (err: any) {
+            console.error("Failed to fetch snapshots", err);
+            alert(`Failed to load version history. Error: ${err.message || 'Check console'}`);
+        } finally {
+            setLoadingSnapshots(false);
         }
     };
 
@@ -928,8 +958,19 @@ export default function ThemeEditor() {
                     </div>
 
                     <div className="flex items-center gap-3">
+                        {userRole === 'Manager' && (
+                            <button 
+                                onClick={fetchSnapshots}
+                                disabled={isLoading}
+                                className="flex items-center gap-1.5 border border-[#333] hover:bg-[#262626] text-[#A3A3A3] hover:text-white px-4 py-2.5 text-[9px] font-bold uppercase tracking-widest transition-colors rounded disabled:opacity-50"
+                                title="View Publishing History & Rollbacks"
+                            >
+                                <History className="w-3 h-3" /> Version History
+                            </button>
+                        )}
+
                         <button 
-                            onClick={handleRollback}
+                            onClick={() => handleRollback()}
                             disabled={isLoading}
                             className="flex items-center gap-1.5 border border-red-950 bg-red-950/20 hover:bg-red-950/40 text-red-400 px-4 py-2.5 text-[9px] font-bold uppercase tracking-widest transition-colors rounded disabled:opacity-50"
                             title="Discard draft edits and revert to live published configuration"
@@ -1265,6 +1306,57 @@ export default function ThemeEditor() {
                                 >
                                     Reject Request
                                 </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Version History Modal */}
+                {versionHistoryOpen && (
+                    <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-6">
+                        <div className="bg-[#1C1C1C] w-full max-w-3xl shadow-2xl p-7 border border-[#262626] flex flex-col max-h-[85vh] rounded">
+                            <div className="flex justify-between items-center mb-6 pb-2 border-b border-[#262626]">
+                                <h2 className="text-sm font-bold uppercase tracking-wider text-[#D4AF37] flex items-center gap-2">
+                                    <History className="w-4 h-4" /> Immutable Publish History
+                                </h2>
+                                <button onClick={() => setVersionHistoryOpen(false)} className="text-muted-foreground hover:text-white"><X className="w-5 h-5" /></button>
+                            </div>
+                            
+                            <div className="overflow-y-auto flex-1 pr-2 space-y-3">
+                                {loadingSnapshots ? (
+                                    <div className="py-12 text-center text-xs text-[#A3A3A3] uppercase tracking-widest animate-pulse">Loading immutable snapshots...</div>
+                                ) : snapshots.length === 0 ? (
+                                    <div className="py-12 text-center text-xs text-[#A3A3A3] uppercase tracking-widest border border-dashed border-[#333] rounded">No historical snapshots found.</div>
+                                ) : (
+                                    snapshots.map((snap, i) => (
+                                        <div key={snap.id} className="bg-[#161616] border border-[#262626] p-4 rounded flex flex-col md:flex-row gap-4 justify-between items-start md:items-center hover:border-[#333] transition-colors">
+                                            <div className="space-y-1">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[11px] font-bold text-white">
+                                                        {new Date(snap.published_at).toLocaleString()}
+                                                    </span>
+                                                    {i === 0 && <span className="text-[8px] bg-[#D4AF37]/20 text-[#D4AF37] px-1.5 py-0.5 rounded uppercase font-bold tracking-widest border border-[#D4AF37]/30">Current Live</span>}
+                                                    {snap.rollback_source_metadata && <span className="text-[8px] bg-red-950 text-red-400 px-1.5 py-0.5 rounded uppercase font-bold tracking-widest border border-red-900/50">Rollback</span>}
+                                                </div>
+                                                <p className="text-[10px] text-[#A3A3A3] max-w-lg">
+                                                    <span className="text-[#D4AF37]">Notes:</span> {snap.publish_notes || 'Manual Publish'}
+                                                </p>
+                                                <p className="text-[8px] text-muted-foreground font-mono mt-2 opacity-50">ID: {snap.id}</p>
+                                            </div>
+                                            <div className="shrink-0 flex items-center">
+                                                {i !== 0 && (
+                                                    <button 
+                                                        onClick={() => handleRollback(snap.id)}
+                                                        disabled={isLoading}
+                                                        className="px-4 py-2 border border-red-950 hover:bg-red-950/30 text-red-400 text-[9px] font-extrabold uppercase tracking-widest transition-colors rounded disabled:opacity-50 flex items-center gap-1.5"
+                                                    >
+                                                        <RotateCcw className="w-3 h-3" /> Revert to this Version
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
                             </div>
                         </div>
                     </div>

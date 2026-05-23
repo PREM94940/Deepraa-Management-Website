@@ -67,11 +67,11 @@ export const applyThemeTokens = (settings: any) => {
     }
 };
 
-export function useStorefrontCMS(pageIdentifier: string, isSlug = false) {
+export function useStorefrontCMS(pageIdentifier: string, isSlug = false, initialConfig?: any) {
     const [sections, setSections] = useState<any[]>([]);
     const [globalSettings, setGlobalSettings] = useState<any>(DEFAULT_GLOBAL_SETTINGS_FALLBACK);
     const [pageData, setPageData] = useState<PageData | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(!initialConfig);
 
     useEffect(() => {
         let isMounted = true;
@@ -149,7 +149,21 @@ export function useStorefrontCMS(pageIdentifier: string, isSlug = false) {
             }
         }
 
-        loadCMSConfig();
+        if (initialConfig && isMounted) {
+            // Hydrate from SSR initial config immediately
+            const pages: PageData[] = initialConfig.pages || DEFAULT_PAGES_FALLBACK;
+            const gSettings = initialConfig.globalSettings || DEFAULT_GLOBAL_SETTINGS_FALLBACK;
+            const page = pages.find(p => isSlug ? (p.slug === pageIdentifier && !p.isDeleted) : (p.id === pageIdentifier && !p.isDeleted));
+            if (page) {
+                setPageData(page);
+                setSections(page.sections || []);
+            }
+            setGlobalSettings(gSettings);
+            applyThemeTokens(gSettings);
+            setLoading(false);
+        } else {
+            loadCMSConfig();
+        }
 
         // Listen for live postMessage preview updates from the Admin Editor
         const handlePreviewMessage = (event: MessageEvent) => {

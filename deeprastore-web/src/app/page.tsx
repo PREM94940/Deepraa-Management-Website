@@ -1,65 +1,27 @@
-"use client";
 import React from 'react';
-import { Navbar } from '@/components/Navbar';
-import { Footer } from '@/components/Footer';
-import { CartDrawer } from '@/components/CartDrawer';
-import { SECTION_REGISTRY } from '@/registry/sections';
-import { useStorefrontCMS } from '@/hooks/useStorefrontCMS';
+import { StorefrontRenderer } from '@/components/StorefrontRenderer';
 
-const DEFAULT_SECTIONS = [
-    { type: 'cinematic_hero', settings: {} },
-    { type: 'featured_collections', settings: {} },
-    { type: 'trending_slider', settings: {} },
-    { type: 'brand_story', settings: {} },
-    { type: 'instagram_feed', settings: {} }
-];
+// Force edge/server cache invalidation via ISR tags
+export const revalidate = 3600;
 
-export default function Home() {
-    const { sections, globalSettings, loading } = useStorefrontCMS('homepage');
-
-    if (loading) {
-        return (
-            <main className="min-h-screen bg-surface flex items-center justify-center">
-                <div className="animate-pulse text-xl font-bold italic font-display text-muted">Preparing your luxury experience...</div>
-            </main>
-        );
+export default async function Home() {
+    // Fetch directly from Supabase REST API with Next.js fetch for cache tags
+    let configData = null;
+    try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/store_ui_settings?id=eq.1&select=config`, {
+            headers: {
+                apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+                Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''}`
+            },
+            next: { tags: ['cms-publish'] }
+        });
+        const data = await res.json();
+        configData = data?.[0]?.config || null;
+    } catch (e) {
+        console.error('Failed to fetch CMS data on server', e);
     }
 
     return (
-        <main className="w-full">
-            <Navbar globalSettings={globalSettings} />
-            
-            <div className="flex flex-col">
-                {sections.map((section, idx) => {
-                    const ComponentMap = SECTION_REGISTRY[section.type];
-                    if (!ComponentMap) {
-                        console.warn(`Unknown section type: ${section.type}`);
-                        return null; // Graceful fallback
-                    }
-                    
-                    const Component = ComponentMap.component;
-                    
-                    // Visibility Controls
-                    let visibilityClass = '';
-                    if (section.settings?.visibility === 'desktop_only') visibilityClass = 'hidden md:block';
-                    if (section.settings?.visibility === 'mobile_only') visibilityClass = 'block md:hidden';
-
-                    // Spacing Controls
-                    let spacingClass = '';
-                    if (section.settings?.padding === 'none') spacingClass = '!py-0';
-                    else if (section.settings?.padding === 'small') spacingClass = '!py-8 md:!py-12';
-                    else if (section.settings?.padding === 'large') spacingClass = '!py-32 md:!py-48';
-
-                    return (
-                        <div key={idx} id={`section-${section.type}`} className={`${visibilityClass} ${spacingClass}`}>
-                            <Component data={section.settings} variant={section.variant} />
-                        </div>
-                    );
-                })}
-            </div>
-            
-            <Footer globalSettings={globalSettings} />
-            <CartDrawer />
-        </main>
+        <StorefrontRenderer initialConfig={configData} pageIdentifier="homepage" isSlug={false} />
     );
 }

@@ -1,23 +1,38 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import { motion } from 'framer-motion';
 import { ProductCard } from '@/components/ProductCard';
 
 export const CinematicHero = ({ data }: { data?: any }) => {
+    const mediaUrl = data?.image_url || data?.media_url || "https://player.vimeo.com/external/494254644.hd.mp4?s=d703e73fb2a9dc6312a149c5e2efea5e0d473cf2&profile_id=175";
+    const isVideo = mediaUrl.includes('.mp4') || mediaUrl.includes('.webm') || mediaUrl.includes('vimeo.com');
+
     return (
-        <section className="relative w-full h-[100svh] min-h-[600px] overflow-hidden">
+        <section className="relative w-full h-[100svh] min-h-[600px] overflow-hidden bg-zinc-900">
             <div className="absolute inset-0">
-                <video 
-                    autoPlay 
-                    muted 
-                    loop 
-                    playsInline
-                    poster="https://images.unsplash.com/photo-1605000523098-944208a0d7d9?auto=format&fit=crop&q=80&w=1200"
-                    className="w-full h-full object-cover opacity-90 transition-opacity duration-1000"
-                    style={{ objectPosition: data?.focal_point || 'center' }}
-                    src="https://player.vimeo.com/external/494254644.hd.mp4?s=d703e73fb2a9dc6312a149c5e2efea5e0d473cf2&profile_id=175"
-                ></video>
+                {isVideo ? (
+                    <video 
+                        autoPlay 
+                        muted 
+                        loop 
+                        playsInline
+                        className="w-full h-full object-cover opacity-90 transition-opacity duration-1000"
+                        style={{ objectPosition: data?.focal_point || 'center' }}
+                        src={mediaUrl}
+                    ></video>
+                ) : (
+                    <Image
+                        src={mediaUrl}
+                        alt={data?.headline || "Hero Background"}
+                        fill
+                        priority
+                        sizes="100vw"
+                        className="object-cover opacity-90 transition-opacity duration-1000"
+                        style={{ objectPosition: data?.focal_point || 'center' }}
+                    />
+                )}
                 <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/30 to-black/70"></div>
             </div>
             
@@ -141,7 +156,7 @@ export const FeaturedCategories = ({ data }: { data?: any }) => {
                 <div className={`grid grid-cols-2 md:grid-cols-4 ${data?.layout === 'standard' ? 'grid-rows-1 h-[40vh] md:h-[60vh]' : 'grid-rows-2 h-[80vh]'} gap-4 md:gap-6`}>
                     {categories.map((cat, idx) => (
                         <Link href={`/collections?category=${encodeURIComponent(cat.queryName)}`} key={idx} className={`group relative overflow-hidden bg-gray-100 rounded-sm ${data?.layout === 'standard' ? 'col-span-1 row-span-1' : cat.span}`}>
-                            <img src={cat.image} alt={cat.name} className="w-full h-full object-cover transition-transform duration-[2000ms] ease-out group-hover:scale-105" />
+                            <Image src={cat.image} alt={cat.name} fill sizes="(max-width: 768px) 50vw, 25vw" className="object-cover transition-transform duration-[2000ms] ease-out group-hover:scale-105" />
                             {!data?.hide_text && (
                                 <>
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80 group-hover:opacity-100 transition-opacity duration-700"></div>
@@ -233,10 +248,12 @@ export const BrandStory = ({ data }: { data?: any }) => {
             <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center gap-12 md:gap-0">
                 <div className="w-full md:w-1/2 relative z-10 md:pr-12">
                     <div className="aspect-[4/5] overflow-hidden relative group">
-                        <img 
+                        <Image 
                             src={data?.image_url || "https://images.unsplash.com/photo-1605000523098-944208a0d7d9?auto=format&fit=crop&q=80&w=800"} 
                             alt="Brand Story" 
-                            className="w-full h-full object-cover transition-transform duration-[10000ms] ease-linear group-hover:scale-110 origin-center" 
+                            fill
+                            sizes="(max-width: 768px) 100vw, 50vw"
+                            className="object-cover transition-transform duration-[10000ms] ease-linear group-hover:scale-110 origin-center" 
                             style={{ objectPosition: data?.focal_point || 'center' }}
                         />
                     </div>
@@ -271,7 +288,7 @@ export const InstagramFeed = ({ data }: { data?: any }) => {
             <div className="grid grid-cols-3 md:grid-cols-6 gap-[2px] md:gap-2 px-[2px] md:px-2">
                 {images.map((img: string, i: number) => (
                     <div key={i} className="relative aspect-[4/5] group overflow-hidden bg-gray-100">
-                        <img src={img} alt="Social Feed" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                        <Image src={img} alt="Social Feed" fill sizes="(max-width: 768px) 33vw, 16vw" className="object-cover group-hover:scale-105 transition-transform duration-700" />
                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>
                         </div>
@@ -370,7 +387,7 @@ export const ProductHero = ({
         <section className={`py-12 md:py-20 px-6 max-w-7xl mx-auto ${isSplit ? 'grid lg:grid-cols-2 gap-16' : 'flex flex-col'}`}>
             <div className="space-y-6">
                 <div className="aspect-[4/5] bg-gray-100 overflow-hidden relative group rounded-sm border border-border">
-                    <img src={currentMainImage} alt={p.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                    <Image src={currentMainImage} alt={p.title} fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover transition-transform duration-700 group-hover:scale-105" />
                 </div>
                 {p.images && p.images.length > 1 && (
                     <div className="flex gap-4 overflow-x-auto hide-scrollbar pb-2">
@@ -378,9 +395,9 @@ export const ProductHero = ({
                             <button 
                                 key={idx} 
                                 onClick={() => changeMainImage(img)}
-                                className={`w-20 h-28 flex-shrink-0 overflow-hidden transition-all border ${currentMainImage === img ? 'border-accent opacity-100 scale-102 shadow-sm' : 'border-transparent opacity-50 hover:opacity-100'}`}
+                                className={`relative w-20 h-28 flex-shrink-0 overflow-hidden transition-all border ${currentMainImage === img ? 'border-accent opacity-100 scale-102 shadow-sm' : 'border-transparent opacity-50 hover:opacity-100'}`}
                             >
-                                <img src={img} alt="" className="w-full h-full object-cover" />
+                                <Image src={img} alt="" fill sizes="80px" className="object-cover" />
                             </button>
                         ))}
                     </div>

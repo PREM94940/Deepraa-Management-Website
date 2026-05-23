@@ -1,6 +1,7 @@
 "use client";
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { useCartStore } from '@/store/useCartStore';
 import { useWishlistStore } from '@/store/useWishlistStore';
@@ -42,7 +43,7 @@ export const ProductCard = ({ product }: { product: any }) => {
         >
             <Link href={`/product/${product.id}`} className="group block">
                 <div className="aspect-[4/5] rounded-2xl overflow-hidden bg-gray-50 mb-6 relative">
-                    <img src={product.images && product.images.length > 0 ? product.images[0] : 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&q=80&w=600'} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt={product.title} />
+                    <Image src={product.images && product.images.length > 0 ? product.images[0] : 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&q=80&w=600'} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover transition-transform duration-700 group-hover:scale-105" alt={product.title} />
                     {product.movement_velocity && product.movement_velocity !== 'Normal' && (
                         <span className="absolute top-4 left-4 bg-white/90 premium-blur px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest shadow-sm text-fg">
                             {product.movement_velocity}
