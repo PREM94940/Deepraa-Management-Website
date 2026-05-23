@@ -66,15 +66,17 @@ export default function ThemeEditor() {
     const [snapshots, setSnapshots] = useState<any[]>([]);
     const [loadingSnapshots, setLoadingSnapshots] = useState(false);
 
-    const iframeRef = useRef<HTMLIFrameElement>(null);
-
-    const mockMediaLibrary = [
+    // Media Library state
+    const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+    const [mediaFiles, setMediaFiles] = useState<string[]>([
         'https://images.unsplash.com/photo-1605000523098-944208a0d7d9?auto=format&fit=crop&q=80&w=1200',
         'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&q=80&w=800',
         'https://images.unsplash.com/photo-1617175548912-f8702132e1b1?auto=format&fit=crop&q=80&w=400',
         'https://images.unsplash.com/photo-1596455607563-ad6193f76b17?auto=format&fit=crop&q=80&w=1200',
         'https://images.unsplash.com/photo-1565289945195-2abf1baee058?auto=format&fit=crop&q=80&w=1200'
-    ];
+    ]);
+
+    const iframeRef = useRef<HTMLIFrameElement>(null);
 
     // Initialize from Supabase DB on mount
     useEffect(() => {
@@ -248,6 +250,55 @@ export default function ThemeEditor() {
             alert(`Failed to load version history. Error: ${err.message || 'Check console'}`);
         } finally {
             setLoadingSnapshots(false);
+        }
+    };
+
+    const fetchMediaFromBucket = async () => {
+        try {
+            const { data, error } = await supabase.storage.from('store_media').list();
+            if (error) return; // Silent fail if bucket doesn't exist yet
+            
+            const urls = data.filter(f => f.name !== '.emptyFolderPlaceholder').map(file => {
+                return supabase.storage.from('store_media').getPublicUrl(file.name).data.publicUrl;
+            });
+            if (urls.length > 0) {
+                setMediaFiles(prev => {
+                    const unique = Array.from(new Set([...urls, ...prev]));
+                    return unique;
+                });
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    useEffect(() => {
+        if (mediaLibraryOpen.isOpen) {
+            fetchMediaFromBucket();
+        }
+    }, [mediaLibraryOpen.isOpen]);
+
+    const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setIsUploadingMedia(true);
+        try {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+            const { data, error } = await supabase.storage.from('store_media').upload(fileName, file);
+            
+            if (error) throw error;
+            
+            const { data: { publicUrl } } = supabase.storage.from('store_media').getPublicUrl(data.path);
+            
+            setMediaFiles(prev => [publicUrl, ...prev]);
+            alert('Media uploaded successfully!');
+        } catch (error: any) {
+            console.error('Upload error:', error);
+            alert('Failed to upload media: ' + error.message);
+        } finally {
+            setIsUploadingMedia(false);
+            e.target.value = '';
         }
     };
 
@@ -1429,25 +1480,49 @@ export default function ThemeEditor() {
                                 <button onClick={() => setMediaLibraryOpen({isOpen: false, targetIdx: null})} className="text-muted-foreground hover:text-white"><X className="w-5 h-5" /></button>
                             </div>
                             
-                            <div className="flex gap-3 mb-6">
-                                <button className="px-5 py-2 bg-[#D4AF37] text-black text-xs font-bold uppercase tracking-widest rounded">All Media</button>
-                                <button className="px-5 py-2 bg-[#222] text-[#A3A3A3] text-xs font-bold uppercase tracking-widest hover:text-white rounded">Campaign Assets</button>
-                                <button className="px-5 py-2 bg-[#222] text-[#A3A3A3] text-xs font-bold uppercase tracking-widest hover:text-white rounded">Product Catalog</button>
+                            <div className="flex justify-between items-center mb-6">
+                                <div className="flex gap-3">
+                                    <button className="px-5 py-2 bg-[#D4AF37] text-black text-[10px] font-bold uppercase tracking-widest rounded">All Media</button>
+                                    <button className="px-5 py-2 bg-[#222] text-[#A3A3A3] text-[10px] font-bold uppercase tracking-widest hover:text-white rounded">Campaign Assets</button>
+                                    <button className="px-5 py-2 bg-[#222] text-[#A3A3A3] text-[10px] font-bold uppercase tracking-widest hover:text-white rounded">Product Catalog</button>
+                                </div>
+                                <div>
+                                    <input 
+                                        type="file" 
+                                        id="media-upload" 
+                                        className="hidden" 
+                                        accept="image/*,video/*"
+                                        onChange={handleMediaUpload} 
+                                        disabled={isUploadingMedia} 
+                                    />
+                                    <label htmlFor="media-upload" className="px-5 py-2.5 bg-[#D4AF37]/20 border border-[#D4AF37] text-[#D4AF37] text-[10px] font-extrabold uppercase tracking-widest cursor-pointer hover:bg-[#D4AF37] hover:text-black transition-colors rounded flex items-center gap-2">
+                                        {isUploadingMedia ? <span className="animate-spin h-3.5 w-3.5 border-2 border-current border-t-transparent rounded-full" /> : <Plus className="w-3.5 h-3.5" />}
+                                        {isUploadingMedia ? 'Uploading Asset...' : 'Upload New Asset'}
+                                    </label>
+                                </div>
                             </div>
 
                             <div className="flex-1 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 pr-1">
-                                {mockMediaLibrary.map((url, i) => (
+                                {mediaFiles.map((url, i) => (
                                     <div 
                                         key={i} 
                                         className="aspect-square bg-[#161616] border border-[#262626] relative group cursor-pointer overflow-hidden rounded"
                                         onClick={() => {
                                             if (mediaLibraryOpen.targetIdx !== null) {
                                                 handleInput(mediaLibraryOpen.targetIdx, 'image_url', url);
+                                                // If the section uses media_url (like some heroes might), we update that too:
+                                                if (sections[mediaLibraryOpen.targetIdx]?.type === 'cinematic_hero') {
+                                                    handleInput(mediaLibraryOpen.targetIdx, 'media_url', url);
+                                                }
                                                 setMediaLibraryOpen({isOpen: false, targetIdx: null});
                                             }
                                         }}
                                     >
-                                        <img src={url} alt={`Media ${i}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                        {url.match(/\.(mp4|webm)$/i) || url.includes('vimeo') ? (
+                                            <video src={url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" muted />
+                                        ) : (
+                                            <img src={url} alt={`Media ${i}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                        )}
                                         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                             <span className="text-black bg-[#D4AF37] px-3.5 py-1.5 text-[9px] font-bold uppercase tracking-widest rounded-sm">Select Asset</span>
                                         </div>
