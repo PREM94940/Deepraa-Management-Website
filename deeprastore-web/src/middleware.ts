@@ -7,9 +7,8 @@ export function middleware(request: NextRequest) {
     // Simple check to ensure we only protect admin routes
     if (pathname.startsWith('/admin')) {
         // Check if there is an auth token in cookies.
-        // Note: For a true Supabase SSR setup, use @supabase/ssr.
-        // Since we are migrating to ERP, we will block unauthenticated users.
-        const hasSession = request.cookies.has('sb-access-token') || request.cookies.has('supabase-auth-token');
+        // Supabase stores cookies in chunks like sb-xxxx-auth-token.0 or sb-xxxx-auth-token
+        const hasSession = request.cookies.getAll().some(cookie => cookie.name.includes('-auth-token'));
         
         // Enforce authentication for admin routes.
         if (!hasSession) {
