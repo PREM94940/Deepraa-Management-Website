@@ -255,11 +255,11 @@ export default function ThemeEditor() {
 
     const fetchMediaFromBucket = async () => {
         try {
-            const { data, error } = await supabase.storage.from('store_media').list();
+            const { data, error } = await supabase.storage.from('product-images').list();
             if (error) return; // Silent fail if bucket doesn't exist yet
             
             const urls = data.filter(f => f.name !== '.emptyFolderPlaceholder').map(file => {
-                return supabase.storage.from('store_media').getPublicUrl(file.name).data.publicUrl;
+                return supabase.storage.from('product-images').getPublicUrl(file.name).data.publicUrl;
             });
             if (urls.length > 0) {
                 setMediaFiles(prev => {
@@ -285,11 +285,11 @@ export default function ThemeEditor() {
         try {
             const fileExt = file.name.split('.').pop();
             const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-            const { data, error } = await supabase.storage.from('store_media').upload(fileName, file);
+            const { data, error } = await supabase.storage.from('product-images').upload(fileName, file);
             
             if (error) throw error;
             
-            const { data: { publicUrl } } = supabase.storage.from('store_media').getPublicUrl(data.path);
+            const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(data.path);
             
             setMediaFiles(prev => [publicUrl, ...prev]);
             alert('Media uploaded successfully!');
