@@ -77,7 +77,7 @@ export default function ThemeEditor() {
         'https://images.unsplash.com/photo-1565289945195-2abf1baee058?auto=format&fit=crop&q=80&w=1200'
     ]);
     const [activeMediaTab, setActiveMediaTab] = useState<'all' | 'images' | 'videos'>('all');
-    const [searchQuery, setSearchQuery] = useState('');
+    const [mediaSearchQuery, setMediaSearchQuery] = useState('');
     const [selectedAsset, setSelectedAsset] = useState<string | null>(null);
 
     const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -328,9 +328,9 @@ export default function ThemeEditor() {
         if (activeMediaTab === 'videos') matchesTab = isVid;
 
         let matchesSearch = true;
-        if (searchQuery.trim()) {
+        if (mediaSearchQuery.trim()) {
             const fileName = url.split('/').pop()?.toLowerCase() || '';
-            matchesSearch = fileName.includes(searchQuery.toLowerCase());
+            matchesSearch = fileName.includes(mediaSearchQuery.toLowerCase());
         }
 
         return matchesTab && matchesSearch;
@@ -1535,8 +1535,8 @@ export default function ThemeEditor() {
                                         <input 
                                             type="text" 
                                             placeholder="Search files..." 
-                                            value={searchQuery}
-                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                            value={mediaSearchQuery}
+                                            onChange={(e) => setMediaSearchQuery(e.target.value)}
                                             className="w-full bg-[#111] border border-[#333] text-sm text-white rounded px-9 py-2 focus:outline-none focus:border-[#D4AF37]"
                                         />
                                     </div>
