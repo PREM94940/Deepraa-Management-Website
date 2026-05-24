@@ -31,30 +31,45 @@ function AdminSidebar({ children }: { children: React.ReactNode }) {
       <div className="admin-root">
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
         <div className={`sidebar ${isCollapsed ? 'collapsed' : ''}`}>
-          <div className="sidebar-header" style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: isCollapsed ? 'center' : 'flex-start', padding: isCollapsed ? '24px 10px' : '24px' }}>
-            <button 
-              onClick={() => setIsCollapsed(!isCollapsed)}
-              style={{ position: 'absolute', right: isCollapsed ? '25px' : '15px', top: '25px', background: 'transparent', border: 'none', color: 'white', cursor: 'pointer', zIndex: 10 }}
-              title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-            >
-              <i className={`fas fa-chevron-${isCollapsed ? 'right' : 'left'}`}></i>
-            </button>
-
-            {!isCollapsed && (
-              <>
+          <div className="sidebar-header" style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: isCollapsed ? 'center' : 'flex-start', padding: isCollapsed ? '20px 0' : '24px' }}>
+            
+            <div style={{ display: 'flex', width: '100%', justifyContent: isCollapsed ? 'center' : 'space-between', alignItems: 'center' }}>
+              {!isCollapsed ? (
                 <span className="logo">
                   <i className="fas fa-gem"></i>
                   Deeprastore Admin
                 </span>
-                <Link href="/" className="btn btn-outline" style={{ width: '100%', textAlign: 'center', fontSize: '0.85rem' }}>
-                  <i className="fas fa-arrow-left" style={{ marginRight: '8px' }}></i> Back to Store
-                </Link>
-              </>
-            )}
+              ) : (
+                <span className="logo" style={{ margin: 0, padding: 0 }}>
+                  <i className="fas fa-gem"></i>
+                </span>
+              )}
+
+              {!isCollapsed && (
+                <button 
+                  onClick={() => setIsCollapsed(!isCollapsed)}
+                  style={{ background: 'transparent', border: 'none', color: 'white', cursor: 'pointer', padding: '4px', fontSize: '1rem' }}
+                  title="Collapse Sidebar"
+                >
+                  <i className="fas fa-chevron-left"></i>
+                </button>
+              )}
+            </div>
+
             {isCollapsed && (
-              <span className="logo" style={{ alignSelf: 'center', margin: 0, padding: 0 }}>
-                <i className="fas fa-gem"></i>
-              </span>
+              <button 
+                onClick={() => setIsCollapsed(!isCollapsed)}
+                style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', cursor: 'pointer', padding: '8px', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '8px' }}
+                title="Expand Sidebar"
+              >
+                <i className="fas fa-chevron-right"></i>
+              </button>
+            )}
+
+            {!isCollapsed && (
+              <Link href="/" className="btn btn-outline" style={{ width: '100%', textAlign: 'center', fontSize: '0.85rem', color: 'white', borderColor: 'rgba(255,255,255,0.5)', background: 'transparent' }}>
+                <i className="fas fa-arrow-left" style={{ marginRight: '8px' }}></i> Back to Store
+              </Link>
             )}
           </div>
           <div className="sidebar-nav">
