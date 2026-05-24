@@ -321,7 +321,7 @@ export default function ThemeEditor() {
     };
 
     const filteredMediaFiles = mediaFiles.filter(url => {
-        const isVid = url.match(/\.(mp4|webm)$/i) || url.includes('vimeo');
+        const isVid = Boolean(url.match(/\.(mp4|webm)$/i) || url.includes('vimeo'));
         
         let matchesTab = true;
         if (activeMediaTab === 'images') matchesTab = !isVid;
