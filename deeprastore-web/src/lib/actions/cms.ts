@@ -79,7 +79,7 @@ function runPreFlightChecks(config: any) {
     for (const page of config.pages || []) {
         for (const section of page.sections || []) {
             // Check Media Governance (Pillar 7)
-            const mediaUrl = section.data?.image_url || section.data?.media_url;
+            const mediaUrl = section.settings?.image_url || section.settings?.media_url;
             if (mediaUrl) {
                 try {
                     const url = new URL(mediaUrl);
