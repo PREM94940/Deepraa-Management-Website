@@ -74,7 +74,7 @@ export async function saveDraftCMSAction(config: any, lastUpdatedAt?: string) {
 
 // Pillar 5 & 7: Pre-flight checks
 function runPreFlightChecks(config: any) {
-    const allowedDomains = ['images.unsplash.com', 'res.cloudinary.com', 'cdn.shopify.com', 'player.vimeo.com'];
+    const allowedDomains = ['images.unsplash.com', 'res.cloudinary.com', 'cdn.shopify.com', 'player.vimeo.com', 'awyqinnivsvqsohfmmcj.supabase.co'];
     
     for (const page of config.pages || []) {
         for (const section of page.sections || []) {
