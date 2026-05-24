@@ -57,8 +57,8 @@ export const StorefrontRenderer = ({ initialConfig, pageIdentifier, isSlug }: { 
                         // Spacing Controls
                         let spacingClass = '';
                         if (section.settings?.padding === 'none') spacingClass = '!py-0';
-                        else if (section.settings?.padding === 'small') spacingClass = '!py-8 md:!py-12';
-                        else if (section.settings?.padding === 'large') spacingClass = '!py-32 md:!py-48';
+                        else if (section.settings?.padding === 'small') spacingClass = '!py-4 md:!py-6';
+                        else if (section.settings?.padding === 'large') spacingClass = '!py-12 md:!py-20';
 
                         return (
                             <div key={idx} id={`section-${section.type}`} className={`${visibilityClass} ${spacingClass}`}>

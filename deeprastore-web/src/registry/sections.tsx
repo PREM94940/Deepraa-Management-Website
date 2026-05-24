@@ -139,7 +139,7 @@ export const FeaturedCategories = ({ data }: { data?: any }) => {
     };
 
     return (
-        <section className="py-16 md:py-24 px-6 max-w-7xl mx-auto">
+        <section className="py-8 md:py-12 px-6 max-w-7xl mx-auto">
             <div className="text-center mb-12 md:mb-16">
                 <h2 className="text-3xl md:text-5xl font-display text-fg mb-4" dangerouslySetInnerHTML={{ __html: data?.headline || 'Curated <span class="italic">Elegance</span>' }} />
                 <div className="w-24 h-[2px] bg-gold mx-auto"></div>
@@ -200,7 +200,7 @@ export const BestSellersSlider = ({ data }: { data?: any }) => {
     }, [data?.mode]);
 
     return (
-        <section className="py-16 md:py-24 bg-bg overflow-hidden">
+        <section className="py-8 md:py-12 bg-bg overflow-hidden">
             <div className="px-6 max-w-7xl mx-auto mb-10 md:mb-12 flex justify-between items-end">
                 <div>
                     <h2 className="text-3xl md:text-5xl font-display text-fg mb-4" dangerouslySetInnerHTML={{ __html: data?.headline || 'Trending <span class="italic">Now</span>' }} />
@@ -229,7 +229,7 @@ export const BestSellersSlider = ({ data }: { data?: any }) => {
 
 export const BrandStory = ({ data }: { data?: any }) => {
     return (
-        <section className="py-16 md:py-32 px-6 bg-surface text-fg relative overflow-hidden">
+        <section className="py-10 md:py-16 px-6 bg-surface text-fg relative overflow-hidden">
             <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center gap-12 md:gap-0">
                 <div className="w-full md:w-1/2 relative z-10 md:pr-12">
                     <div className="aspect-[4/5] overflow-hidden relative group">
@@ -261,7 +261,7 @@ export const InstagramFeed = ({ data }: { data?: any }) => {
     const images = data?.images || [1, 2, 3, 4, 5, 6].map(i => `https://images.unsplash.com/photo-1617175548912-f8702132e1b${i}?auto=format&fit=crop&q=80&w=400`);
     
     return (
-        <section className="py-16 md:py-24">
+        <section className="py-8 md:py-12">
             <div className="text-center mb-12 md:mb-16">
                 <h2 className="text-3xl md:text-5xl font-display text-fg mb-4" dangerouslySetInnerHTML={{ __html: data?.headline || 'Join Our <span class="italic">Community</span>' }} />
                 <div className="w-24 h-[2px] bg-gold mx-auto mb-4"></div>
@@ -679,7 +679,7 @@ export const RelatedProducts = ({ data }: { data?: any }) => {
     }, []);
 
     return (
-        <section className="py-16 md:py-24 bg-bg border-t border-border">
+        <section className="py-8 md:py-12 bg-bg border-t border-border">
             <div className="max-w-7xl mx-auto px-6">
                 <h3 className="text-2xl md:text-3xl font-display text-center mb-12" dangerouslySetInnerHTML={{ __html: data?.headline || 'You May Also <span class="italic">Like</span>' }} />
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
