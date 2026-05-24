@@ -9,7 +9,7 @@ export const MobileBottomNav = () => {
     const pathname = usePathname();
     const { toggleCart, items } = useCartStore();
 
-    const cartCount = items.reduce((total, item) => total + item.quantity, 0);
+    const cartCount = items.reduce((total, item) => total + item.qty, 0);
 
     return (
         <nav className="fixed bottom-0 left-0 w-full bg-white/90 backdrop-blur-md border-t border-gray-100 z-50 md:hidden pb-safe">
