@@ -79,6 +79,7 @@ export default function ThemeEditor() {
     const [activeMediaTab, setActiveMediaTab] = useState<'all' | 'images' | 'videos'>('all');
     const [mediaSearchQuery, setMediaSearchQuery] = useState('');
     const [selectedAsset, setSelectedAsset] = useState<string | null>(null);
+    const [isDraggingMedia, setIsDraggingMedia] = useState(false);
 
     const iframeRef = useRef<HTMLIFrameElement>(null);
 
@@ -282,27 +283,54 @@ export default function ThemeEditor() {
         }
     }, [mediaLibraryOpen.isOpen]);
 
-    const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
+    const uploadFiles = async (files: FileList | File[]) => {
+        if (!files || files.length === 0) return;
         setIsUploadingMedia(true);
         try {
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-            const { data, error } = await supabase.storage.from('product-images').upload(fileName, file);
+            const uploadedUrls: string[] = [];
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const fileExt = file.name.split('.').pop();
+                const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+                const { data, error } = await supabase.storage.from('product-images').upload(fileName, file);
+                
+                if (error) throw error;
+                
+                const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(data.path);
+                uploadedUrls.push(publicUrl);
+            }
             
-            if (error) throw error;
-            
-            const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(data.path);
-            
-            setMediaFiles(prev => [publicUrl, ...prev]);
-            alert('Media uploaded successfully!');
+            setMediaFiles(prev => [...uploadedUrls, ...prev]);
         } catch (error: any) {
             console.error('Upload error:', error);
             alert('Failed to upload media: ' + error.message);
         } finally {
             setIsUploadingMedia(false);
+        }
+    };
+
+    const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files) {
+            await uploadFiles(e.target.files);
             e.target.value = '';
+        }
+    };
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDraggingMedia(true);
+    };
+    
+    const handleDragLeave = (e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDraggingMedia(false);
+    };
+    
+    const handleDrop = async (e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDraggingMedia(false);
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            await uploadFiles(e.dataTransfer.files);
         }
     };
 
@@ -1522,7 +1550,12 @@ export default function ThemeEditor() {
                 {/* Media Library Browser (Shopify Style Split Pane) */}
                 {mediaLibraryOpen.isOpen && (
                     <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-6">
-                        <div className="bg-[#1C1C1C] w-full max-w-6xl shadow-2xl border border-[#262626] flex flex-col h-[85vh] rounded-lg overflow-hidden">
+                        <div 
+                            className={`bg-[#1C1C1C] w-full max-w-6xl shadow-2xl border ${isDraggingMedia ? 'border-[#D4AF37] border-2 scale-[1.01]' : 'border-[#262626]'} flex flex-col h-[85vh] rounded-lg overflow-hidden transition-all duration-200`}
+                            onDragOver={handleDragOver}
+                            onDragLeave={handleDragLeave}
+                            onDrop={handleDrop}
+                        >
                             
                             {/* Header Area */}
                             <div className="flex justify-between items-center p-5 border-b border-[#262626] bg-[#161616]">
@@ -1560,6 +1593,7 @@ export default function ThemeEditor() {
                                         id="media-upload" 
                                         className="hidden" 
                                         accept="image/*,video/*"
+                                        multiple
                                         onChange={handleMediaUpload} 
                                         disabled={isUploadingMedia} 
                                     />
