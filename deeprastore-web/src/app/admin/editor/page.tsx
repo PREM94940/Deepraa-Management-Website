@@ -76,6 +76,8 @@ export default function ThemeEditor() {
         'https://images.unsplash.com/photo-1596455607563-ad6193f76b17?auto=format&fit=crop&q=80&w=1200',
         'https://images.unsplash.com/photo-1565289945195-2abf1baee058?auto=format&fit=crop&q=80&w=1200'
     ]);
+    const [activeMediaTab, setActiveMediaTab] = useState<'all' | 'images' | 'videos'>('all');
+    const [quickViewAsset, setQuickViewAsset] = useState<string | null>(null);
 
     const iframeRef = useRef<HTMLIFrameElement>(null);
 
@@ -302,6 +304,27 @@ export default function ThemeEditor() {
             e.target.value = '';
         }
     };
+
+    const handleDeleteMedia = async (url: string) => {
+        if (!confirm("Are you sure you want to permanently delete this asset?")) return;
+        try {
+            const fileName = url.split('/').pop();
+            if (fileName && fileName.length > 5 && !url.includes('unsplash')) {
+                const { error } = await supabase.storage.from('product-images').remove([fileName]);
+                if (error) throw error;
+            }
+            setMediaFiles(prev => prev.filter(f => f !== url));
+        } catch (err: any) {
+            alert("Failed to delete media: " + err.message);
+        }
+    };
+
+    const filteredMediaFiles = mediaFiles.filter(url => {
+        const isVid = url.match(/\.(mp4|webm)$/i) || url.includes('vimeo');
+        if (activeMediaTab === 'images') return !isVid;
+        if (activeMediaTab === 'videos') return isVid;
+        return true;
+    });
 
     // Performance & Governance Auditing
     const auditReport = useMemo(() => {
@@ -1489,17 +1512,17 @@ export default function ThemeEditor() {
                 {/* Media Library Browser */}
                 {mediaLibraryOpen.isOpen && (
                     <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-6">
-                        <div className="bg-[#1C1C1C] w-full max-w-4xl shadow-2xl p-7 border border-[#262626] flex flex-col h-[75vh] rounded">
+                        <div className="bg-[#1C1C1C] w-full max-w-5xl shadow-2xl p-7 border border-[#262626] flex flex-col h-[85vh] rounded">
                             <div className="flex justify-between items-center mb-6 pb-2 border-b border-[#262626]">
-                                <h2 className="text-sm font-bold uppercase tracking-wider text-[#D4AF37]">Boutique Media Library</h2>
+                                <h2 className="text-sm font-bold uppercase tracking-wider text-[#D4AF37]">Media Core Library</h2>
                                 <button onClick={() => setMediaLibraryOpen({isOpen: false, targetIdx: null})} className="text-muted-foreground hover:text-white"><X className="w-5 h-5" /></button>
                             </div>
                             
                             <div className="flex justify-between items-center mb-6">
-                                <div className="flex gap-3">
-                                    <button className="px-5 py-2 bg-[#D4AF37] text-black text-[10px] font-bold uppercase tracking-widest rounded">All Media</button>
-                                    <button className="px-5 py-2 bg-[#222] text-[#A3A3A3] text-[10px] font-bold uppercase tracking-widest hover:text-white rounded">Campaign Assets</button>
-                                    <button className="px-5 py-2 bg-[#222] text-[#A3A3A3] text-[10px] font-bold uppercase tracking-widest hover:text-white rounded">Product Catalog</button>
+                                <div className="flex gap-3 bg-[#111] p-1 rounded">
+                                    <button onClick={() => setActiveMediaTab('all')} className={`px-5 py-2 text-[10px] font-bold uppercase tracking-widest rounded transition-colors ${activeMediaTab === 'all' ? 'bg-[#D4AF37] text-black' : 'text-[#A3A3A3] hover:text-white'}`}>All Media</button>
+                                    <button onClick={() => setActiveMediaTab('images')} className={`px-5 py-2 text-[10px] font-bold uppercase tracking-widest rounded transition-colors ${activeMediaTab === 'images' ? 'bg-[#D4AF37] text-black' : 'text-[#A3A3A3] hover:text-white'}`}>Images</button>
+                                    <button onClick={() => setActiveMediaTab('videos')} className={`px-5 py-2 text-[10px] font-bold uppercase tracking-widest rounded transition-colors ${activeMediaTab === 'videos' ? 'bg-[#D4AF37] text-black' : 'text-[#A3A3A3] hover:text-white'}`}>Videos</button>
                                 </div>
                                 <div>
                                     <input 
@@ -1517,33 +1540,75 @@ export default function ThemeEditor() {
                                 </div>
                             </div>
 
-                            <div className="flex-1 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 pr-1">
-                                {mediaFiles.map((url, i) => (
-                                    <div 
-                                        key={i} 
-                                        className="aspect-square bg-[#161616] border border-[#262626] relative group cursor-pointer overflow-hidden rounded"
-                                        onClick={() => {
-                                            if (mediaLibraryOpen.targetIdx !== null) {
-                                                handleInput(mediaLibraryOpen.targetIdx, 'image_url', url);
-                                                // If the section uses media_url (like some heroes might), we update that too:
-                                                if (sections[mediaLibraryOpen.targetIdx]?.type === 'cinematic_hero') {
-                                                    handleInput(mediaLibraryOpen.targetIdx, 'media_url', url);
-                                                }
-                                                setMediaLibraryOpen({isOpen: false, targetIdx: null});
-                                            }
-                                        }}
-                                    >
-                                        {url.match(/\.(mp4|webm)$/i) || url.includes('vimeo') ? (
-                                            <video src={url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" muted />
-                                        ) : (
-                                            <img src={url} alt={`Media ${i}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                                        )}
-                                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                            <span className="text-black bg-[#D4AF37] px-3.5 py-1.5 text-[9px] font-bold uppercase tracking-widest rounded-sm">Select Asset</span>
+                            <div className="flex-1 overflow-y-auto grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 pr-1">
+                                {filteredMediaFiles.map((url, i) => {
+                                    const isVid = url.match(/\.(mp4|webm)$/i) || url.includes('vimeo');
+                                    return (
+                                        <div 
+                                            key={i} 
+                                            className="aspect-square bg-[#111] border border-[#262626] relative group overflow-hidden rounded shadow-sm"
+                                        >
+                                            {isVid ? (
+                                                <video src={url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" muted />
+                                            ) : (
+                                                <Image src={url} alt={`Media ${i}`} fill className="object-cover group-hover:scale-105 transition-transform duration-500" sizes="(max-width: 768px) 33vw, 20vw" />
+                                            )}
+                                            
+                                            <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
+                                                <button 
+                                                    onClick={() => setQuickViewAsset(url)}
+                                                    className="w-[80%] bg-zinc-800 hover:bg-zinc-700 text-white py-1.5 text-[9px] font-bold uppercase tracking-widest rounded-sm flex items-center justify-center gap-1"
+                                                >
+                                                    <Search className="w-3 h-3" /> Quick View
+                                                </button>
+                                                <button 
+                                                    onClick={() => {
+                                                        if (mediaLibraryOpen.targetIdx !== null) {
+                                                            handleInput(mediaLibraryOpen.targetIdx, 'image_url', url);
+                                                            if (sections[mediaLibraryOpen.targetIdx]?.type === 'cinematic_hero') {
+                                                                handleInput(mediaLibraryOpen.targetIdx, 'media_url', url);
+                                                            }
+                                                            setMediaLibraryOpen({isOpen: false, targetIdx: null});
+                                                        }
+                                                    }}
+                                                    className="w-[80%] bg-[#D4AF37] hover:bg-[#B8962B] text-black py-1.5 text-[9px] font-bold uppercase tracking-widest rounded-sm flex items-center justify-center gap-1"
+                                                >
+                                                    <Check className="w-3 h-3" /> Select
+                                                </button>
+                                            </div>
+
+                                            {/* Delete Trash Icon - Top Right */}
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); handleDeleteMedia(url); }}
+                                                className="absolute top-1.5 right-1.5 p-1.5 bg-red-950/80 hover:bg-red-600 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm"
+                                            >
+                                                <Trash2 className="w-3 h-3" />
+                                            </button>
+
+                                            {/* Type Badge - Bottom Left */}
+                                            <div className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 bg-black/60 text-white text-[8px] uppercase tracking-widest font-bold rounded backdrop-blur-sm">
+                                                {isVid ? 'Video' : 'Image'}
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Quick View Overlay */}
+                {quickViewAsset && (
+                    <div className="fixed inset-0 bg-black/95 backdrop-blur-lg z-[60] flex items-center justify-center p-6" onClick={() => setQuickViewAsset(null)}>
+                        <button className="absolute top-6 right-6 text-white/50 hover:text-white bg-white/10 p-2 rounded-full backdrop-blur-md">
+                            <X className="w-6 h-6" />
+                        </button>
+                        <div className="max-w-5xl max-h-[85vh] relative w-full h-full flex items-center justify-center" onClick={e => e.stopPropagation()}>
+                            {(quickViewAsset.match(/\.(mp4|webm)$/i) || quickViewAsset.includes('vimeo')) ? (
+                                <video src={quickViewAsset} className="max-w-full max-h-full object-contain rounded" controls autoPlay loop />
+                            ) : (
+                                <Image src={quickViewAsset} alt="Quick View" fill className="object-contain" />
+                            )}
                         </div>
                     </div>
                 )}
