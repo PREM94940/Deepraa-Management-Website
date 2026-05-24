@@ -10,7 +10,7 @@ export const CinematicHero = ({ data }: { data?: any }) => {
     const isVideo = mediaUrl.includes('.mp4') || mediaUrl.includes('.webm') || mediaUrl.includes('vimeo.com');
 
     return (
-        <section className="relative w-full h-[100svh] min-h-[600px] overflow-hidden bg-zinc-900">
+        <section className="relative w-full h-[100svh] min-h-[600px] overflow-hidden bg-zinc-900" style={{ backgroundImage: "url('https://www.transparenttextures.com/patterns/stardust.png')" }}>
             <div className="absolute inset-0">
                 {isVideo ? (
                     <video 
@@ -41,7 +41,7 @@ export const CinematicHero = ({ data }: { data?: any }) => {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, ease: "easeOut" }}
-                    className="text-gold font-semibold tracking-[0.4em] uppercase text-xs md:text-sm mb-4 md:mb-6"
+                    className="text-gold font-semibold tracking-[0.2em] uppercase text-xs md:text-sm mb-4 md:mb-6"
                 >
                     {data?.subheadline || "Deepra's Signature Collection"}
                 </motion.span>
@@ -60,7 +60,7 @@ export const CinematicHero = ({ data }: { data?: any }) => {
                     transition={{ duration: 0.8, delay: 0.4, ease: "easeOut" }}
                     className="flex flex-col w-full sm:w-auto sm:flex-row gap-4 mb-12"
                 >
-                    <Link href={data?.primary_cta_link || data?.cta_link || "/collections"} className="bg-white text-black px-10 py-4 text-xs md:text-sm font-bold uppercase tracking-widest hover:bg-gold hover:text-white transition-all duration-300 w-full sm:w-auto">
+                    <Link href={data?.primary_cta_link || data?.cta_link || "/collections"} className="bg-white text-black border border-white px-10 py-4 text-xs md:text-sm font-bold uppercase tracking-widest hover:bg-transparent hover:text-white transition-all duration-300 w-full sm:w-auto text-center">
                         {data?.primary_cta_text || data?.cta_text || "Shop The Look"}
                     </Link>
                     <Link href={data?.secondary_cta_link || data?.cta_link_secondary || "/custom-stitching"} className="bg-transparent border border-white text-white px-10 py-4 text-xs md:text-sm font-bold uppercase tracking-widest hover:bg-white hover:text-black transition-all duration-300 w-full sm:w-auto">
@@ -162,7 +162,7 @@ export const FeaturedCategories = ({ data }: { data?: any }) => {
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80 group-hover:opacity-100 transition-opacity duration-700"></div>
                                     <div className="absolute bottom-6 left-6 pr-4">
                                         <h3 className={`text-white font-display font-light tracking-wide mb-2 ${getTextClass()} leading-tight`}>{cat.name}</h3>
-                                        <span className="text-gold text-[10px] font-bold uppercase tracking-[0.2em] opacity-0 group-hover:opacity-100 transition-opacity duration-500 translate-y-2 group-hover:translate-y-0 block">
+                                        <span className="text-gold text-[10px] font-bold uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity duration-500 translate-y-2 group-hover:translate-y-0 block">
                                             Explore Now →
                                         </span>
                                     </div>
@@ -243,8 +243,8 @@ export const BrandStory = ({ data }: { data?: any }) => {
                         />
                     </div>
                 </div>
-                <div className="w-full md:w-1/2 md:-ml-20 z-20 relative bg-surface/95 premium-blur p-8 md:p-16 border border-border/50 shadow-sm">
-                    <span className="text-gold font-bold tracking-[0.3em] uppercase text-xs mb-6 block">{data?.tagline || 'The Deepra Journey'}</span>
+                <div className="w-full md:w-[55%] md:-ml-24 md:mt-16 z-20 relative bg-surface/95 premium-blur p-8 md:p-16 border border-border/50 shadow-2xl">
+                    <span className="text-gold font-bold tracking-[0.2em] uppercase text-xs mb-6 block">{data?.tagline || 'The Deepra Journey'}</span>
                     <h2 className="text-3xl md:text-5xl font-display leading-[1.2] mb-8 text-fg" dangerouslySetInnerHTML={{ __html: data?.headline || "We don't just sell fabrics. <br/> <span class=\"italic font-light text-gold\">We weave emotions.</span>" }} />
                     <p className="text-base md:text-lg text-muted font-light leading-relaxed mb-10 max-w-lg" dangerouslySetInnerHTML={{ __html: data?.description || '<span class="text-4xl float-left mr-2 font-display text-fg leading-none pt-2">E</span>very piece at Deeprastore tells a story of Indian craftsmanship. From the intricate Zari work of Kanchipuram to the delicate flow of georgette, our boutique is a homage to the modern woman who cherishes her roots. Handloom weaving is a legacy passed down through generations, and we are proud to bring that heritage to your wardrobe.' }} />
                     <Link href={data?.cta_link || "/custom-stitching"} className="inline-flex items-center gap-3 text-xs font-bold uppercase tracking-widest border-b border-black pb-1 hover:text-gold hover:border-gold transition-colors">
