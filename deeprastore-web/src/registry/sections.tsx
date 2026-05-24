@@ -131,10 +131,16 @@ export const FeaturedCategories = ({ data }: { data?: any }) => {
                     const displayName = name.includes('>') ? name.split('>').pop().trim() : name;
                     
                     let span = 'col-span-1 row-span-1';
-                    if (data?.layout !== 'standard') {
-                        // Bento layout (default)
+                    if (data?.layout === 'bento' || !data?.layout) {
                         if (idx === 0) span = 'col-span-2 row-span-2';
                         else if (idx === 3) span = 'col-span-2 row-span-1';
+                    } else if (data?.layout === 'bento-reverse') {
+                        if (idx === 1) span = 'col-span-2 row-span-2';
+                        else if (idx === 0) span = 'col-span-2 row-span-1';
+                    } else if (data?.layout === 'standard') {
+                        span = 'col-span-1 row-span-1';
+                    } else if (data?.layout === 'grid-2x2') {
+                        span = 'col-span-1 row-span-1';
                     }
                     return { name: displayName, queryName: name, image, span, focal_point: 'center' };
                 });
@@ -167,9 +173,9 @@ export const FeaturedCategories = ({ data }: { data?: any }) => {
                     <div className="col-span-2 row-span-1 bg-gray-100 animate-pulse rounded-sm"></div>
                 </div>
             ) : (
-                <div className={`grid grid-cols-2 md:grid-cols-4 ${data?.layout === 'standard' ? 'grid-rows-1 h-[40vh] md:h-[60vh]' : 'grid-rows-2 h-[80vh]'} gap-4 md:gap-6`}>
+                <div className={`grid ${data?.layout === 'grid-2x2' ? 'grid-cols-2 md:grid-cols-2 grid-rows-2 h-[80vh]' : data?.layout === 'standard' ? 'grid-cols-2 md:grid-cols-4 grid-rows-1 h-[40vh] md:h-[60vh]' : 'grid-cols-2 md:grid-cols-4 grid-rows-2 h-[80vh]'} gap-4 md:gap-6`}>
                     {categories.map((cat, idx) => (
-                        <Link href={`/collections?category=${encodeURIComponent(cat.queryName)}`} key={idx} className={`group relative overflow-hidden bg-gray-100 rounded-sm ${data?.layout === 'standard' ? 'col-span-1 row-span-1' : cat.span}`}>
+                        <Link href={`/collections?category=${encodeURIComponent(cat.queryName)}`} key={idx} className={`group relative overflow-hidden bg-gray-100 rounded-sm ${cat.span}`}>
                             <Image src={cat.image} alt={cat.name} fill sizes="(max-width: 768px) 50vw, 25vw" className="object-cover transition-transform duration-[2000ms] ease-out group-hover:scale-105" style={{ objectPosition: cat.focal_point }} />
                             {!data?.hide_text && (
                                 <>

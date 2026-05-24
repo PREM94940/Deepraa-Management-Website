@@ -48,7 +48,7 @@ export default function ThemeEditor() {
     const [addSectionModalOpen, setAddSectionModalOpen] = useState(false);
     const [cloneModalOpen, setCloneModalOpen] = useState(false);
     const [publishNote, setPublishNote] = useState('');
-    const [mediaLibraryOpen, setMediaLibraryOpen] = useState<{isOpen: boolean, targetIdx: number | null}>({isOpen: false, targetIdx: null});
+    const [mediaLibraryOpen, setMediaLibraryOpen] = useState<{isOpen: boolean, targetIdx: number | null, slotIdx?: number}>({isOpen: false, targetIdx: null});
     
     // Page Clone states
     const [cloneName, setCloneName] = useState('');
@@ -984,7 +984,9 @@ export default function ThemeEditor() {
                                                                 onChange={(e) => handleInput(idx, 'layout', e.target.value)}
                                                             >
                                                                 <option value="bento">Bento Grid (Dynamic Grid)</option>
-                                                                <option value="standard">Standard Balanced Grid</option>
+                                                                <option value="bento-reverse">Bento Grid (Reverse Focus)</option>
+                                                                <option value="standard">Standard Balanced Row</option>
+                                                                <option value="grid-2x2">Standard 2x2 Grid</option>
                                                             </select>
                                                         </div>
                                                         <div className="flex items-center gap-2 mt-2">
@@ -1040,6 +1042,12 @@ export default function ThemeEditor() {
                                                                                         handleInput(idx, 'categories', newCats);
                                                                                     }}
                                                                                 />
+                                                                                <button 
+                                                                                    onClick={() => setMediaLibraryOpen({isOpen: true, targetIdx: idx, slotIdx: slotIdx})}
+                                                                                    className="px-3 border border-[#D4AF37] text-[10px] font-bold uppercase tracking-widest hover:bg-[#D4AF37] hover:text-black transition-colors rounded text-[#D4AF37]"
+                                                                                >
+                                                                                    Browse
+                                                                                </button>
                                                                             </div>
                                                                             <select 
                                                                                 className="w-full text-xs p-2 border border-[#333] bg-[#1a1a1a] text-white outline-none rounded"
@@ -1836,9 +1844,16 @@ export default function ThemeEditor() {
                                     disabled={!selectedAsset}
                                     onClick={() => {
                                         if (selectedAsset && mediaLibraryOpen.targetIdx !== null) {
-                                            handleInput(mediaLibraryOpen.targetIdx, 'image_url', selectedAsset);
-                                            if (sections[mediaLibraryOpen.targetIdx]?.type === 'cinematic_hero') {
-                                                handleInput(mediaLibraryOpen.targetIdx, 'media_url', selectedAsset);
+                                            if (mediaLibraryOpen.slotIdx !== undefined) {
+                                                const cats = sections[mediaLibraryOpen.targetIdx].settings?.categories || [];
+                                                const newCats = [...cats];
+                                                newCats[mediaLibraryOpen.slotIdx] = { ...newCats[mediaLibraryOpen.slotIdx], image: selectedAsset };
+                                                handleInput(mediaLibraryOpen.targetIdx, 'categories', newCats);
+                                            } else {
+                                                handleInput(mediaLibraryOpen.targetIdx, 'image_url', selectedAsset);
+                                                if (sections[mediaLibraryOpen.targetIdx]?.type === 'cinematic_hero') {
+                                                    handleInput(mediaLibraryOpen.targetIdx, 'media_url', selectedAsset);
+                                                }
                                             }
                                             setMediaLibraryOpen({isOpen: false, targetIdx: null});
                                             setSelectedAsset(null); // Reset selection
