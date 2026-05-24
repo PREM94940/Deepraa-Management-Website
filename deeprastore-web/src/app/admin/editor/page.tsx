@@ -195,7 +195,7 @@ export default function ThemeEditor() {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [pages, globalSettings, currentPageId]);
 
-    const handleInput = (idx: number, field: string, value: string | boolean) => {
+    const handleInput = (idx: number, field: string, value: any) => {
         setUnsavedChanges(true);
         updateSection(idx, { [field]: value });
     };
