@@ -61,7 +61,7 @@ export const StorefrontRenderer = ({ initialConfig, pageIdentifier, isSlug }: { 
                         else if (section.settings?.padding === 'large') spacingClass = '!py-12 md:!py-20';
 
                         return (
-                            <div key={idx} id={`section-${section.type}`} className={`${visibilityClass} ${spacingClass}`}>
+                            <div key={idx} id={`section-${section.type}-${idx}`} className={`${visibilityClass} ${spacingClass}`}>
                                 <Component data={section.settings} variant={section.variant} />
                             </div>
                         );
