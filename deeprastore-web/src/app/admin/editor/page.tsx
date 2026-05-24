@@ -834,6 +834,19 @@ export default function ThemeEditor() {
                                                                     Browse
                                                                 </button>
                                                             </div>
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-[9px] text-[#A3A3A3] mb-1 uppercase font-bold tracking-widest">Media Alt Text (SEO & Screen Readers)</label>
+                                                            <input 
+                                                                type="text" 
+                                                                className="w-full text-xs p-2 border border-[#333] bg-[#222] text-white outline-none rounded"
+                                                                placeholder="Describe the image..."
+                                                                value={sec.settings?.alt_text || ''}
+                                                                onChange={(e) => handleInput(idx, 'alt_text', e.target.value)}
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-[9px] text-[#A3A3A3] mb-1 uppercase font-bold tracking-widest">Focal Point</label>
                                                             <div className="flex gap-2 items-center mt-3">
                                                                 <label className="text-[9px] text-[#A3A3A3] uppercase font-bold tracking-widest">Focal Point</label>
                                                                 <select 

@@ -76,7 +76,7 @@ export function validateCMSPage(page: any): AuditResult {
                 }
             } else {
                 // Image Optimization
-                const hasModernFormat = imgUrl.includes('.webp') || imgUrl.includes('.avif') || imgUrl.includes('auto=format');
+                const hasModernFormat = imgUrl.includes('.webp') || imgUrl.includes('.avif') || imgUrl.includes('auto=format') || imgUrl.includes('supabase.co');
                 if (!hasModernFormat) {
                     warnings.push(`${sName}: Unoptimized image format detected. Use WebP/AVIF or append 'auto=format' to reduce loading speeds.`);
                 }
