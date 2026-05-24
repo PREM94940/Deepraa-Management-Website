@@ -77,7 +77,8 @@ export default function ThemeEditor() {
         'https://images.unsplash.com/photo-1565289945195-2abf1baee058?auto=format&fit=crop&q=80&w=1200'
     ]);
     const [activeMediaTab, setActiveMediaTab] = useState<'all' | 'images' | 'videos'>('all');
-    const [quickViewAsset, setQuickViewAsset] = useState<string | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [selectedAsset, setSelectedAsset] = useState<string | null>(null);
 
     const iframeRef = useRef<HTMLIFrameElement>(null);
 
@@ -321,9 +322,18 @@ export default function ThemeEditor() {
 
     const filteredMediaFiles = mediaFiles.filter(url => {
         const isVid = url.match(/\.(mp4|webm)$/i) || url.includes('vimeo');
-        if (activeMediaTab === 'images') return !isVid;
-        if (activeMediaTab === 'videos') return isVid;
-        return true;
+        
+        let matchesTab = true;
+        if (activeMediaTab === 'images') matchesTab = !isVid;
+        if (activeMediaTab === 'videos') matchesTab = isVid;
+
+        let matchesSearch = true;
+        if (searchQuery.trim()) {
+            const fileName = url.split('/').pop()?.toLowerCase() || '';
+            matchesSearch = fileName.includes(searchQuery.toLowerCase());
+        }
+
+        return matchesTab && matchesSearch;
     });
 
     // Performance & Governance Auditing
@@ -1509,20 +1519,40 @@ export default function ThemeEditor() {
                     </div>
                 )}
 
-                {/* Media Library Browser */}
+                {/* Media Library Browser (Shopify Style Split Pane) */}
                 {mediaLibraryOpen.isOpen && (
                     <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-6">
-                        <div className="bg-[#1C1C1C] w-full max-w-5xl shadow-2xl p-7 border border-[#262626] flex flex-col h-[85vh] rounded">
-                            <div className="flex justify-between items-center mb-6 pb-2 border-b border-[#262626]">
-                                <h2 className="text-sm font-bold uppercase tracking-wider text-[#D4AF37]">Media Core Library</h2>
-                                <button onClick={() => setMediaLibraryOpen({isOpen: false, targetIdx: null})} className="text-muted-foreground hover:text-white"><X className="w-5 h-5" /></button>
-                            </div>
+                        <div className="bg-[#1C1C1C] w-full max-w-6xl shadow-2xl border border-[#262626] flex flex-col h-[85vh] rounded-lg overflow-hidden">
                             
-                            <div className="flex justify-between items-center mb-6">
-                                <div className="flex gap-3 bg-[#111] p-1 rounded">
-                                    <button onClick={() => setActiveMediaTab('all')} className={`px-5 py-2 text-[10px] font-bold uppercase tracking-widest rounded transition-colors ${activeMediaTab === 'all' ? 'bg-[#D4AF37] text-black' : 'text-[#A3A3A3] hover:text-white'}`}>All Media</button>
-                                    <button onClick={() => setActiveMediaTab('images')} className={`px-5 py-2 text-[10px] font-bold uppercase tracking-widest rounded transition-colors ${activeMediaTab === 'images' ? 'bg-[#D4AF37] text-black' : 'text-[#A3A3A3] hover:text-white'}`}>Images</button>
-                                    <button onClick={() => setActiveMediaTab('videos')} className={`px-5 py-2 text-[10px] font-bold uppercase tracking-widest rounded transition-colors ${activeMediaTab === 'videos' ? 'bg-[#D4AF37] text-black' : 'text-[#A3A3A3] hover:text-white'}`}>Videos</button>
+                            {/* Header Area */}
+                            <div className="flex justify-between items-center p-5 border-b border-[#262626] bg-[#161616]">
+                                <div className="flex items-center gap-6 flex-1">
+                                    <h2 className="text-sm font-bold uppercase tracking-wider text-[#D4AF37]">Select file</h2>
+                                    
+                                    {/* Search Bar */}
+                                    <div className="relative w-full max-w-md">
+                                        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                                        <input 
+                                            type="text" 
+                                            placeholder="Search files..." 
+                                            value={searchQuery}
+                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                            className="w-full bg-[#111] border border-[#333] text-sm text-white rounded px-9 py-2 focus:outline-none focus:border-[#D4AF37]"
+                                        />
+                                    </div>
+                                </div>
+                                
+                                <button onClick={() => setMediaLibraryOpen({isOpen: false, targetIdx: null})} className="text-muted-foreground hover:text-white p-2">
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            {/* Toolbar */}
+                            <div className="flex justify-between items-center px-5 py-3 border-b border-[#262626] bg-[#1a1a1a]">
+                                <div className="flex gap-2">
+                                    <button onClick={() => setActiveMediaTab('all')} className={`px-4 py-1.5 text-[11px] font-bold rounded transition-colors ${activeMediaTab === 'all' ? 'bg-[#333] text-white' : 'text-[#A3A3A3] hover:text-white hover:bg-[#222]'}`}>All files</button>
+                                    <button onClick={() => setActiveMediaTab('images')} className={`px-4 py-1.5 text-[11px] font-bold rounded transition-colors ${activeMediaTab === 'images' ? 'bg-[#333] text-white' : 'text-[#A3A3A3] hover:text-white hover:bg-[#222]'}`}>Images</button>
+                                    <button onClick={() => setActiveMediaTab('videos')} className={`px-4 py-1.5 text-[11px] font-bold rounded transition-colors ${activeMediaTab === 'videos' ? 'bg-[#333] text-white' : 'text-[#A3A3A3] hover:text-white hover:bg-[#222]'}`}>Videos</button>
                                 </div>
                                 <div>
                                     <input 
@@ -1533,82 +1563,117 @@ export default function ThemeEditor() {
                                         onChange={handleMediaUpload} 
                                         disabled={isUploadingMedia} 
                                     />
-                                    <label htmlFor="media-upload" className="px-5 py-2.5 bg-[#D4AF37]/20 border border-[#D4AF37] text-[#D4AF37] text-[10px] font-extrabold uppercase tracking-widest cursor-pointer hover:bg-[#D4AF37] hover:text-black transition-colors rounded flex items-center gap-2">
+                                    <label htmlFor="media-upload" className="px-4 py-1.5 bg-[#D4AF37] text-black text-[11px] font-extrabold cursor-pointer hover:bg-[#B8962B] transition-colors rounded flex items-center gap-2">
                                         {isUploadingMedia ? <span className="animate-spin h-3.5 w-3.5 border-2 border-current border-t-transparent rounded-full" /> : <Plus className="w-3.5 h-3.5" />}
-                                        {isUploadingMedia ? 'Uploading Asset...' : 'Upload New Asset'}
+                                        {isUploadingMedia ? 'Uploading...' : 'Add media'}
                                     </label>
                                 </div>
                             </div>
-
-                            <div className="flex-1 overflow-y-auto grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 pr-1">
-                                {filteredMediaFiles.map((url, i) => {
-                                    const isVid = url.match(/\.(mp4|webm)$/i) || url.includes('vimeo');
-                                    return (
-                                        <div 
-                                            key={i} 
-                                            className="aspect-square bg-[#111] border border-[#262626] relative group overflow-hidden rounded shadow-sm"
-                                        >
-                                            {isVid ? (
-                                                <video src={url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" muted />
-                                            ) : (
-                                                <Image src={url} alt={`Media ${i}`} fill className="object-cover group-hover:scale-105 transition-transform duration-500" sizes="(max-width: 768px) 33vw, 20vw" />
-                                            )}
+                            
+                            {/* Main Split Content */}
+                            <div className="flex flex-1 overflow-hidden">
+                                
+                                {/* Left Side: Grid */}
+                                <div className="flex-1 overflow-y-auto p-5 bg-[#111]">
+                                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
+                                        {filteredMediaFiles.map((url, i) => {
+                                            const isVid = url.match(/\.(mp4|webm)$/i) || url.includes('vimeo');
+                                            const isSelected = selectedAsset === url;
+                                            const fileName = url.split('/').pop() || `File ${i}`;
                                             
-                                            <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
-                                                <button 
-                                                    onClick={() => setQuickViewAsset(url)}
-                                                    className="w-[80%] bg-zinc-800 hover:bg-zinc-700 text-white py-1.5 text-[9px] font-bold uppercase tracking-widest rounded-sm flex items-center justify-center gap-1"
+                                            return (
+                                                <div 
+                                                    key={i} 
+                                                    onClick={() => setSelectedAsset(isSelected ? null : url)}
+                                                    className={`aspect-square bg-[#1C1C1C] border ${isSelected ? 'border-[#D4AF37] shadow-[0_0_0_1px_#D4AF37]' : 'border-[#333] hover:border-[#555]'} relative group cursor-pointer overflow-hidden rounded-md transition-all`}
                                                 >
-                                                    <Search className="w-3 h-3" /> Quick View
-                                                </button>
-                                                <button 
-                                                    onClick={() => {
-                                                        if (mediaLibraryOpen.targetIdx !== null) {
-                                                            handleInput(mediaLibraryOpen.targetIdx, 'image_url', url);
-                                                            if (sections[mediaLibraryOpen.targetIdx]?.type === 'cinematic_hero') {
-                                                                handleInput(mediaLibraryOpen.targetIdx, 'media_url', url);
-                                                            }
-                                                            setMediaLibraryOpen({isOpen: false, targetIdx: null});
-                                                        }
-                                                    }}
-                                                    className="w-[80%] bg-[#D4AF37] hover:bg-[#B8962B] text-black py-1.5 text-[9px] font-bold uppercase tracking-widest rounded-sm flex items-center justify-center gap-1"
-                                                >
-                                                    <Check className="w-3 h-3" /> Select
-                                                </button>
+                                                    {isVid ? (
+                                                        <video src={url} className="w-full h-full object-cover" muted />
+                                                    ) : (
+                                                        <Image src={url} alt={fileName} fill className="object-cover" sizes="(max-width: 768px) 33vw, 20vw" />
+                                                    )}
+                                                    
+                                                    {/* Checkbox (Top Left) */}
+                                                    <div className="absolute top-2 left-2 z-10">
+                                                        <div className={`w-4 h-4 rounded-sm border flex items-center justify-center ${isSelected ? 'bg-[#D4AF37] border-[#D4AF37]' : 'bg-black/40 border-white/40 group-hover:border-white'}`}>
+                                                            {isSelected && <Check className="w-3 h-3 text-black" />}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* File Label (Bottom) */}
+                                                    <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 to-transparent p-2 pt-6">
+                                                        <p className="text-[9px] text-white truncate text-center font-medium opacity-90">{fileName.split('.')[0].substring(0, 15)}...</p>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                {/* Right Side: Preview Panel */}
+                                {selectedAsset && (
+                                    <div className="w-[320px] bg-[#1C1C1C] border-l border-[#262626] flex flex-col overflow-y-auto">
+                                        <div className="p-4 border-b border-[#262626] flex justify-between items-center bg-[#161616]">
+                                            <h3 className="text-sm font-semibold text-white">Preview</h3>
+                                            <button onClick={() => setSelectedAsset(null)} className="text-zinc-500 hover:text-white">
+                                                <X className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                        <div className="p-5 flex-1 flex flex-col gap-4">
+                                            <div className="w-full aspect-[3/4] bg-black rounded-lg border border-[#333] relative overflow-hidden flex items-center justify-center">
+                                                {(selectedAsset.match(/\.(mp4|webm)$/i) || selectedAsset.includes('vimeo')) ? (
+                                                    <video src={selectedAsset} className="max-w-full max-h-full object-contain" controls autoPlay loop />
+                                                ) : (
+                                                    <Image src={selectedAsset} alt="Preview" fill className="object-contain" />
+                                                )}
+                                            </div>
+                                            
+                                            <div className="flex flex-col gap-1 mt-2">
+                                                <p className="text-xs text-white break-words font-medium">{selectedAsset.split('/').pop()}</p>
+                                                <p className="text-[10px] text-zinc-500">
+                                                    {(selectedAsset.match(/\.(mp4|webm)$/i) || selectedAsset.includes('vimeo')) ? 'Video' : 'Image'}
+                                                </p>
                                             </div>
 
-                                            {/* Delete Trash Icon - Top Right */}
-                                            <button 
-                                                onClick={(e) => { e.stopPropagation(); handleDeleteMedia(url); }}
-                                                className="absolute top-1.5 right-1.5 p-1.5 bg-red-950/80 hover:bg-red-600 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm"
-                                            >
-                                                <Trash2 className="w-3 h-3" />
-                                            </button>
-
-                                            {/* Type Badge - Bottom Left */}
-                                            <div className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 bg-black/60 text-white text-[8px] uppercase tracking-widest font-bold rounded backdrop-blur-sm">
-                                                {isVid ? 'Video' : 'Image'}
+                                            <div className="mt-auto pt-4 flex gap-2">
+                                                <button 
+                                                    onClick={() => handleDeleteMedia(selectedAsset)}
+                                                    className="flex-1 px-4 py-2 bg-red-950/40 text-red-400 border border-red-900/50 hover:bg-red-900 hover:text-white text-xs font-bold rounded transition-colors flex items-center justify-center gap-2"
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5" /> Delete
+                                                </button>
                                             </div>
                                         </div>
-                                    );
-                                })}
+                                    </div>
+                                )}
                             </div>
-                        </div>
-                    </div>
-                )}
 
-                {/* Quick View Overlay */}
-                {quickViewAsset && (
-                    <div className="fixed inset-0 bg-black/95 backdrop-blur-lg z-[60] flex items-center justify-center p-6" onClick={() => setQuickViewAsset(null)}>
-                        <button className="absolute top-6 right-6 text-white/50 hover:text-white bg-white/10 p-2 rounded-full backdrop-blur-md">
-                            <X className="w-6 h-6" />
-                        </button>
-                        <div className="max-w-5xl max-h-[85vh] relative w-full h-full flex items-center justify-center" onClick={e => e.stopPropagation()}>
-                            {(quickViewAsset.match(/\.(mp4|webm)$/i) || quickViewAsset.includes('vimeo')) ? (
-                                <video src={quickViewAsset} className="max-w-full max-h-full object-contain rounded" controls autoPlay loop />
-                            ) : (
-                                <Image src={quickViewAsset} alt="Quick View" fill className="object-contain" />
-                            )}
+                            {/* Bottom Action Bar */}
+                            <div className="p-4 border-t border-[#262626] bg-[#161616] flex justify-end gap-3">
+                                <button 
+                                    onClick={() => setMediaLibraryOpen({isOpen: false, targetIdx: null})}
+                                    className="px-5 py-2 text-xs font-bold text-white bg-[#222] border border-[#333] hover:bg-[#333] rounded transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    disabled={!selectedAsset}
+                                    onClick={() => {
+                                        if (selectedAsset && mediaLibraryOpen.targetIdx !== null) {
+                                            handleInput(mediaLibraryOpen.targetIdx, 'image_url', selectedAsset);
+                                            if (sections[mediaLibraryOpen.targetIdx]?.type === 'cinematic_hero') {
+                                                handleInput(mediaLibraryOpen.targetIdx, 'media_url', selectedAsset);
+                                            }
+                                            setMediaLibraryOpen({isOpen: false, targetIdx: null});
+                                            setSelectedAsset(null); // Reset selection
+                                        }
+                                    }}
+                                    className={`px-5 py-2 text-xs font-bold rounded transition-colors ${selectedAsset ? 'bg-[#D4AF37] text-black hover:bg-[#B8962B]' : 'bg-[#333] text-zinc-500 cursor-not-allowed'}`}
+                                >
+                                    Done
+                                </button>
+                            </div>
+
                         </div>
                     </div>
                 )}
