@@ -837,7 +837,7 @@ export default function ThemeEditor() {
                                                 const newIdx = isOpen ? null : idx;
                                                 setOpenSectionIdx(newIdx);
                                                 if (newIdx !== null && iframeRef.current?.contentWindow) {
-                                                    iframeRef.current.contentWindow.postMessage({ type: 'CMS_SCROLL_TO', payload: sec.type }, '*');
+                                                    iframeRef.current.contentWindow.postMessage({ type: 'CMS_SCROLL_TO', payload: `${sec.type}-${idx}` }, '*');
                                                 }
                                             }}
                                         >
