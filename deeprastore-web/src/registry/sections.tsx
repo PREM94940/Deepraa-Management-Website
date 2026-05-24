@@ -77,15 +77,15 @@ export const CinematicHero = ({ data }: { data?: any }) => {
                 >
                     <span className="flex items-center gap-2">
                         <svg className="w-3 h-3 text-gold" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 2a8 8 0 100 16 8 8 0 000-16zm3.707 9.293a1 1 0 01-1.414 1.414L9 10.414l-1.293 1.293a1 1 0 01-1.414-1.414l2-2a1 1 0 011.414 0l3 3z" clipRule="evenodd"/></svg>
-                        Authentic Heritage Silks
+                        {data?.trust_badge_1_text || 'Authentic Heritage Silks'}
                     </span>
                     <span className="flex items-center gap-2">
                         <svg className="w-3 h-3 text-gold" fill="currentColor" viewBox="0 0 20 20"><path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"/><path fillRule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clipRule="evenodd"/></svg>
-                        Secure Checkout
+                        {data?.trust_badge_2_text || 'Secure Checkout'}
                     </span>
                     <span className="flex items-center gap-2">
                         <svg className="w-3 h-3 text-gold" fill="currentColor" viewBox="0 0 20 20"><path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/></svg>
-                        24/7 Styling Support
+                        {data?.trust_badge_3_text || '24/7 Styling Support'}
                     </span>
                 </motion.div>
             </div>
@@ -99,6 +99,20 @@ export const FeaturedCategories = ({ data }: { data?: any }) => {
 
     useEffect(() => {
         async function fetchCategories() {
+            if (data?.source === 'manual' && data?.categories && data?.categories.length > 0) {
+                const formattedCats = data.categories.map((cat: any, idx: number) => {
+                    let span = 'col-span-1 row-span-1';
+                    if (data?.layout !== 'standard') {
+                        if (idx === 0) span = 'col-span-2 row-span-2';
+                        else if (idx === 3) span = 'col-span-2 row-span-1';
+                    }
+                    return { name: cat.name || 'Category', queryName: cat.queryName || cat.name, image: cat.image || 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&q=80&w=600', span, focal_point: cat.focal_point || 'center' };
+                });
+                setCategories(formattedCats);
+                setLoading(false);
+                return;
+            }
+
             const { data: prods } = await supabase
                 .from('products')
                 .select('category, images')
@@ -122,7 +136,7 @@ export const FeaturedCategories = ({ data }: { data?: any }) => {
                         if (idx === 0) span = 'col-span-2 row-span-2';
                         else if (idx === 3) span = 'col-span-2 row-span-1';
                     }
-                    return { name: displayName, queryName: name, image, span };
+                    return { name: displayName, queryName: name, image, span, focal_point: 'center' };
                 });
                 
                 setCategories(formattedCats);
@@ -130,7 +144,7 @@ export const FeaturedCategories = ({ data }: { data?: any }) => {
             setLoading(false);
         }
         fetchCategories();
-    }, [data?.layout]);
+    }, [data?.layout, data?.source, data?.categories]);
 
     const getTextClass = () => {
         if (data?.text_size === 'small') return 'text-lg md:text-xl';
@@ -156,7 +170,7 @@ export const FeaturedCategories = ({ data }: { data?: any }) => {
                 <div className={`grid grid-cols-2 md:grid-cols-4 ${data?.layout === 'standard' ? 'grid-rows-1 h-[40vh] md:h-[60vh]' : 'grid-rows-2 h-[80vh]'} gap-4 md:gap-6`}>
                     {categories.map((cat, idx) => (
                         <Link href={`/collections?category=${encodeURIComponent(cat.queryName)}`} key={idx} className={`group relative overflow-hidden bg-gray-100 rounded-sm ${data?.layout === 'standard' ? 'col-span-1 row-span-1' : cat.span}`}>
-                            <Image src={cat.image} alt={cat.name} fill sizes="(max-width: 768px) 50vw, 25vw" className="object-cover transition-transform duration-[2000ms] ease-out group-hover:scale-105" />
+                            <Image src={cat.image} alt={cat.name} fill sizes="(max-width: 768px) 50vw, 25vw" className="object-cover transition-transform duration-[2000ms] ease-out group-hover:scale-105" style={{ objectPosition: cat.focal_point }} />
                             {!data?.hide_text && (
                                 <>
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80 group-hover:opacity-100 transition-opacity duration-700"></div>
@@ -421,8 +435,8 @@ export const ProductHero = ({
                                 className="mt-1 accent-accent"
                             />
                             <div>
-                                <div className="font-bold text-fg text-sm">Custom Stitching (+₹1,500)</div>
-                                <div className="text-xs text-muted mt-1 font-light leading-relaxed">Tailored to your exact measurements via WhatsApp.</div>
+                                <div className="font-bold text-fg text-sm">{data?.stitching_label || 'Custom Stitching'} (+₹{data?.stitching_price || '1,500'})</div>
+                                <div className="text-xs text-muted mt-1 font-light leading-relaxed">{data?.stitching_desc || 'Tailored to your exact measurements via WhatsApp.'}</div>
                             </div>
                         </label>
 
@@ -434,8 +448,8 @@ export const ProductHero = ({
                                 className="mt-1 accent-accent"
                             />
                             <div>
-                                <div className="font-bold text-fg text-sm">Fall & Pico (+₹300)</div>
-                                <div className="text-xs text-muted mt-1 font-light leading-relaxed">Edges finished and fall attached.</div>
+                                <div className="font-bold text-fg text-sm">{data?.fall_pico_label || 'Fall & Pico'} (+₹{data?.fall_pico_price || '300'})</div>
+                                <div className="text-xs text-muted mt-1 font-light leading-relaxed">{data?.fall_pico_desc || 'Edges finished and fall attached.'}</div>
                             </div>
                         </label>
                     </div>

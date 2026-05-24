@@ -945,6 +945,32 @@ export default function ThemeEditor() {
                                                                 />
                                                             </div>
                                                         </div>
+                                                        {sec.type === 'cinematic_hero' && (
+                                                            <div className="space-y-3 mt-4 border-t border-[#333] pt-4">
+                                                                <label className="block text-[9px] text-[#A3A3A3] uppercase font-bold tracking-widest mb-2">Trust Badges (Bottom Strip)</label>
+                                                                <input 
+                                                                    type="text" 
+                                                                    placeholder="Badge 1 (e.g. Authentic Heritage Silks)"
+                                                                    className="w-full text-xs p-2 border border-[#333] bg-[#222] text-white outline-none rounded"
+                                                                    value={sec.settings?.trust_badge_1_text || ''}
+                                                                    onChange={(e) => handleInput(idx, 'trust_badge_1_text', e.target.value)}
+                                                                />
+                                                                <input 
+                                                                    type="text" 
+                                                                    placeholder="Badge 2 (e.g. Secure Checkout)"
+                                                                    className="w-full text-xs p-2 border border-[#333] bg-[#222] text-white outline-none rounded"
+                                                                    value={sec.settings?.trust_badge_2_text || ''}
+                                                                    onChange={(e) => handleInput(idx, 'trust_badge_2_text', e.target.value)}
+                                                                />
+                                                                <input 
+                                                                    type="text" 
+                                                                    placeholder="Badge 3 (e.g. 24/7 Styling Support)"
+                                                                    className="w-full text-xs p-2 border border-[#333] bg-[#222] text-white outline-none rounded"
+                                                                    value={sec.settings?.trust_badge_3_text || ''}
+                                                                    onChange={(e) => handleInput(idx, 'trust_badge_3_text', e.target.value)}
+                                                                />
+                                                            </div>
+                                                        )}
                                                     </>
                                                 )}
 
@@ -971,6 +997,70 @@ export default function ThemeEditor() {
                                                             />
                                                             <label htmlFor={`hide-text-${idx}`} className="text-[10px] font-bold uppercase tracking-widest text-[#A3A3A3] cursor-pointer">Hide Category Text Overlay</label>
                                                         </div>
+                                                        <div className="border-t border-[#333] pt-4 mt-4">
+                                                            <label className="block text-[9px] text-[#A3A3A3] mb-1 uppercase font-bold tracking-widest">Source Data</label>
+                                                            <select 
+                                                                className="w-full text-xs p-2 border border-[#333] bg-[#222] text-white outline-none rounded cursor-pointer"
+                                                                value={sec.settings?.source || 'auto'}
+                                                                onChange={(e) => handleInput(idx, 'source', e.target.value)}
+                                                            >
+                                                                <option value="auto">Auto (from Database)</option>
+                                                                <option value="manual">Manual Override</option>
+                                                            </select>
+                                                        </div>
+                                                        {sec.settings?.source === 'manual' && (
+                                                            <div className="space-y-4 pt-2">
+                                                                <label className="block text-[9px] text-[#A3A3A3] uppercase font-bold tracking-widest mb-2">Manual Categories (4 slots)</label>
+                                                                {[0,1,2,3].map((slotIdx) => {
+                                                                    const cats = sec.settings?.categories || [];
+                                                                    const slot = cats[slotIdx] || {};
+                                                                    return (
+                                                                        <div key={slotIdx} className="p-3 bg-[#262626] border border-[#333] rounded space-y-3">
+                                                                            <h4 className="text-[10px] font-bold text-[#D4AF37] mb-2">Grid Slot {slotIdx + 1}</h4>
+                                                                            <input 
+                                                                                type="text" 
+                                                                                placeholder="Title (e.g. Sarees)"
+                                                                                className="w-full text-xs p-2 border border-[#333] bg-[#1a1a1a] text-white outline-none rounded"
+                                                                                value={slot.name || ''}
+                                                                                onChange={(e) => {
+                                                                                    const newCats = [...cats];
+                                                                                    newCats[slotIdx] = { ...slot, name: e.target.value, queryName: e.target.value };
+                                                                                    handleInput(idx, 'categories', newCats);
+                                                                                }}
+                                                                            />
+                                                                            <div className="flex gap-2">
+                                                                                <input 
+                                                                                    type="text" 
+                                                                                    placeholder="Image URL"
+                                                                                    className="flex-1 text-xs p-2 border border-[#333] bg-[#1a1a1a] text-white outline-none rounded"
+                                                                                    value={slot.image || ''}
+                                                                                    onChange={(e) => {
+                                                                                        const newCats = [...cats];
+                                                                                        newCats[slotIdx] = { ...slot, image: e.target.value };
+                                                                                        handleInput(idx, 'categories', newCats);
+                                                                                    }}
+                                                                                />
+                                                                            </div>
+                                                                            <select 
+                                                                                className="w-full text-xs p-2 border border-[#333] bg-[#1a1a1a] text-white outline-none rounded"
+                                                                                value={slot.focal_point || 'center'}
+                                                                                onChange={(e) => {
+                                                                                    const newCats = [...cats];
+                                                                                    newCats[slotIdx] = { ...slot, focal_point: e.target.value };
+                                                                                    handleInput(idx, 'categories', newCats);
+                                                                                }}
+                                                                            >
+                                                                                <option value="center">Image Crop: Center</option>
+                                                                                <option value="top">Image Crop: Top</option>
+                                                                                <option value="bottom">Image Crop: Bottom</option>
+                                                                                <option value="left">Image Crop: Left</option>
+                                                                                <option value="right">Image Crop: Right</option>
+                                                                            </select>
+                                                                        </div>
+                                                                    )
+                                                                })}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 )}
 
@@ -988,6 +1078,58 @@ export default function ThemeEditor() {
                                                             <option value="Festive">Festive</option>
                                                             <option value="Ready-to-Ship">Ready-to-Ship</option>
                                                         </select>
+                                                    </div>
+                                                )}
+
+                                                {sec.type === 'product_hero' && (
+                                                    <div className="space-y-4">
+                                                        <div>
+                                                            <label className="block text-[9px] text-[#A3A3A3] uppercase font-bold tracking-widest mb-2">Boutique Services</label>
+                                                            <div className="grid grid-cols-2 gap-3 mb-3">
+                                                                <input 
+                                                                    type="text" 
+                                                                    placeholder="Service 1 Name (e.g. Custom Stitching)"
+                                                                    className="w-full text-xs p-2 border border-[#333] bg-[#222] text-white outline-none rounded"
+                                                                    value={sec.settings?.stitching_label || ''}
+                                                                    onChange={(e) => handleInput(idx, 'stitching_label', e.target.value)}
+                                                                />
+                                                                <input 
+                                                                    type="text" 
+                                                                    placeholder="Price (e.g. 1,500)"
+                                                                    className="w-full text-xs p-2 border border-[#333] bg-[#222] text-white outline-none rounded"
+                                                                    value={sec.settings?.stitching_price || ''}
+                                                                    onChange={(e) => handleInput(idx, 'stitching_price', e.target.value)}
+                                                                />
+                                                            </div>
+                                                            <textarea 
+                                                                className="w-full text-xs p-2 border border-[#333] bg-[#222] text-white outline-none rounded min-h-[40px] mb-4"
+                                                                placeholder="Service 1 Description"
+                                                                value={sec.settings?.stitching_desc || ''}
+                                                                onChange={(e) => handleInput(idx, 'stitching_desc', e.target.value)}
+                                                            />
+                                                            <div className="grid grid-cols-2 gap-3 mb-3">
+                                                                <input 
+                                                                    type="text" 
+                                                                    placeholder="Service 2 Name (e.g. Fall & Pico)"
+                                                                    className="w-full text-xs p-2 border border-[#333] bg-[#222] text-white outline-none rounded"
+                                                                    value={sec.settings?.fall_pico_label || ''}
+                                                                    onChange={(e) => handleInput(idx, 'fall_pico_label', e.target.value)}
+                                                                />
+                                                                <input 
+                                                                    type="text" 
+                                                                    placeholder="Price (e.g. 300)"
+                                                                    className="w-full text-xs p-2 border border-[#333] bg-[#222] text-white outline-none rounded"
+                                                                    value={sec.settings?.fall_pico_price || ''}
+                                                                    onChange={(e) => handleInput(idx, 'fall_pico_price', e.target.value)}
+                                                                />
+                                                            </div>
+                                                            <textarea 
+                                                                className="w-full text-xs p-2 border border-[#333] bg-[#222] text-white outline-none rounded min-h-[40px]"
+                                                                placeholder="Service 2 Description"
+                                                                value={sec.settings?.fall_pico_desc || ''}
+                                                                onChange={(e) => handleInput(idx, 'fall_pico_desc', e.target.value)}
+                                                            />
+                                                        </div>
                                                     </div>
                                                 )}
 
