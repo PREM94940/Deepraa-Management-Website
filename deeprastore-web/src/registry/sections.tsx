@@ -229,28 +229,28 @@ export const BestSellersSlider = ({ data }: { data?: any }) => {
 
 export const BrandStory = ({ data }: { data?: any }) => {
     return (
-        <section className="py-10 md:py-16 px-6 bg-surface text-fg relative overflow-hidden">
-            <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center gap-12 md:gap-0">
-                <div className="w-full md:w-1/2 relative z-10 md:pr-12">
-                    <div className="aspect-[4/5] overflow-hidden relative group">
-                        <Image 
-                            src={data?.image_url || "https://images.unsplash.com/photo-1605000523098-944208a0d7d9?auto=format&fit=crop&q=80&w=800"} 
-                            alt="Brand Story" 
-                            fill
-                            sizes="(max-width: 768px) 100vw, 50vw"
-                            className="object-cover transition-transform duration-[10000ms] ease-linear group-hover:scale-110 origin-center" 
-                            style={{ objectPosition: data?.focal_point || 'center' }}
-                        />
-                    </div>
+        <section className="bg-surface text-fg relative overflow-hidden py-0">
+            <div className="flex flex-col md:flex-row items-stretch w-full min-h-[60vh] md:min-h-[80vh]">
+                <div className="w-full md:w-[60%] relative z-10 h-[50vh] md:h-auto overflow-hidden group">
+                    <Image 
+                        src={data?.image_url || "https://images.unsplash.com/photo-1605000523098-944208a0d7d9?auto=format&fit=crop&q=80&w=800"} 
+                        alt="Brand Story" 
+                        fill
+                        sizes="(max-width: 768px) 100vw, 60vw"
+                        className="object-cover transition-transform duration-[10000ms] ease-linear group-hover:scale-110 origin-center" 
+                        style={{ objectPosition: data?.focal_point || 'center' }}
+                    />
                 </div>
-                <div className="w-full md:w-[55%] md:-ml-24 md:mt-16 z-20 relative bg-surface/95 premium-blur p-8 md:p-16 border border-border/50 shadow-2xl">
-                    <span className="text-gold font-bold tracking-[0.2em] uppercase text-xs mb-6 block">{data?.tagline || 'The Deepra Journey'}</span>
-                    <h2 className="text-3xl md:text-5xl font-display leading-[1.2] mb-8 text-fg" dangerouslySetInnerHTML={{ __html: data?.headline || "We don't just sell fabrics. <br/> <span class=\"italic font-light text-gold\">We weave emotions.</span>" }} />
-                    <p className="text-base md:text-lg text-muted font-light leading-relaxed mb-10 max-w-lg" dangerouslySetInnerHTML={{ __html: data?.description || '<span class="text-4xl float-left mr-2 font-display text-fg leading-none pt-2">E</span>very piece at Deeprastore tells a story of Indian craftsmanship. From the intricate Zari work of Kanchipuram to the delicate flow of georgette, our boutique is a homage to the modern woman who cherishes her roots. Handloom weaving is a legacy passed down through generations, and we are proud to bring that heritage to your wardrobe.' }} />
-                    <Link href={data?.cta_link || "/custom-stitching"} className="inline-flex items-center gap-3 text-xs font-bold uppercase tracking-widest border-b border-black pb-1 hover:text-gold hover:border-gold transition-colors">
-                        {data?.cta_text || 'Discover Our Craft'}
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
-                    </Link>
+                <div className="w-full md:w-[50%] md:-ml-[10%] z-20 relative flex items-center justify-center p-6 md:p-12 lg:p-20 xl:p-24">
+                    <div className="bg-surface/95 premium-blur p-8 md:p-16 lg:p-20 shadow-2xl w-full border border-border/50 max-w-2xl">
+                        <span className="text-gold font-bold tracking-[0.2em] uppercase text-xs mb-6 block">{data?.tagline || 'The Deepra Journey'}</span>
+                        <h2 className="text-3xl md:text-5xl font-display leading-[1.2] mb-8 text-fg" dangerouslySetInnerHTML={{ __html: data?.headline || "We don't just sell fabrics. <br/> <span class=\"italic font-light text-gold\">We weave emotions.</span>" }} />
+                        <p className="text-base md:text-lg text-muted font-light leading-relaxed mb-10" dangerouslySetInnerHTML={{ __html: data?.description || '<span class="text-4xl float-left mr-2 font-display text-fg leading-none pt-2">E</span>very piece at Deeprastore tells a story of Indian craftsmanship. From the intricate Zari work of Kanchipuram to the delicate flow of georgette, our boutique is a homage to the modern woman who cherishes her roots. Handloom weaving is a legacy passed down through generations, and we are proud to bring that heritage to your wardrobe.' }} />
+                        <Link href={data?.cta_link || "/brand-story"} className="inline-flex items-center gap-3 text-xs font-bold uppercase tracking-widest border-b border-black pb-1 hover:text-gold hover:border-gold transition-colors">
+                            {data?.cta_text || 'Meet The Artisans'}
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
+                        </Link>
+                    </div>
                 </div>
             </div>
         </section>
