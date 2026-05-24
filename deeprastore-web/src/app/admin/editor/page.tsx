@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import Image from 'next/image';
 import { useCMSStore } from '@/store/useCMSStore';
 import { 
     Search, Save, Globe, Lock, Unlock, AlertTriangle, 
