@@ -87,8 +87,8 @@ const DEFAULT_PAGES: PageData[] = [
             { 
                 type: 'cinematic_hero', 
                 settings: {
-                    headline: 'The Royal <br class="hidden sm:block"/> <span class="italic font-light">Trousseau.</span>',
-                    subheadline: "Deepra Bridal Couture '26",
+                    headline: 'Premium <br class="hidden sm:block"/> <span class="italic font-light">Bridal Wear.</span>',
+                    subheadline: "Deepra Exclusive Collection '26",
                     cta_text: 'Explore The Collection',
                     cta_link: '/collections',
                     image_url: 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&q=80&w=1200',
@@ -99,7 +99,7 @@ const DEFAULT_PAGES: PageData[] = [
             { 
                 type: 'featured_collections', 
                 settings: {
-                    headline: 'Curated <span class="italic">Elegance</span>',
+                    headline: 'Our <span class="italic">Collections</span>',
                     layout: 'bento',
                     hide_text: false,
                     text_size: 'medium'
@@ -109,7 +109,7 @@ const DEFAULT_PAGES: PageData[] = [
                 type: 'trending_slider', 
                 settings: {
                     headline: 'Trending <span class="italic">Now</span>',
-                    subheadline: 'Our most coveted pieces, loved by brides and fashion enthusiasts globally.',
+                    subheadline: 'Our most loved pieces, hand-picked for brides and fashion enthusiasts.',
                     cta_text: 'View All',
                     cta_link: '/collections',
                     mode: 'trending'

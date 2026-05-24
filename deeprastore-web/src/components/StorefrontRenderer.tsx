@@ -3,6 +3,7 @@ import React from 'react';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { CartDrawer } from '@/components/CartDrawer';
+import { MobileBottomNav } from '@/components/MobileBottomNav';
 import { SECTION_REGISTRY } from '@/registry/sections';
 import { useStorefrontCMS } from '@/hooks/useStorefrontCMS';
 
@@ -34,7 +35,7 @@ export const StorefrontRenderer = ({ initialConfig, pageIdentifier, isSlug }: { 
     }
 
     return (
-        <main className="relative bg-surface min-h-screen w-full">
+        <main className="relative bg-surface min-h-screen w-full pb-16 md:pb-0">
             <Navbar globalSettings={globalSettings} />
             
             <div className="flex flex-col">
@@ -75,6 +76,7 @@ export const StorefrontRenderer = ({ initialConfig, pageIdentifier, isSlug }: { 
 
             <Footer globalSettings={globalSettings} />
             <CartDrawer />
+            <MobileBottomNav />
         </main>
     );
 };

@@ -899,18 +899,19 @@ export default function ThemeEditor() {
                                                     </div>
                                                 )}
 
-                                                {sec.type === 'trending_slider' && (
+                                                {(sec.type === 'trending_slider' || sec.type === 'collection_grid') && (
                                                     <div>
-                                                        <label className="block text-[9px] text-[#A3A3A3] mb-1 uppercase font-bold tracking-widest">Dynamic Merchandising Mode</label>
+                                                        <label className="block text-[9px] text-[#A3A3A3] mb-1 uppercase font-bold tracking-widest">Select Product Category</label>
                                                         <select 
                                                             className="w-full text-xs p-2 border border-[#333] bg-[#222] text-white outline-none rounded cursor-pointer"
-                                                            value={sec.settings?.mode || 'manual'}
-                                                            onChange={(e) => handleInput(idx, 'mode', e.target.value)}
+                                                            value={sec.settings?.category || 'Half Sarees'}
+                                                            onChange={(e) => handleInput(idx, 'category', e.target.value)}
                                                         >
-                                                            <option value="manual">Manual Curated List</option>
-                                                            <option value="trending">Trending Now Products</option>
-                                                            <option value="new_arrivals">New Arrivals Order</option>
-                                                            <option value="bridal">Bridal Heavy Silks</option>
+                                                            <option value="Half Sarees">Half Sarees</option>
+                                                            <option value="Bridal">Bridal</option>
+                                                            <option value="Fabrics">Fabrics</option>
+                                                            <option value="Festive">Festive</option>
+                                                            <option value="Ready-to-Ship">Ready-to-Ship</option>
                                                         </select>
                                                     </div>
                                                 )}

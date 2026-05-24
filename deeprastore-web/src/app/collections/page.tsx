@@ -20,7 +20,7 @@ export default function Collections() {
     
     const { addItem: addWishlist, removeItem: removeWishlist, isInWishlist } = useWishlistStore();
 
-    const categories = ['All', 'Sarees', 'Lehengas', 'Dresses', 'Jewellery', 'Fabric'];
+    const categories = ['All', 'Half Sarees', 'Bridal', 'Sarees', 'Lehengas', 'Fabric'];
 
     const { sections, globalSettings, loading: cmsLoading } = useStorefrontCMS('collection');
 
@@ -58,10 +58,10 @@ export default function Collections() {
                     filteredData = filteredData.filter(p => {
                         const t = p.title?.toLowerCase() || '';
                         const c = p.category?.toLowerCase() || '';
-                        if (selectedCategory === 'Sarees') return t.includes('saree') || c.includes('sari');
+                        if (selectedCategory === 'Half Sarees') return t.includes('half saree') || c.includes('half saree') || c.includes('Half Sarees') || t.includes('half sari');
+                        if (selectedCategory === 'Bridal') return t.includes('bridal') || c.includes('bridal') || c.includes('Bridal');
+                        if (selectedCategory === 'Sarees') return (t.includes('saree') || c.includes('sari') || c.includes('saree')) && !t.includes('half saree');
                         if (selectedCategory === 'Lehengas') return t.includes('lehenga') || c.includes('lehenga');
-                        if (selectedCategory === 'Dresses') return t.includes('dress') || c.includes('dress');
-                        if (selectedCategory === 'Jewellery') return t.includes('necklace') || t.includes('earring') || c.includes('jewel') || p.sku?.startsWith('SB');
                         if (selectedCategory === 'Fabric') return t.includes('fabric') || c.includes('fabric');
                         return true;
                     });
