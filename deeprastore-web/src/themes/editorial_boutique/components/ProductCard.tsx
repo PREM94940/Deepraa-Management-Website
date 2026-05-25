@@ -2,7 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useState } from 'react';
 
-export const ProductCard = ({ product }: { product: any }) => {
+export const ProductCard = ({ product, aspectRatio }: { product: any; aspectRatio?: string }) => {
     const [isHovered, setIsHovered] = useState(false);
     
     // Fallback images if not provided
@@ -13,13 +13,21 @@ export const ProductCard = ({ product }: { product: any }) => {
     const isOutOfStock = product.stock_quantity !== undefined && product.stock_quantity !== null && product.stock_quantity <= 0;
     const isSoldOut = isOutOfStock || product.status === 'Out of Stock' || product.status === 'Sold Out';
 
+    // Map string values like '3/4', '1/1', '16/9' to Tailwind aspect classes
+    let aspectClass = 'aspect-[3/4]';
+    if (aspectRatio === '1/1' || aspectRatio === '1/1 Square' || aspectRatio === 'square') {
+        aspectClass = 'aspect-square';
+    } else if (aspectRatio === '16/9' || aspectRatio === '16/9 Landscape') {
+        aspectClass = 'aspect-video';
+    }
+
     return (
         <div 
             className="group flex flex-col cursor-pointer"
             onMouseEnter={() => !isSoldOut && setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
         >
-            <Link href={`/product/${product.id}`} className="block relative aspect-[3/4] overflow-hidden bg-gray-50 mb-6">
+            <Link href={`/product/${product.id}`} className={`block relative ${aspectClass} overflow-hidden bg-gray-50 mb-6`}>
                 <Image 
                     src={mainImage} 
                     alt={title} 

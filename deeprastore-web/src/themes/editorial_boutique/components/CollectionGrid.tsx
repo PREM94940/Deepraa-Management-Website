@@ -85,6 +85,17 @@ export const CollectionGrid = ({
         return true;
     });
 
+    const getBentoSpan = (idx: number) => {
+        if (data?.grid_style !== 'bento') return '';
+        if (idx % 5 === 0) return 'sm:col-span-2 sm:row-span-2';
+        if (idx % 5 === 3) return 'sm:col-span-2';
+        return '';
+    };
+
+    const mobileCols = data?.mobile_layout === '3-column' ? 'grid-cols-3' : (data?.mobile_layout === '2-column' ? 'grid-cols-2' : 'grid-cols-1');
+    const desktopCols = `lg:grid-cols-${data?.columns || 3}`;
+    const xlCols = `xl:grid-cols-${(data?.columns || 3) === 3 ? 4 : (data?.columns || 3)}`;
+
     return (
         <section className="py-12 md:py-20 px-6 max-w-[1600px] mx-auto flex flex-col lg:flex-row gap-12 lg:gap-16 xl:gap-24">
             
@@ -101,7 +112,7 @@ export const CollectionGrid = ({
             </div>
 
             {/* Sidebar Filters */}
-            {data?.show_filters !== false && (
+            {data?.show_filters !== false && data?.filter_visibility !== false && (
                 <aside className={`fixed inset-0 z-50 bg-white transform transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${isMobileFiltersOpen ? 'translate-x-0' : '-translate-x-full'} lg:static lg:translate-x-0 lg:w-64 xl:w-72 lg:shrink-0 lg:bg-transparent lg:z-auto`}>
                     
                     {/* Mobile Filter Header */}
@@ -276,9 +287,11 @@ export const CollectionGrid = ({
                         </button>
                     </div>
                 ) : (
-                    <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-${data?.columns || 3} xl:grid-cols-${(data?.columns || 3) === 3 ? 4 : data?.columns} gap-x-8 gap-y-16`}>
-                        {filteredProductsToRender.map(product => (
-                            <ProductCard key={product.id} product={product} />
+                    <div className={`grid ${mobileCols} sm:grid-cols-2 ${desktopCols} ${xlCols} gap-x-8 gap-y-16`}>
+                        {filteredProductsToRender.map((product, idx) => (
+                            <div key={product.id} className={getBentoSpan(idx)}>
+                                <ProductCard product={product} aspectRatio={data?.aspect_ratio} />
+                            </div>
                         ))}
                     </div>
                 )}

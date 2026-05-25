@@ -39,7 +39,7 @@ export default function ThemeEditor() {
     } = useCMSStore();
 
     const [viewport, setViewport] = useState<'desktop'|'tablet'|'mobile'>('desktop');
-    const [openSectionIdx, setOpenSectionIdx] = useState<number | 'global' | 'seo' | null>('global');
+    const [openSectionIdx, setOpenSectionIdx] = useState<number | 'global' | 'seo' | 'collections' | null>('global');
     const [searchQuery, setSearchQuery] = useState('');
     const [interactionLock, setInteractionLock] = useState(true);
     const [unsavedChanges, setUnsavedChanges] = useState(false);
@@ -48,11 +48,47 @@ export default function ThemeEditor() {
     const [addSectionModalOpen, setAddSectionModalOpen] = useState(false);
     const [cloneModalOpen, setCloneModalOpen] = useState(false);
     const [publishNote, setPublishNote] = useState('');
-    const [mediaLibraryOpen, setMediaLibraryOpen] = useState<{isOpen: boolean, targetIdx: number | null, slotIdx?: number}>({isOpen: false, targetIdx: null});
+    const [mediaLibraryOpen, setMediaLibraryOpen] = useState<{isOpen: boolean, targetIdx: number | string | null, slotIdx?: number}>({isOpen: false, targetIdx: null});
     
     // Page Clone states
     const [cloneName, setCloneName] = useState('');
     const [cloneSlug, setCloneSlug] = useState('');
+
+    // Collections Manager States
+    const [collections, setCollections] = useState<any[]>([]);
+    const [selectedCollectionId, setSelectedCollectionId] = useState<string>('');
+    const [allProducts, setAllProducts] = useState<any[]>([]);
+    const [collectionProducts, setCollectionProducts] = useState<any[]>([]);
+    const [collectionSearchTerm, setCollectionSearchTerm] = useState('');
+    const [productSearchTerm, setProductSearchTerm] = useState('');
+    const [isSavingCollection, setIsSavingCollection] = useState(false);
+    
+    const [collectionForm, setCollectionForm] = useState<any>({
+        name: '',
+        slug: '',
+        description: '',
+        banner_image: '',
+        mobile_banner: '',
+        whatsapp_cta: '',
+        seo_title: '',
+        seo_description: '',
+        visibility: 'draft',
+        sort_order: 0,
+        collection_type: 'manual',
+        layout_settings: {
+            grid_style: 'luxury portrait',
+            columns: 3,
+            rows: 4,
+            card_size: 'medium',
+            aspect_ratio: '3/4',
+            spacing: 'default',
+            padding: 'default',
+            mobile_layout: '2-column mobile',
+            banner_position: 'top',
+            filter_visibility: true,
+            sort_dropdown_visibility: true
+        }
+    });
 
     // Role-based workflows state hooks
     const [userRole, setUserRole] = useState<'Manager' | 'Staff' | 'anonymous'>('Staff');
@@ -86,6 +122,8 @@ export default function ThemeEditor() {
     // Initialize from Supabase DB on mount
     useEffect(() => {
         loadFromDatabase();
+        fetchCollections();
+        fetchProducts();
 
         async function fetchUserRole() {
             const res = await getCurrentUserRoleAction();
@@ -98,6 +136,188 @@ export default function ThemeEditor() {
         }
         fetchUserRole();
     }, []);
+
+    const fetchCollections = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('collections')
+                .select('*')
+                .order('sort_order', { ascending: true });
+            if (!error && data) {
+                setCollections(data);
+            }
+        } catch (e) {
+            console.error('Error fetching collections:', e);
+        }
+    };
+
+    const fetchProducts = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('products')
+                .select('*')
+                .order('created_at', { ascending: false });
+            if (!error && data) {
+                setAllProducts(data);
+            }
+        } catch (e) {
+            console.error('Error fetching products:', e);
+        }
+    };
+
+    // Load collection products when collection selected
+    useEffect(() => {
+        if (!selectedCollectionId || selectedCollectionId === 'new') {
+            setCollectionProducts([]);
+            return;
+        }
+
+        async function loadCollectionProducts() {
+            try {
+                const { data, error } = await supabase
+                    .from('collection_products')
+                    .select('product_id, position')
+                    .eq('collection_id', selectedCollectionId)
+                    .order('position', { ascending: true });
+                if (!error && data) {
+                    // Match with allProducts list
+                    const orderedIds = data.map(d => d.product_id);
+                    const matched = orderedIds.map(id => allProducts.find(p => p.id === id)).filter(Boolean);
+                    setCollectionProducts(matched);
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+        loadCollectionProducts();
+    }, [selectedCollectionId, allProducts]);
+
+    const handleSaveCollection = async () => {
+        if (!collectionForm.name.trim() || !collectionForm.slug.trim()) {
+            alert('Please specify Collection Name and Slug.');
+            return;
+        }
+        setIsSavingCollection(true);
+        try {
+            const payload = {
+                name: collectionForm.name,
+                slug: collectionForm.slug.toLowerCase().replace(/[^a-z0-9-_]/g, '-'),
+                description: collectionForm.description,
+                banner_image: collectionForm.banner_image,
+                mobile_banner: collectionForm.mobile_banner,
+                whatsapp_cta: collectionForm.whatsapp_cta,
+                seo_title: collectionForm.seo_title,
+                seo_description: collectionForm.seo_description,
+                visibility: collectionForm.visibility,
+                sort_order: parseInt(collectionForm.sort_order) || 0,
+                collection_type: collectionForm.collection_type,
+                layout_settings: collectionForm.layout_settings
+            };
+
+            let collectionId = selectedCollectionId;
+            if (selectedCollectionId === 'new' || !selectedCollectionId) {
+                // Insert
+                const { data, error } = await supabase
+                    .from('collections')
+                    .insert([payload])
+                    .select('id')
+                    .single();
+                if (error) throw error;
+                collectionId = data.id;
+                alert('Collection created successfully!');
+            } else {
+                // Update
+                const { error } = await supabase
+                    .from('collections')
+                    .update(payload)
+                    .eq('id', selectedCollectionId);
+                if (error) throw error;
+                alert('Collection updated successfully!');
+            }
+
+            // Sync visual products list in collection_products join table
+            if (collectionForm.collection_type !== 'smart') {
+                // First delete existing mappings
+                await supabase.from('collection_products').delete().eq('collection_id', collectionId);
+                // Bulk insert new mappings in order
+                if (collectionProducts.length > 0) {
+                    const mappings = collectionProducts.map((p, idx) => ({
+                        collection_id: collectionId,
+                        product_id: p.id,
+                        position: idx
+                    }));
+                    await supabase.from('collection_products').insert(mappings);
+                }
+            }
+
+            fetchCollections();
+            setSelectedCollectionId(collectionId);
+        } catch (e: any) {
+            alert('Failed to save collection: ' + e.message);
+        } finally {
+            setIsSavingCollection(false);
+        }
+    };
+
+    const handleDeleteCollection = async () => {
+        if (!selectedCollectionId || selectedCollectionId === 'new') return;
+        if (!confirm('Are you sure you want to permanently delete this collection?')) return;
+        try {
+            const { error } = await supabase.from('collections').delete().eq('id', selectedCollectionId);
+            if (error) throw error;
+            alert('Collection deleted successfully.');
+            setSelectedCollectionId('');
+            setCollectionForm({
+                name: '', slug: '', description: '', banner_image: '', mobile_banner: '',
+                whatsapp_cta: '', seo_title: '', seo_description: '', visibility: 'draft',
+                sort_order: 0, collection_type: 'manual',
+                layout_settings: {
+                    grid_style: 'luxury portrait', columns: 3, rows: 4, card_size: 'medium',
+                    aspect_ratio: '3/4', spacing: 'default', padding: 'default',
+                    mobile_layout: '2-column mobile', banner_position: 'top',
+                    filter_visibility: true, sort_dropdown_visibility: true
+                }
+            });
+            fetchCollections();
+        } catch (e: any) {
+            alert('Failed to delete collection: ' + e.message);
+        }
+    };
+
+    const handleDuplicateCollection = async () => {
+        if (!selectedCollectionId || selectedCollectionId === 'new') return;
+        const newName = prompt('Enter name for duplicated collection:', `${collectionForm.name} Copy`);
+        if (!newName) return;
+        const newSlug = prompt('Enter slug for duplicated collection:', `${collectionForm.slug}-copy`);
+        if (!newSlug) return;
+
+        try {
+            const payload = {
+                ...collectionForm,
+                name: newName,
+                slug: newSlug.toLowerCase().replace(/[^a-z0-9-_]/g, '-'),
+                visibility: 'draft'
+            };
+            const { data, error } = await supabase.from('collections').insert([payload]).select('id').single();
+            if (error) throw error;
+
+            // Clone products mapping if manual
+            if (collectionForm.collection_type !== 'smart' && collectionProducts.length > 0) {
+                const mappings = collectionProducts.map((p, idx) => ({
+                    collection_id: data.id,
+                    product_id: p.id,
+                    position: idx
+                }));
+                await supabase.from('collection_products').insert(mappings);
+            }
+
+            alert('Collection duplicated successfully!');
+            fetchCollections();
+            setSelectedCollectionId(data.id);
+        } catch (e: any) {
+            alert('Duplicate failed: ' + e.message);
+        }
+    };
 
     // Expose store to window for browser-tested reality validation flows
     useEffect(() => {
@@ -617,6 +837,533 @@ export default function ThemeEditor() {
                             </span>
                         </div>
                     )}
+
+                    {/* COLLECTIONS MANAGER ACCORDION */}
+                    <div className="border border-[#262626] bg-[#1C1C1C] rounded overflow-hidden">
+                        <div 
+                            className={`w-full flex items-center justify-between p-4 text-left hover:bg-[#262626] transition-colors cursor-pointer ${openSectionIdx === 'collections' ? 'bg-[#262626] border-b border-[#333]' : ''}`}
+                            onClick={() => setOpenSectionIdx(openSectionIdx === 'collections' ? null : 'collections')}
+                        >
+                            <div className="flex items-center gap-2">
+                                {openSectionIdx === 'collections' ? <ChevronDown className="w-4 h-4 text-[#D4AF37]" /> : <ChevronRight className="w-4 h-4 text-[#D4AF37]" />}
+                                <span className="text-xs font-bold uppercase tracking-wider text-[#D4AF37]">Collections Manager</span>
+                            </div>
+                            <History className="w-3.5 h-3.5 text-[#D4AF37]" />
+                        </div>
+                        {openSectionIdx === 'collections' && (
+                            <div className="p-4 space-y-4 bg-[#161616] text-xs">
+                                <div>
+                                    <label className="block text-[9px] text-[#A3A3A3] mb-1 uppercase font-bold tracking-widest">Select Collection</label>
+                                    <select 
+                                        className="w-full text-xs p-2.5 border border-[#333] bg-[#222] text-white outline-none rounded cursor-pointer"
+                                        value={selectedCollectionId}
+                                        onChange={e => {
+                                            const id = e.target.value;
+                                            setSelectedCollectionId(id);
+                                            if (id === 'new') {
+                                                setCollectionForm({
+                                                    name: '', slug: '', description: '', banner_image: '', mobile_banner: '',
+                                                    whatsapp_cta: '', seo_title: '', seo_description: '', visibility: 'draft',
+                                                    sort_order: 0, collection_type: 'manual',
+                                                    layout_settings: {
+                                                        grid_style: 'luxury portrait', columns: 3, rows: 4, card_size: 'medium',
+                                                        aspect_ratio: '3/4', spacing: 'default', padding: 'default',
+                                                        mobile_layout: '2-column mobile', banner_position: 'top',
+                                                        filter_visibility: true, sort_dropdown_visibility: true
+                                                    }
+                                                });
+                                            } else {
+                                                const coll = collections.find(c => c.id === id);
+                                                if (coll) {
+                                                    setCollectionForm({
+                                                        ...coll,
+                                                        layout_settings: coll.layout_settings || {
+                                                            grid_style: 'luxury portrait', columns: 3, rows: 4, card_size: 'medium',
+                                                            aspect_ratio: '3/4', spacing: 'default', padding: 'default',
+                                                            mobile_layout: '2-column mobile', banner_position: 'top',
+                                                            filter_visibility: true, sort_dropdown_visibility: true
+                                                        }
+                                                    });
+                                                }
+                                            }
+                                        }}
+                                    >
+                                        <option value="">-- Choose Collection --</option>
+                                        <option value="new">+ Create New Collection</option>
+                                        {collections.map(c => (
+                                            <option key={c.id} value={c.id}>{c.name} ({c.visibility})</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {selectedCollectionId && (
+                                    <div className="space-y-4 pt-2 border-t border-[#262626]">
+                                        <div className="flex gap-2">
+                                            <button 
+                                                onClick={handleSaveCollection}
+                                                disabled={isSavingCollection}
+                                                className="flex-1 py-2 bg-[#D4AF37] hover:bg-[#B8962B] text-black font-extrabold uppercase text-[10px] tracking-wider rounded transition-colors disabled:opacity-50"
+                                            >
+                                                {isSavingCollection ? 'Saving...' : 'Save Collection'}
+                                            </button>
+                                            {selectedCollectionId !== 'new' && (
+                                                <>
+                                                    <button 
+                                                        onClick={handleDuplicateCollection}
+                                                        className="px-3 border border-[#333] hover:border-[#D4AF37] text-white bg-transparent rounded transition-colors"
+                                                        title="Duplicate Collection"
+                                                    >
+                                                        <Copy className="w-3.5 h-3.5" />
+                                                    </button>
+                                                    <button 
+                                                        onClick={handleDeleteCollection}
+                                                        className="px-3 border border-red-900 bg-red-950/20 hover:bg-red-950 text-red-400 rounded transition-colors"
+                                                        title="Delete Collection"
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </>
+                                            )}
+                                        </div>
+
+                                        {/* Name & Slug */}
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div>
+                                                <label className="block text-[9px] text-[#A3A3A3] mb-1 uppercase font-bold tracking-widest">Name</label>
+                                                <input 
+                                                    type="text" 
+                                                    className="w-full text-xs p-2 border border-[#333] bg-[#222] text-white outline-none rounded"
+                                                    value={collectionForm.name}
+                                                    onChange={e => setCollectionForm((prev: any) => ({ ...prev, name: e.target.value }))}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-[9px] text-[#A3A3A3] mb-1 uppercase font-bold tracking-widest">Slug</label>
+                                                <input 
+                                                    type="text" 
+                                                    className="w-full text-xs p-2 border border-[#333] bg-[#222] text-white outline-none rounded"
+                                                    value={collectionForm.slug}
+                                                    onChange={e => setCollectionForm((prev: any) => ({ ...prev, slug: e.target.value }))}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Description */}
+                                        <div>
+                                            <label className="block text-[9px] text-[#A3A3A3] mb-1 uppercase font-bold tracking-widest">Description</label>
+                                            <textarea 
+                                                className="w-full text-xs p-2 border border-[#333] bg-[#222] text-white outline-none rounded min-h-[50px]"
+                                                value={collectionForm.description || ''}
+                                                onChange={e => setCollectionForm((prev: any) => ({ ...prev, description: e.target.value }))}
+                                            />
+                                        </div>
+
+                                        {/* Visibility & Type */}
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div>
+                                                <label className="block text-[9px] text-[#A3A3A3] mb-1 uppercase font-bold tracking-widest">Visibility</label>
+                                                <select 
+                                                    className="w-full text-xs p-2 border border-[#333] bg-[#222] text-white outline-none rounded"
+                                                    value={collectionForm.visibility}
+                                                    onChange={e => setCollectionForm((prev: any) => ({ ...prev, visibility: e.target.value }))}
+                                                >
+                                                    <option value="draft">Draft</option>
+                                                    <option value="published">Published</option>
+                                                    <option value="scheduled">Scheduled</option>
+                                                    <option value="hidden">Hidden</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-[9px] text-[#A3A3A3] mb-1 uppercase font-bold tracking-widest">Type</label>
+                                                <select 
+                                                    className="w-full text-xs p-2 border border-[#333] bg-[#222] text-white outline-none rounded"
+                                                    value={collectionForm.collection_type}
+                                                    onChange={e => setCollectionForm((prev: any) => ({ ...prev, collection_type: e.target.value }))}
+                                                >
+                                                    <option value="manual">Manual</option>
+                                                    <option value="smart">Smart (Tag-based)</option>
+                                                    <option value="offer">Offer</option>
+                                                    <option value="occasion">Occasion</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        {/* Scheduled publish & sort order */}
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div>
+                                                <label className="block text-[9px] text-[#A3A3A3] mb-1 uppercase font-bold tracking-widest">Sort Order</label>
+                                                <input 
+                                                    type="number" 
+                                                    className="w-full text-xs p-2 border border-[#333] bg-[#222] text-white outline-none rounded"
+                                                    value={collectionForm.sort_order}
+                                                    onChange={e => setCollectionForm((prev: any) => ({ ...prev, sort_order: parseInt(e.target.value) || 0 }))}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-[9px] text-[#A3A3A3] mb-1 uppercase font-bold tracking-widest">WhatsApp CTA</label>
+                                                <input 
+                                                    type="text" 
+                                                    className="w-full text-xs p-2 border border-[#333] bg-[#222] text-white outline-none rounded"
+                                                    placeholder="Inquire on WhatsApp..."
+                                                    value={collectionForm.whatsapp_cta || ''}
+                                                    onChange={e => setCollectionForm((prev: any) => ({ ...prev, whatsapp_cta: e.target.value }))}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Banner Images */}
+                                        <div>
+                                            <label className="block text-[9px] text-[#A3A3A3] mb-1 uppercase font-bold tracking-widest">Desktop Banner Image</label>
+                                            <div className="flex gap-2">
+                                                <input 
+                                                    type="text" 
+                                                    className="flex-1 text-xs p-2 border border-[#333] bg-[#222] text-white outline-none rounded"
+                                                    value={collectionForm.banner_image || ''}
+                                                    onChange={e => setCollectionForm((prev: any) => ({ ...prev, banner_image: e.target.value }))}
+                                                />
+                                                <button 
+                                                    onClick={() => setMediaLibraryOpen({isOpen: true, targetIdx: 'collection_banner'})}
+                                                    className="px-3 border border-[#D4AF37] text-[10px] font-bold uppercase tracking-widest hover:bg-[#D4AF37] hover:text-black transition-colors rounded text-[#D4AF37]"
+                                                >
+                                                    Browse
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-[9px] text-[#A3A3A3] mb-1 uppercase font-bold tracking-widest">Mobile Banner Image</label>
+                                            <div className="flex gap-2">
+                                                <input 
+                                                    type="text" 
+                                                    className="flex-1 text-xs p-2 border border-[#333] bg-[#222] text-white outline-none rounded"
+                                                    value={collectionForm.mobile_banner || ''}
+                                                    onChange={e => setCollectionForm((prev: any) => ({ ...prev, mobile_banner: e.target.value }))}
+                                                />
+                                                <button 
+                                                    onClick={() => setMediaLibraryOpen({isOpen: true, targetIdx: 'collection_mobile_banner'})}
+                                                    className="px-3 border border-[#D4AF37] text-[10px] font-bold uppercase tracking-widest hover:bg-[#D4AF37] hover:text-black transition-colors rounded text-[#D4AF37]"
+                                                >
+                                                    Browse
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Layout settings Accordion inside collection */}
+                                        <div className="border border-[#262626] bg-[#222] p-3 rounded space-y-3">
+                                            <h4 className="text-[10px] font-bold text-[#D4AF37] uppercase tracking-wider">Layout Style & Options</h4>
+                                            
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <div>
+                                                    <label className="block text-[8px] text-[#A3A3A3] mb-1 uppercase tracking-widest">Grid Style</label>
+                                                    <select 
+                                                        className="w-full text-[11px] p-1.5 border border-[#333] bg-[#1a1a1a] text-white outline-none rounded cursor-pointer"
+                                                        value={collectionForm.layout_settings?.grid_style || 'luxury portrait'}
+                                                        onChange={e => {
+                                                            const val = e.target.value;
+                                                            setCollectionForm((prev: any) => ({
+                                                                ...prev,
+                                                                layout_settings: { ...prev.layout_settings, grid_style: val }
+                                                            }));
+                                                        }}
+                                                    >
+                                                        <option value="standard">Standard Grid</option>
+                                                        <option value="bento">Bento Grid</option>
+                                                        <option value="masonry">Masonry Grid</option>
+                                                        <option value="carousel">Carousel Slider</option>
+                                                        <option value="luxury portrait">Luxury Portrait (4:5)</option>
+                                                        <option value="square">Square (1:1)</option>
+                                                        <option value="full bleed">Full Bleed Row</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[8px] text-[#A3A3A3] mb-1 uppercase tracking-widest">Mobile Layout</label>
+                                                    <select 
+                                                        className="w-full text-[11px] p-1.5 border border-[#333] bg-[#1a1a1a] text-white outline-none rounded cursor-pointer"
+                                                        value={collectionForm.layout_settings?.mobile_layout || '2-column mobile'}
+                                                        onChange={e => {
+                                                            const val = e.target.value;
+                                                            setCollectionForm((prev: any) => ({
+                                                                ...prev,
+                                                                layout_settings: { ...prev.layout_settings, mobile_layout: val }
+                                                            }));
+                                                        }}
+                                                    >
+                                                        <option value="1-column mobile">1-Column mobile</option>
+                                                        <option value="2-column mobile">2-Column mobile</option>
+                                                        <option value="3-column mobile">3-Column mobile</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <div>
+                                                    <label className="block text-[8px] text-[#A3A3A3] mb-1 uppercase tracking-widest">Cols (Desktop)</label>
+                                                    <input 
+                                                        type="number" 
+                                                        min="2" max="6"
+                                                        className="w-full text-[11px] p-1.5 border border-[#333] bg-[#1a1a1a] text-white outline-none rounded"
+                                                        value={collectionForm.layout_settings?.columns || 3}
+                                                        onChange={e => {
+                                                            const val = parseInt(e.target.value) || 3;
+                                                            setCollectionForm((prev: any) => ({
+                                                                ...prev,
+                                                                layout_settings: { ...prev.layout_settings, columns: val }
+                                                            }));
+                                                        }}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[8px] text-[#A3A3A3] mb-1 uppercase tracking-widest">Rows (Max)</label>
+                                                    <input 
+                                                        type="number" 
+                                                        min="1" max="20"
+                                                        className="w-full text-[11px] p-1.5 border border-[#333] bg-[#1a1a1a] text-white outline-none rounded"
+                                                        value={collectionForm.layout_settings?.rows || 4}
+                                                        onChange={e => {
+                                                            const val = parseInt(e.target.value) || 4;
+                                                            setCollectionForm((prev: any) => ({
+                                                                ...prev,
+                                                                layout_settings: { ...prev.layout_settings, rows: val }
+                                                            }));
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <div>
+                                                    <label className="block text-[8px] text-[#A3A3A3] mb-1 uppercase tracking-widest">Aspect Ratio</label>
+                                                    <select 
+                                                        className="w-full text-[11px] p-1.5 border border-[#333] bg-[#1a1a1a] text-white outline-none rounded cursor-pointer"
+                                                        value={collectionForm.layout_settings?.aspect_ratio || '3/4'}
+                                                        onChange={e => {
+                                                            const val = e.target.value;
+                                                            setCollectionForm((prev: any) => ({
+                                                                ...prev,
+                                                                layout_settings: { ...prev.layout_settings, aspect_ratio: val }
+                                                            }));
+                                                        }}
+                                                    >
+                                                        <option value="3/4">3/4 Luxury Portrait</option>
+                                                        <option value="1/1">1/1 Square</option>
+                                                        <option value="16/9">16/9 Landscape</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[8px] text-[#A3A3A3] mb-1 uppercase tracking-widest">Card Size</label>
+                                                    <select 
+                                                        className="w-full text-[11px] p-1.5 border border-[#333] bg-[#1a1a1a] text-white outline-none rounded cursor-pointer"
+                                                        value={collectionForm.layout_settings?.card_size || 'medium'}
+                                                        onChange={e => {
+                                                            const val = e.target.value;
+                                                            setCollectionForm((prev: any) => ({
+                                                                ...prev,
+                                                                layout_settings: { ...prev.layout_settings, card_size: val }
+                                                            }));
+                                                        }}
+                                                    >
+                                                        <option value="small">Small</option>
+                                                        <option value="medium">Medium</option>
+                                                        <option value="large">Large</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <div>
+                                                    <label className="block text-[8px] text-[#A3A3A3] mb-1 uppercase tracking-widest">Spacing</label>
+                                                    <select 
+                                                        className="w-full text-[11px] p-1.5 border border-[#333] bg-[#1a1a1a] text-white outline-none rounded cursor-pointer"
+                                                        value={collectionForm.layout_settings?.spacing || 'default'}
+                                                        onChange={e => {
+                                                            const val = e.target.value;
+                                                            setCollectionForm((prev: any) => ({
+                                                                ...prev,
+                                                                layout_settings: { ...prev.layout_settings, spacing: val }
+                                                            }));
+                                                        }}
+                                                    >
+                                                        <option value="none">None</option>
+                                                        <option value="small">Small</option>
+                                                        <option value="default">Default</option>
+                                                        <option value="large">Spacious</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[8px] text-[#A3A3A3] mb-1 uppercase tracking-widest">Padding</label>
+                                                    <select 
+                                                        className="w-full text-[11px] p-1.5 border border-[#333] bg-[#1a1a1a] text-white outline-none rounded cursor-pointer"
+                                                        value={collectionForm.layout_settings?.padding || 'default'}
+                                                        onChange={e => {
+                                                            const val = e.target.value;
+                                                            setCollectionForm((prev: any) => ({
+                                                                ...prev,
+                                                                layout_settings: { ...prev.layout_settings, padding: val }
+                                                            }));
+                                                        }}
+                                                    >
+                                                        <option value="none">None</option>
+                                                        <option value="small">Small</option>
+                                                        <option value="default">Default</option>
+                                                        <option value="large">Spacious</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <div className="flex items-center gap-1.5 pt-2">
+                                                    <input 
+                                                        type="checkbox" 
+                                                        id="filter-vis"
+                                                        className="accent-[#D4AF37]"
+                                                        checked={collectionForm.layout_settings?.filter_visibility !== false}
+                                                        onChange={e => {
+                                                            const val = e.target.checked;
+                                                            setCollectionForm((prev: any) => ({
+                                                                ...prev,
+                                                                layout_settings: { ...prev.layout_settings, filter_visibility: val }
+                                                            }));
+                                                        }}
+                                                    />
+                                                    <label htmlFor="filter-vis" className="text-[9px] uppercase tracking-wider text-[#A3A3A3] cursor-pointer">Show Filters</label>
+                                                </div>
+                                                <div className="flex items-center gap-1.5 pt-2">
+                                                    <input 
+                                                        type="checkbox" 
+                                                        id="sort-vis"
+                                                        className="accent-[#D4AF37]"
+                                                        checked={collectionForm.layout_settings?.sort_dropdown_visibility !== false}
+                                                        onChange={e => {
+                                                            const val = e.target.checked;
+                                                            setCollectionForm((prev: any) => ({
+                                                                ...prev,
+                                                                layout_settings: { ...prev.layout_settings, sort_dropdown_visibility: val }
+                                                            }));
+                                                        }}
+                                                    />
+                                                    <label htmlFor="sort-vis" className="text-[9px] uppercase tracking-wider text-[#A3A3A3] cursor-pointer">Show Sort</label>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* SEO Title & Description */}
+                                        <div className="border-t border-[#262626] pt-3">
+                                            <h4 className="text-[10px] font-bold text-[#D4AF37] uppercase tracking-wider mb-2">SEO Search Optimizations</h4>
+                                            <div className="space-y-2">
+                                                <div>
+                                                    <label className="block text-[8px] text-[#A3A3A3] mb-1 uppercase tracking-widest">SEO Title</label>
+                                                    <input 
+                                                        type="text" 
+                                                        className="w-full text-xs p-2 border border-[#333] bg-[#222] text-white outline-none rounded"
+                                                        value={collectionForm.seo_title || ''}
+                                                        onChange={e => setCollectionForm((prev: any) => ({ ...prev, seo_title: e.target.value }))}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[8px] text-[#A3A3A3] mb-1 uppercase tracking-widest">SEO Description</label>
+                                                    <textarea 
+                                                        className="w-full text-xs p-2 border border-[#333] bg-[#222] text-white outline-none rounded min-h-[40px]"
+                                                        value={collectionForm.seo_description || ''}
+                                                        onChange={e => setCollectionForm((prev: any) => ({ ...prev, seo_description: e.target.value }))}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Visual Product Merchandiser */}
+                                        {collectionForm.collection_type !== 'smart' && (
+                                            <div className="border-t border-[#262626] pt-3">
+                                                <h4 className="text-[10px] font-bold text-[#D4AF37] uppercase tracking-wider mb-2">Visual Product Merchandising</h4>
+                                                
+                                                {/* Selected Products list */}
+                                                <div className="space-y-2 mb-3 max-h-[220px] overflow-y-auto pr-1">
+                                                    {collectionProducts.map((p, idx) => (
+                                                        <div key={p.id} className="flex justify-between items-center bg-[#222] p-2 border border-[#333] rounded">
+                                                            <div className="truncate flex-1 pr-2">
+                                                                <span className="font-bold text-white block truncate text-[11px]">{p.name || p.title}</span>
+                                                                <span className="text-[9px] text-[#a3a3a3] font-mono">{p.sku}</span>
+                                                            </div>
+                                                            <div className="flex items-center gap-1.5 shrink-0">
+                                                                <button 
+                                                                    onClick={() => {
+                                                                        if (idx === 0) return;
+                                                                        const copy = [...collectionProducts];
+                                                                        const temp = copy[idx];
+                                                                        copy[idx] = copy[idx - 1];
+                                                                        copy[idx - 1] = temp;
+                                                                        setCollectionProducts(copy);
+                                                                    }}
+                                                                    disabled={idx === 0}
+                                                                    className="p-1 border border-[#333] bg-[#1a1a1a] hover:text-white rounded disabled:opacity-30 bg-transparent"
+                                                                >
+                                                                    <ArrowUp className="w-3 h-3" />
+                                                                </button>
+                                                                <button 
+                                                                    onClick={() => {
+                                                                        if (idx === collectionProducts.length - 1) return;
+                                                                        const copy = [...collectionProducts];
+                                                                        const temp = copy[idx];
+                                                                        copy[idx] = copy[idx + 1];
+                                                                        copy[idx + 1] = temp;
+                                                                        setCollectionProducts(copy);
+                                                                    }}
+                                                                    disabled={idx === collectionProducts.length - 1}
+                                                                    className="p-1 border border-[#333] bg-[#1a1a1a] hover:text-white rounded disabled:opacity-30 bg-transparent"
+                                                                >
+                                                                    <ArrowDown className="w-3 h-3" />
+                                                                </button>
+                                                                <button 
+                                                                    onClick={() => {
+                                                                        setCollectionProducts(prev => prev.filter(item => item.id !== p.id));
+                                                                    }}
+                                                                    className="p-1 border border-red-950 bg-red-950/20 hover:bg-red-950 text-red-400 rounded bg-transparent"
+                                                                >
+                                                                    <X className="w-3 h-3" />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                    {collectionProducts.length === 0 && (
+                                                        <div className="py-4 text-center text-zinc-500 italic text-[11px]">No products assigned. Assign from the list below.</div>
+                                                    )}
+                                                </div>
+
+                                                {/* Search & Assign all products */}
+                                                <div className="space-y-2">
+                                                    <div className="relative">
+                                                        <Search className="absolute left-2 top-2.5 w-3 h-3 text-muted-foreground" />
+                                                        <input 
+                                                            type="text" 
+                                                            placeholder="Search catalog..." 
+                                                            className="w-full pl-7 pr-3 py-1.5 text-[11px] border border-[#333] bg-[#1a1a1a] text-white rounded outline-none"
+                                                            value={productSearchTerm}
+                                                            onChange={e => setProductSearchTerm(e.target.value)}
+                                                        />
+                                                    </div>
+                                                    <div className="max-h-[160px] overflow-y-auto space-y-1 bg-[#1a1a1a] p-2 border border-[#333] rounded">
+                                                        {allProducts.filter(p => {
+                                                            const matchText = `${p.name || p.title} ${p.sku}`.toLowerCase();
+                                                            return matchText.includes(productSearchTerm.toLowerCase()) && 
+                                                                   !collectionProducts.some(cp => cp.id === p.id);
+                                                        }).map(p => (
+                                                            <div key={p.id} className="flex justify-between items-center p-1 hover:bg-[#262626] rounded text-[11px]">
+                                                                <span className="truncate flex-1 text-zinc-300">{p.name || p.title}</span>
+                                                                <button 
+                                                                    onClick={() => setCollectionProducts(prev => [...prev, p])}
+                                                                    className="px-2 py-0.5 bg-[#262626] hover:bg-[#D4AF37] hover:text-black text-[10px] font-bold rounded uppercase tracking-wider transition-colors border-none"
+                                                                >
+                                                                    Add
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
 
                     {/* GLOBAL SETTINGS ACCORDION */}
                     <div className="border border-[#262626] bg-[#1C1C1C] rounded overflow-hidden">
@@ -1844,15 +2591,22 @@ export default function ThemeEditor() {
                                     disabled={!selectedAsset}
                                     onClick={() => {
                                         if (selectedAsset && mediaLibraryOpen.targetIdx !== null) {
-                                            if (mediaLibraryOpen.slotIdx !== undefined) {
-                                                const cats = sections[mediaLibraryOpen.targetIdx].settings?.categories || [];
-                                                const newCats = [...cats];
-                                                newCats[mediaLibraryOpen.slotIdx] = { ...newCats[mediaLibraryOpen.slotIdx], image: selectedAsset };
-                                                handleInput(mediaLibraryOpen.targetIdx, 'categories', newCats);
-                                            } else {
-                                                handleInput(mediaLibraryOpen.targetIdx, 'image_url', selectedAsset);
-                                                if (sections[mediaLibraryOpen.targetIdx]?.type === 'cinematic_hero') {
-                                                    handleInput(mediaLibraryOpen.targetIdx, 'media_url', selectedAsset);
+                                            if (mediaLibraryOpen.targetIdx === 'collection_banner') {
+                                                setCollectionForm((prev: any) => ({ ...prev, banner_image: selectedAsset }));
+                                            } else if (mediaLibraryOpen.targetIdx === 'collection_mobile_banner') {
+                                                setCollectionForm((prev: any) => ({ ...prev, mobile_banner: selectedAsset }));
+                                            } else if (typeof mediaLibraryOpen.targetIdx === 'number') {
+                                                const targetNum = mediaLibraryOpen.targetIdx;
+                                                if (mediaLibraryOpen.slotIdx !== undefined) {
+                                                    const cats = sections[targetNum].settings?.categories || [];
+                                                    const newCats = [...cats];
+                                                    newCats[mediaLibraryOpen.slotIdx] = { ...newCats[mediaLibraryOpen.slotIdx], image: selectedAsset };
+                                                    handleInput(targetNum, 'categories', newCats);
+                                                } else {
+                                                    handleInput(targetNum, 'image_url', selectedAsset);
+                                                    if (sections[targetNum]?.type === 'cinematic_hero') {
+                                                        handleInput(targetNum, 'media_url', selectedAsset);
+                                                    }
                                                 }
                                             }
                                             setMediaLibraryOpen({isOpen: false, targetIdx: null});
