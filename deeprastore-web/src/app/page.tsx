@@ -1,8 +1,8 @@
 import React from 'react';
 import { StorefrontRenderer } from '@/components/StorefrontRenderer';
 
-// Force edge/server cache invalidation via ISR tags
-export const revalidate = 3600;
+// Force edge/server cache invalidation via ISR tags (Trigger: force rebuild to pick up synced live config)
+export const revalidate = 0; // Temp set to 0 to bypass ISR cache and load dynamically during debugging
 
 export default async function Home() {
     // Fetch directly from Supabase REST API with Next.js fetch for cache tags
