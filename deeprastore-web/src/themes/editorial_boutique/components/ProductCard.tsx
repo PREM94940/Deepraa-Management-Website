@@ -15,7 +15,7 @@ export const ProductCard = ({ product }: { product: any }) => {
 
     return (
         <div 
-            className={`group flex flex-col cursor-pointer ${isSoldOut ? 'opacity-80' : ''}`}
+            className="group flex flex-col cursor-pointer"
             onMouseEnter={() => !isSoldOut && setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
         >
@@ -25,14 +25,14 @@ export const ProductCard = ({ product }: { product: any }) => {
                     alt={title} 
                     fill 
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                    className={`object-cover transition-all duration-700 ease-out ${isHovered ? 'opacity-0' : 'opacity-100'} ${isSoldOut ? 'grayscale opacity-70' : ''}`}
+                    className={`object-cover transition-all duration-700 ease-out ${isHovered ? 'opacity-0' : 'opacity-100'}`}
                 />
                 <Image 
                     src={secondaryImage} 
                     alt={`${title} alternate view`} 
                     fill 
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                    className={`object-cover transition-all duration-700 ease-out absolute inset-0 ${isHovered ? 'opacity-100 scale-105' : 'opacity-0 scale-100'} ${isSoldOut ? 'grayscale opacity-70' : ''}`}
+                    className={`object-cover transition-all duration-700 ease-out absolute inset-0 ${isHovered ? 'opacity-100 scale-105' : 'opacity-0 scale-100'}`}
                 />
                 
                 {/* Floating Tags */}
@@ -43,6 +43,9 @@ export const ProductCard = ({ product }: { product: any }) => {
                         </span>
                     ) : (
                         <>
+                            <span className="bg-emerald-700/90 backdrop-blur-sm text-white px-2 py-1 text-[10px] font-bold tracking-widest uppercase">
+                                Available
+                            </span>
                             {product.compare_at_price && product.compare_at_price > product.price && (
                                 <span className="bg-red-500 text-white px-2 py-1 text-[10px] font-bold tracking-widest uppercase">
                                     Sale
@@ -56,6 +59,7 @@ export const ProductCard = ({ product }: { product: any }) => {
                         </>
                     )}
                 </div>
+
 
                 {/* Quick Add Overlay */}
                 {!isSoldOut && (
