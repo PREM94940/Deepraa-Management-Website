@@ -89,11 +89,11 @@ export const ProductHero = ({
     const isSplit = data?.layout !== 'full';
 
     return (
-        <section className={`py-12 md:py-24 px-4 md:px-8 max-w-[1400px] mx-auto ${isSplit ? 'grid lg:grid-cols-12 gap-12 lg:gap-20' : 'flex flex-col'}`}>
+        <section className={`py-12 md:py-16 px-4 md:px-8 max-w-7xl mx-auto ${isSplit ? 'grid lg:grid-cols-2 gap-12 lg:gap-16' : 'flex flex-col'}`}>
             {/* Gallery Column */}
-            <div className={`space-y-6 lg:col-span-7`}>
+            <div className={`space-y-6`}>
                 <div 
-                    className="aspect-[3/4] md:aspect-[4/5] bg-gray-50 overflow-hidden relative group rounded-sm border border-border cursor-zoom-in"
+                    className="aspect-[4/5] lg:aspect-[3/4] bg-gray-50 overflow-hidden relative group rounded-sm border border-border cursor-zoom-in"
                     onMouseEnter={() => setIsHoveringImage(true)}
                     onMouseLeave={() => setIsHoveringImage(false)}
                 >
@@ -101,7 +101,7 @@ export const ProductHero = ({
                         src={currentMainImage} 
                         alt={p.title} 
                         fill 
-                        sizes="(max-width: 768px) 100vw, 60vw" 
+                        sizes="(max-width: 768px) 100vw, 50vw" 
                         priority
                         className={`object-cover transition-transform duration-[1.5s] ease-out ${isHoveringImage ? 'scale-110' : 'scale-100'}`} 
                     />
@@ -120,9 +120,9 @@ export const ProductHero = ({
                             <button 
                                 key={idx} 
                                 onClick={() => changeMainImage(img)}
-                                className={`relative w-24 h-32 flex-shrink-0 overflow-hidden transition-all duration-300 ${currentMainImage === img ? 'ring-1 ring-black ring-offset-2 scale-100 opacity-100' : 'border border-transparent opacity-60 hover:opacity-100 hover:scale-[1.02]'}`}
+                                className={`relative w-20 h-28 flex-shrink-0 overflow-hidden transition-all duration-300 ${currentMainImage === img ? 'ring-1 ring-black ring-offset-2 scale-100 opacity-100' : 'border border-transparent opacity-60 hover:opacity-100 hover:scale-[1.02]'}`}
                             >
-                                <Image src={img} alt={`${p.title} view ${idx + 1}`} fill sizes="96px" className="object-cover" />
+                                <Image src={img} alt={`${p.title} view ${idx + 1}`} fill sizes="80px" className="object-cover" />
                             </button>
                         ))}
                     </div>
@@ -130,7 +130,7 @@ export const ProductHero = ({
             </div>
 
             {/* Details Column */}
-            <div className={`flex flex-col lg:col-span-5 lg:pl-4 xl:pl-8 lg:sticky lg:top-32 lg:h-max pb-32 lg:pb-0`}>
+            <div className={`flex flex-col lg:pl-4 xl:pl-8 lg:sticky lg:top-32 lg:h-max pb-32 lg:pb-0`}>
                 {/* Breadcrumbs & Title */}
                 <div className="mb-10">
                     <nav className="flex items-center gap-2 text-xs uppercase tracking-widest text-muted mb-6">
