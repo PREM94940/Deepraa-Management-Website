@@ -115,14 +115,14 @@ export const FeaturedCategories = ({ data }: { data?: any }) => {
 
             const { data: prods } = await supabase
                 .from('products')
-                .select('category, images')
-                .eq('status', 'Active');
+                .select('category_id, images, categories(name)');
                 
             if (prods) {
                 const catMap = new Map();
-                prods.forEach(p => {
-                    if (p.category && !catMap.has(p.category)) {
-                        catMap.set(p.category, p.images?.[0] || 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&q=80&w=600');
+                prods.forEach((p: any) => {
+                    const catName = p.categories?.name;
+                    if (catName && !catMap.has(catName)) {
+                        catMap.set(catName, p.images?.[0] || 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&q=80&w=600');
                     }
                 });
                 
@@ -202,12 +202,12 @@ export const BestSellersSlider = ({ data }: { data?: any }) => {
 
     useEffect(() => {
         async function fetchProducts() {
-            let query = supabase.from('products').select('*').eq('status', 'Active');
+            let query = supabase.from('products').select('*, categories!inner(name)');
             
             // Dynamic Merchandising Logic
             const category = data?.category;
             if (category) {
-                query = query.eq('category', category).order('created_at', { ascending: false });
+                query = query.eq('categories.name', category).order('created_at', { ascending: false });
             } else {
                 query = query.order('created_at', { ascending: false });
             }
@@ -692,7 +692,7 @@ export const RelatedProducts = ({ data }: { data?: any }) => {
 
     useEffect(() => {
         async function fetchRelated() {
-            const { data: prods } = await supabase.from('products').select('*').eq('status', 'Active').limit(3);
+            const { data: prods } = await supabase.from('products').select('*').limit(3);
             if (prods) setProducts(prods);
         }
         fetchRelated();

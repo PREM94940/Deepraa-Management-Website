@@ -42,11 +42,11 @@ export default function Collections() {
     useEffect(() => {
         async function fetchProducts() {
             setLoading(true);
-            let query = supabase.from('products').select('*').eq('status', 'Active');
+            let query = supabase.from('products').select('*, categories(name, slug)');
             
             if (sortBy === 'price_asc') query = query.order('price', { ascending: true });
             else if (sortBy === 'price_desc') query = query.order('price', { ascending: false });
-            else if (sortBy === 'best_seller') query = query.order('movement_velocity', { ascending: false });
+            else if (sortBy === 'best_seller') query = query.order('rating_avg', { ascending: false });
             else query = query.order('created_at', { ascending: false });
 
             const { data } = await query;
@@ -56,8 +56,8 @@ export default function Collections() {
                 // Category
                 if (selectedCategory !== 'All') {
                     filteredData = filteredData.filter(p => {
-                        const t = p.title?.toLowerCase() || '';
-                        const c = p.category?.toLowerCase() || '';
+                        const t = (p.name || p.title || '').toLowerCase();
+                        const c = (p.categories?.name || p.category || '').toLowerCase();
                         if (selectedCategory === 'Half Sarees') return t.includes('half saree') || c.includes('half saree') || c.includes('Half Sarees') || t.includes('half sari');
                         if (selectedCategory === 'Bridal') return t.includes('bridal') || c.includes('bridal') || c.includes('Bridal');
                         if (selectedCategory === 'Sarees') return (t.includes('saree') || c.includes('sari') || c.includes('saree')) && !t.includes('half saree');
@@ -74,8 +74,8 @@ export default function Collections() {
                 if (searchQuery.trim() !== '') {
                     const lowerQuery = searchQuery.toLowerCase().trim();
                     filteredData = filteredData.filter(p => 
-                        p.sku?.toLowerCase().includes(lowerQuery) || 
-                        p.title?.toLowerCase().includes(lowerQuery)
+                        (p.slug || p.sku || '').toLowerCase().includes(lowerQuery) || 
+                        (p.name || p.title || '').toLowerCase().includes(lowerQuery)
                     );
                 }
 

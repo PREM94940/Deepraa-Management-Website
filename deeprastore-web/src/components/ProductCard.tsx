@@ -15,7 +15,7 @@ export const ProductCard = ({ product }: { product: any }) => {
         e.preventDefault(); // prevent navigation to product detail
         addItem({
             id: product.id,
-            name: product.title,
+            name: product.name || product.title,
             price: product.price,
             qty: 1,
             img: product.images && product.images.length > 0 ? product.images[0] : 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&q=80&w=600'
@@ -28,7 +28,7 @@ export const ProductCard = ({ product }: { product: any }) => {
         if (inWishlist) removeWishlist(product.id);
         else addWishlist({ 
             id: product.id, 
-            name: product.title, 
+            name: product.name || product.title, 
             price: product.price, 
             img: product.images && product.images.length > 0 ? product.images[0] : 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&q=80&w=600' 
         });
@@ -43,12 +43,20 @@ export const ProductCard = ({ product }: { product: any }) => {
         >
             <Link href={`/product/${product.id}`} className="group block">
                 <div className="aspect-[3/4] rounded-sm overflow-hidden bg-gray-50 mb-4 relative">
-                    <Image src={product.images && product.images.length > 0 ? product.images[0] : 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&q=80&w=600'} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover transition-transform duration-700 group-hover:scale-105" alt={product.title} />
-                    {product.movement_velocity && product.movement_velocity !== 'Normal' && (
+                    <Image src={product.images && product.images.length > 0 ? product.images[0] : 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&q=80&w=600'} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover transition-transform duration-700 group-hover:scale-105" alt={product.name || product.title} />
+                    {(product.movement_velocity && product.movement_velocity !== 'Normal') ? (
                         <span className="absolute top-4 left-4 bg-white/90 premium-blur px-3 py-1 rounded-sm text-[10px] font-bold uppercase tracking-widest shadow-sm text-fg">
                             {product.movement_velocity}
                         </span>
-                    )}
+                    ) : product.is_featured ? (
+                        <span className="absolute top-4 left-4 bg-white/90 premium-blur px-3 py-1 rounded-sm text-[10px] font-bold uppercase tracking-widest shadow-sm text-fg">
+                            Bestseller
+                        </span>
+                    ) : product.is_new ? (
+                        <span className="absolute top-4 left-4 bg-white/90 premium-blur px-3 py-1 rounded-sm text-[10px] font-bold uppercase tracking-widest shadow-sm text-fg">
+                            Just In
+                        </span>
+                    ) : null}
                     
                     <button 
                         onClick={toggleWishlist}
@@ -63,8 +71,11 @@ export const ProductCard = ({ product }: { product: any }) => {
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/><path d="M12 8v6"/><path d="M9 11h6"/></svg>
                     </button>
                 </div>
-                <h3 className="text-base font-bold mb-1 group-hover:text-accent transition-colors truncate px-1">{product.title}</h3>
-                <p className="text-muted font-medium px-1">₹{product.price}</p>
+                <h3 className="text-base font-bold mb-1 group-hover:text-accent transition-colors truncate px-1">{product.name || product.title}</h3>
+                <p className="text-muted font-medium px-1">₹{(product.price || 0).toLocaleString('en-IN')}</p>
+                {product.compare_price && product.compare_price > product.price && (
+                    <p className="text-xs text-muted line-through px-1">₹{product.compare_price.toLocaleString('en-IN')}</p>
+                )}
             </Link>
         </motion.div>
     );
