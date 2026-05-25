@@ -31,10 +31,10 @@ export const CollectionGrid = ({
     categories?: string[] 
 }) => {
     const mockProducts = [
-        { id: '1', title: 'Banarasi Raw Silk Saree', price: 18500, compare_at_price: 24000, images: ['https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=600'], sku: 'DP-SAR-001', category: 'Sarees', status: 'Active' },
-        { id: '2', title: 'Artisanal Banarasi Lehenga', price: 42000, compare_at_price: 49000, images: ['https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&q=80&w=600'], sku: 'DP-LHN-002', category: 'Lehengas', status: 'Active' },
-        { id: '3', title: 'Royal Zardozi Gown', price: 29000, images: ['https://images.unsplash.com/photo-1596455607563-ad6193f76b17?auto=format&fit=crop&q=80&w=600'], sku: 'DP-GWN-003', category: 'Dresses', status: 'Active' },
-        { id: '4', title: 'Zari Border Silk Fabric', price: 2400, images: ['https://images.unsplash.com/photo-1605000523098-944208a0d7d9?auto=format&fit=crop&q=80&w=600'], sku: 'DP-FAB-004', category: 'Fabric', status: 'Active' }
+        { id: '1', title: 'Banarasi Raw Silk Saree', price: 18500, compare_at_price: 24000, images: ['https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=600'], sku: 'DP-SAR-001', category: 'Sarees', status: 'Active', stock_quantity: 10 },
+        { id: '2', title: 'Artisanal Banarasi Lehenga', price: 42000, compare_at_price: 49000, images: ['https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&q=80&w=600'], sku: 'DP-LHN-002', category: 'Lehengas', status: 'Active', stock_quantity: 0 },
+        { id: '3', title: 'Royal Zardozi Gown', price: 29000, images: ['https://images.unsplash.com/photo-1596455607563-ad6193f76b17?auto=format&fit=crop&q=80&w=600'], sku: 'DP-GWN-003', category: 'Dresses', status: 'Active', stock_quantity: 5 },
+        { id: '4', title: 'Zari Border Silk Fabric', price: 2400, images: ['https://images.unsplash.com/photo-1605000523098-944208a0d7d9?auto=format&fit=crop&q=80&w=600'], sku: 'DP-FAB-004', category: 'Fabric', status: 'Active', stock_quantity: 0 }
     ];
 
     const localCategories = ['All', 'Sarees', 'Lehengas', 'Dresses', 'Jewellery', 'Fabric'];
@@ -45,6 +45,7 @@ export const CollectionGrid = ({
     const [localSelectedCategory, setLocalSelectedCategory] = useState('All');
     const [localPriceRange, setLocalPriceRange] = useState(50000);
     const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
+    const [availabilityFilter, setAvailabilityFilter] = useState<'all' | 'available'>('all');
 
     const currentProducts = products !== undefined ? products : localProducts;
     const currentLoading = loading !== undefined ? loading : localLoading;
@@ -75,6 +76,15 @@ export const CollectionGrid = ({
         }
     }, [currentSelectedCategory, currentPriceRange, currentSearchQuery, products]);
 
+    const filteredProductsToRender = currentProducts.filter(product => {
+        if (availabilityFilter === 'available') {
+            const isOutOfStock = product.stock_quantity !== undefined && product.stock_quantity !== null && product.stock_quantity <= 0;
+            const isSoldOutStatus = product.status === 'Out of Stock' || product.status === 'Sold Out';
+            return !isOutOfStock && !isSoldOutStatus;
+        }
+        return true;
+    });
+
     return (
         <section className="py-12 md:py-20 px-6 max-w-[1600px] mx-auto flex flex-col lg:flex-row gap-12 lg:gap-16 xl:gap-24">
             
@@ -87,7 +97,7 @@ export const CollectionGrid = ({
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
                     Filter & Sort
                 </button>
-                <span className="text-xs font-medium text-muted tracking-widest uppercase">{currentProducts.length} Results</span>
+                <span className="text-xs font-medium text-muted tracking-widest uppercase">{filteredProductsToRender.length} Results</span>
             </div>
 
             {/* Sidebar Filters */}
@@ -141,6 +151,41 @@ export const CollectionGrid = ({
                             </div>
                         </div>
 
+                        {/* Availability */}
+                        <div>
+                            <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted mb-5">Availability</h3>
+                            <div className="space-y-4">
+                                <label className="flex items-center gap-4 cursor-pointer group">
+                                    <input 
+                                        type="radio" 
+                                        name="availability" 
+                                        value="all" 
+                                        checked={availabilityFilter === 'all'}
+                                        onChange={() => setAvailabilityFilter('all')}
+                                        className="hidden"
+                                    />
+                                    <span className={`text-sm tracking-wide transition-colors ${availabilityFilter === 'all' ? 'text-black font-semibold' : 'text-gray-500 group-hover:text-black'}`}>All Pieces</span>
+                                    {availabilityFilter === 'all' && (
+                                        <span className="ml-auto w-1.5 h-1.5 rounded-full bg-black"></span>
+                                    )}
+                                </label>
+                                <label className="flex items-center gap-4 cursor-pointer group">
+                                    <input 
+                                        type="radio" 
+                                        name="availability" 
+                                        value="available" 
+                                        checked={availabilityFilter === 'available'}
+                                        onChange={() => setAvailabilityFilter('available')}
+                                        className="hidden"
+                                    />
+                                    <span className={`text-sm tracking-wide transition-colors ${availabilityFilter === 'available' ? 'text-black font-semibold' : 'text-gray-500 group-hover:text-black'}`}>Available Only</span>
+                                    {availabilityFilter === 'available' && (
+                                        <span className="ml-auto w-1.5 h-1.5 rounded-full bg-black"></span>
+                                    )}
+                                </label>
+                            </div>
+                        </div>
+
                         {/* Max Price */}
                         <div>
                             <div className="flex justify-between items-end mb-5">
@@ -180,7 +225,7 @@ export const CollectionGrid = ({
                             onClick={() => setIsMobileFiltersOpen(false)}
                             className="w-full bg-black text-white h-14 font-bold text-xs uppercase tracking-widest"
                         >
-                            View {currentProducts.length} Results
+                            View {filteredProductsToRender.length} Results
                         </button>
                     </div>
                 </aside>
@@ -188,7 +233,7 @@ export const CollectionGrid = ({
 
             <div className="flex-1">
                 <div className="hidden lg:flex justify-between items-center mb-10 pb-6 border-b border-border">
-                    <span className="text-xs font-medium text-muted tracking-widest uppercase">{currentProducts.length} Results</span>
+                    <span className="text-xs font-medium text-muted tracking-widest uppercase">{filteredProductsToRender.length} Results</span>
                     <select 
                         value={currentSortBy}
                         onChange={(e) => changeSortBy(e.target.value)}
@@ -213,7 +258,7 @@ export const CollectionGrid = ({
                             </div>
                         ))}
                     </div>
-                ) : currentProducts.length === 0 ? (
+                ) : filteredProductsToRender.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-32 text-center">
                         <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300 mb-6"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                         <h3 className="text-2xl font-medium font-display text-fg mb-3">No curations match your criteria</h3>
@@ -223,6 +268,7 @@ export const CollectionGrid = ({
                                 changeSearchQuery('');
                                 changeSelectedCategory('All');
                                 changePriceRange(150000);
+                                setAvailabilityFilter('all');
                             }}
                             className="mt-8 border-b border-black pb-1 text-xs font-bold uppercase tracking-widest hover:text-gray-600 transition-colors"
                         >
@@ -231,7 +277,7 @@ export const CollectionGrid = ({
                     </div>
                 ) : (
                     <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-${data?.columns || 3} xl:grid-cols-${(data?.columns || 3) === 3 ? 4 : data?.columns} gap-x-8 gap-y-16`}>
-                        {currentProducts.map(product => (
+                        {filteredProductsToRender.map(product => (
                             <ProductCard key={product.id} product={product} />
                         ))}
                     </div>
@@ -240,3 +286,4 @@ export const CollectionGrid = ({
         </section>
     );
 };
+

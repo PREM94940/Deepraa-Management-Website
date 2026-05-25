@@ -10,10 +10,13 @@ export const ProductCard = ({ product }: { product: any }) => {
     const secondaryImage = product.images?.[1] || mainImage;
     const title = product.title || product.name || 'Premium Handloom Product';
 
+    const isOutOfStock = product.stock_quantity !== undefined && product.stock_quantity !== null && product.stock_quantity <= 0;
+    const isSoldOut = isOutOfStock || product.status === 'Out of Stock' || product.status === 'Sold Out';
+
     return (
         <div 
-            className="group flex flex-col cursor-pointer"
-            onMouseEnter={() => setIsHovered(true)}
+            className={`group flex flex-col cursor-pointer ${isSoldOut ? 'opacity-80' : ''}`}
+            onMouseEnter={() => !isSoldOut && setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
         >
             <Link href={`/product/${product.id}`} className="block relative aspect-[3/4] overflow-hidden bg-gray-50 mb-6">
@@ -22,36 +25,46 @@ export const ProductCard = ({ product }: { product: any }) => {
                     alt={title} 
                     fill 
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                    className={`object-cover transition-opacity duration-700 ease-out ${isHovered ? 'opacity-0' : 'opacity-100'}`}
+                    className={`object-cover transition-all duration-700 ease-out ${isHovered ? 'opacity-0' : 'opacity-100'} ${isSoldOut ? 'grayscale opacity-70' : ''}`}
                 />
                 <Image 
                     src={secondaryImage} 
                     alt={`${title} alternate view`} 
                     fill 
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                    className={`object-cover transition-opacity duration-700 ease-out absolute inset-0 ${isHovered ? 'opacity-100 scale-105' : 'opacity-0 scale-100'}`}
+                    className={`object-cover transition-all duration-700 ease-out absolute inset-0 ${isHovered ? 'opacity-100 scale-105' : 'opacity-0 scale-100'} ${isSoldOut ? 'grayscale opacity-70' : ''}`}
                 />
                 
                 {/* Floating Tags */}
                 <div className="absolute top-4 left-4 flex flex-col gap-2 z-10">
-                    {product.compare_at_price && product.compare_at_price > product.price && (
-                        <span className="bg-red-500 text-white px-2 py-1 text-[10px] font-bold tracking-widest uppercase">
-                            Sale
+                    {isSoldOut ? (
+                        <span className="bg-black/85 backdrop-blur-sm text-gray-300 border border-white/10 px-2 py-1 text-[10px] font-bold tracking-widest uppercase">
+                            Sold Out
                         </span>
-                    )}
-                    {product.is_customizable && (
-                        <span className="bg-black text-white px-2 py-1 text-[10px] font-bold tracking-widest uppercase">
-                            Bespoke
-                        </span>
+                    ) : (
+                        <>
+                            {product.compare_at_price && product.compare_at_price > product.price && (
+                                <span className="bg-red-500 text-white px-2 py-1 text-[10px] font-bold tracking-widest uppercase">
+                                    Sale
+                                </span>
+                            )}
+                            {product.is_customizable && (
+                                <span className="bg-black text-white px-2 py-1 text-[10px] font-bold tracking-widest uppercase">
+                                    Bespoke
+                                </span>
+                            )}
+                        </>
                     )}
                 </div>
 
                 {/* Quick Add Overlay */}
-                <div className={`absolute bottom-0 left-0 right-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-out bg-gradient-to-t from-black/60 to-transparent z-20`}>
-                    <button className="w-full bg-white/90 backdrop-blur-sm text-black h-12 text-xs font-bold uppercase tracking-widest hover:bg-black hover:text-white transition-colors flex items-center justify-center">
-                        Quick View
-                    </button>
-                </div>
+                {!isSoldOut && (
+                    <div className={`absolute bottom-0 left-0 right-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-out bg-gradient-to-t from-black/60 to-transparent z-20`}>
+                        <button className="w-full bg-white/90 backdrop-blur-sm text-black h-12 text-xs font-bold uppercase tracking-widest hover:bg-black hover:text-white transition-colors flex items-center justify-center">
+                            Quick View
+                        </button>
+                    </div>
+                )}
             </Link>
 
             <div className="flex flex-col flex-1">
@@ -73,3 +86,4 @@ export const ProductCard = ({ product }: { product: any }) => {
         </div>
     );
 };
+
