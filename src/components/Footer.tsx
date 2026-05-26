@@ -1,10 +1,30 @@
 "use client";
 
 import Link from 'next/link';
+import { useFooterManager, useNavigationManager } from '@/hooks/useCMSContent';
 
 export const Footer = ({ globalSettings }: { globalSettings?: any }) => {
+    const { footer } = useFooterManager();
+    const { nav: footerNav } = useNavigationManager('footer_links');
+
+    // Dynamically retrieve menu links or fallback to defaults
+    const quickLinks = (footerNav && footerNav.items && footerNav.items.length > 0)
+        ? footerNav.items
+        : [
+            { label: 'Privacy Policy', url: '/c/privacy' },
+            { label: 'Terms of Service', url: '/c/terms' },
+            { label: 'Refund Policy', url: '/c/refund' },
+            { label: 'Track Order', url: '/track' }
+        ];
+
+    const copyrightText = footer?.copyright_text || globalSettings?.footer_text || 'Deeprastore © 2026. Handcrafted Elegance.';
+    const legalLinks = footer?.legal_links || [
+        { label: 'Privacy', url: '/c/privacy' },
+        { label: 'Terms', url: '/c/terms' }
+    ];
+
     return (
-        <footer className="bg-fg text-white pt-24 pb-12 px-6">
+        <footer className="bg-[#0A0A0A] text-white pt-24 pb-12 px-6 border-t border-[#1C1C1C]">
             <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-16 mb-20">
                 <div className="space-y-8">
                     <div className="flex items-center gap-2">
@@ -27,10 +47,13 @@ export const Footer = ({ globalSettings }: { globalSettings?: any }) => {
                 <div>
                     <h4 className="text-lg font-bold mb-8 uppercase tracking-widest">Company</h4>
                     <ul className="space-y-4 opacity-60">
-                        <li><Link href="/lookbook" className="hover:text-accent transition-colors">Our Story & Lookbook</Link></li>
-                        <li><Link href="/track" className="hover:text-accent transition-colors text-accent-emerald font-bold">Track Order</Link></li>
-                        <li><Link href="/support" className="hover:text-accent transition-colors">Customer Support</Link></li>
-                        <li><Link href="/" className="hover:text-accent transition-colors">Contact</Link></li>
+                        {quickLinks.map((link: any, idx: number) => (
+                            <li key={idx}>
+                                <Link href={link.url} className={`hover:text-accent transition-colors ${link.url === '/track' ? 'text-accent font-bold' : ''}`}>
+                                    {link.label}
+                                </Link>
+                            </li>
+                        ))}
                     </ul>
                 </div>
                 <div>
@@ -46,10 +69,11 @@ export const Footer = ({ globalSettings }: { globalSettings?: any }) => {
             </div>
             
             <div className="max-w-7xl mx-auto border-t border-white/20 pt-8 flex flex-col md:flex-row items-center justify-between opacity-60 text-xs tracking-widest uppercase">
-                <p>{globalSettings?.footer_text || 'Deeprastore © 2026. Handcrafted Elegance.'}</p>
+                <p>{copyrightText}</p>
                 <div className="flex gap-4 mt-4 md:mt-0">
-                    <Link href="/terms">Terms</Link>
-                    <Link href="/privacy">Privacy</Link>
+                    {legalLinks.map((link: any, idx: number) => (
+                        <Link key={idx} href={link.url}>{link.label}</Link>
+                    ))}
                 </div>
             </div>
         </footer>

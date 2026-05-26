@@ -2,18 +2,22 @@
 
 import Link from 'next/link';
 import { useCartStore } from '@/store/useCartStore';
+import { useNavigationManager } from '@/hooks/useCMSContent';
 
 export const Navbar = ({ globalSettings }: { globalSettings?: any }) => {
     const { items, setIsOpen } = useCartStore();
+    const { nav: headerNav } = useNavigationManager('header');
     
-    // Default menu if globalSettings not available
-    const menuItems = globalSettings?.primary_menu || [
-        { label: 'Collections', link: '/collections' },
-        { label: 'Fabrics', link: '/collections?category=Fabric' },
-        { label: 'Stitching', link: '/custom-stitching' },
-        { label: 'Track Order', link: '/track' },
-        { label: 'Support', link: '/support' }
-    ];
+    // Determine menuItems dynamically from database or fallback to settings/defaults
+    const menuItems = (headerNav && headerNav.items && headerNav.items.length > 0)
+        ? headerNav.items.map((item: any) => ({ label: item.label, link: item.url }))
+        : (globalSettings?.primary_menu || [
+            { label: 'Collections', link: '/collections' },
+            { label: 'Fabrics', link: '/collections?category=Fabric' },
+            { label: 'Stitching', link: '/custom-stitching' },
+            { label: 'Track Order', link: '/track' },
+            { label: 'Support', link: '/support' }
+        ]);
     
     // Calculate total quantity for the badge
     const totalItems = items.reduce((sum, item) => sum + item.qty, 0);

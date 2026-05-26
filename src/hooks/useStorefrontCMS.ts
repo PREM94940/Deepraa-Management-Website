@@ -68,9 +68,18 @@ export const applyThemeTokens = (settings: any) => {
 };
 
 export function useStorefrontCMS(pageIdentifier: string, isSlug = false, initialConfig?: any) {
-    const [sections, setSections] = useState<any[]>([]);
-    const [globalSettings, setGlobalSettings] = useState<any>(DEFAULT_GLOBAL_SETTINGS_FALLBACK);
-    const [pageData, setPageData] = useState<PageData | null>(null);
+    // Determine initial page and settings for SSR/immediate hydration
+    const getInitialPage = () => {
+        if (!initialConfig) return null;
+        const pages: PageData[] = initialConfig.pages || DEFAULT_PAGES_FALLBACK;
+        return pages.find(p => isSlug ? (p.slug === pageIdentifier && !p.isDeleted) : (p.id === pageIdentifier && !p.isDeleted)) || null;
+    };
+
+    const initialPage = getInitialPage();
+
+    const [sections, setSections] = useState<any[]>(initialPage ? (initialPage.sections || []) : []);
+    const [globalSettings, setGlobalSettings] = useState<any>(initialConfig?.globalSettings || DEFAULT_GLOBAL_SETTINGS_FALLBACK);
+    const [pageData, setPageData] = useState<PageData | null>(initialPage);
     const [loading, setLoading] = useState(!initialConfig);
 
     useEffect(() => {
@@ -119,6 +128,8 @@ export function useStorefrontCMS(pageIdentifier: string, isSlug = false, initial
                         return p.id === pageIdentifier && !p.isDeleted;
                     });
 
+                    console.log("useStorefrontCMS: matched page:", page?.id, "sections count:", page?.sections?.length);
+
                     if (page) {
                         // Campaign Visibility Governance:
                         // Block viewing custom/campaign pages if their status is 'draft' and the storefront request is not in preview mode.
@@ -150,10 +161,11 @@ export function useStorefrontCMS(pageIdentifier: string, isSlug = false, initial
         }
 
         if (initialConfig && isMounted) {
-            // Hydrate from SSR initial config immediately
+            console.log("useStorefrontCMS: hydrating from initialConfig, pageIdentifier:", pageIdentifier);
             const pages: PageData[] = initialConfig.pages || DEFAULT_PAGES_FALLBACK;
             const gSettings = initialConfig.globalSettings || DEFAULT_GLOBAL_SETTINGS_FALLBACK;
             const page = pages.find(p => isSlug ? (p.slug === pageIdentifier && !p.isDeleted) : (p.id === pageIdentifier && !p.isDeleted));
+            console.log("useStorefrontCMS: matched page from initialConfig:", page?.id, "sections:", page?.sections?.length);
             if (page) {
                 setPageData(page);
                 setSections(page.sections || []);
@@ -162,6 +174,7 @@ export function useStorefrontCMS(pageIdentifier: string, isSlug = false, initial
             applyThemeTokens(gSettings);
             setLoading(false);
         } else {
+            console.log("useStorefrontCMS: no initialConfig or not mounted, calling loadCMSConfig(), pageIdentifier:", pageIdentifier);
             loadCMSConfig();
         }
 
