@@ -10,7 +10,9 @@ export const Navbar = ({ globalSettings }: { globalSettings?: any }) => {
     const menuItems = globalSettings?.primary_menu || [
         { label: 'Collections', link: '/collections' },
         { label: 'Fabrics', link: '/collections?category=Fabric' },
-        { label: 'Stitching', link: '/custom-stitching' }
+        { label: 'Stitching', link: '/custom-stitching' },
+        { label: 'Track Order', link: '/track' },
+        { label: 'Support', link: '/support' }
     ];
     
     // Calculate total quantity for the badge

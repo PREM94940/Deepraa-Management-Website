@@ -29,7 +29,7 @@ export const Footer = ({ globalSettings }: { globalSettings?: any }) => {
                     <ul className="space-y-4 opacity-60">
                         <li><Link href="/lookbook" className="hover:text-accent transition-colors">Our Story & Lookbook</Link></li>
                         <li><Link href="/track" className="hover:text-accent transition-colors text-accent-emerald font-bold">Track Order</Link></li>
-                        <li><Link href="/" className="hover:text-accent transition-colors">Artisans</Link></li>
+                        <li><Link href="/support" className="hover:text-accent transition-colors">Customer Support</Link></li>
                         <li><Link href="/" className="hover:text-accent transition-colors">Contact</Link></li>
                     </ul>
                 </div>
