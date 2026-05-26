@@ -39,7 +39,7 @@ export default function ThemeEditor() {
     } = useCMSStore();
 
     const [viewport, setViewport] = useState<'desktop'|'tablet'|'mobile'>('desktop');
-    const [openSectionIdx, setOpenSectionIdx] = useState<number | 'global' | 'seo' | 'collections' | null>('global');
+    const [openSectionIdx, setOpenSectionIdx] = useState<number | 'global' | 'seo' | 'collections' | 'navigation' | null>('global');
     const [searchQuery, setSearchQuery] = useState('');
     const [interactionLock, setInteractionLock] = useState(true);
     const [unsavedChanges, setUnsavedChanges] = useState(false);
@@ -1509,6 +1509,269 @@ export default function ThemeEditor() {
                                         value={globalSettings?.whatsapp_number || ''}
                                         onChange={(e) => { setUnsavedChanges(true); updateGlobalSetting('whatsapp_number', e.target.value); }}
                                     />
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* DYNAMIC HEADER & FOOTER NAVIGATION ACCORDION */}
+                    <div className="border border-[#262626] bg-[#1C1C1C] rounded overflow-hidden">
+                        <div 
+                            className={`w-full flex items-center justify-between p-4 text-left hover:bg-[#262626] transition-colors cursor-pointer ${openSectionIdx === 'navigation' ? 'bg-[#262626] border-b border-[#333]' : ''}`}
+                            onClick={() => setOpenSectionIdx(openSectionIdx === 'navigation' ? null : 'navigation')}
+                        >
+                            <div className="flex items-center gap-2">
+                                {openSectionIdx === 'navigation' ? <ChevronDown className="w-4 h-4 text-[#D4AF37]" /> : <ChevronRight className="w-4 h-4 text-[#D4AF37]" />}
+                                <span className="text-xs font-bold uppercase tracking-wider text-[#D4AF37]">Header & Footer Menus</span>
+                            </div>
+                            <Globe className="w-3.5 h-3.5 text-[#D4AF37]" />
+                        </div>
+                        {openSectionIdx === 'navigation' && (
+                            <div className="p-4 space-y-5 bg-[#161616] text-xs">
+                                
+                                {/* Top/Primary Menu Editor */}
+                                <div className="space-y-3">
+                                    <h4 className="text-[10px] font-bold text-[#D4AF37] uppercase tracking-wider">Top Navigation Menus</h4>
+                                    
+                                    <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
+                                        {(globalSettings?.primary_menu || []).map((item: any, idx: number) => (
+                                            <div key={idx} className="p-3 bg-[#222] border border-[#333] rounded space-y-2">
+                                                {/* Header label & action */}
+                                                <div className="flex justify-between items-center gap-2">
+                                                    <input 
+                                                        type="text" 
+                                                        className="font-bold text-white text-[11px] p-1 bg-[#161616] border border-[#333] rounded w-24"
+                                                        value={item.label || ''}
+                                                        onChange={(e) => {
+                                                            setUnsavedChanges(true);
+                                                            const copy = [...(globalSettings.primary_menu || [])];
+                                                            copy[idx] = { ...copy[idx], label: e.target.value };
+                                                            updateGlobalSetting('primary_menu', copy);
+                                                        }}
+                                                        placeholder="Label"
+                                                    />
+                                                    <input 
+                                                        type="text" 
+                                                        className="text-[#a3a3a3] font-mono text-[10px] p-1 bg-[#161616] border border-[#333] rounded flex-1"
+                                                        value={item.link || ''}
+                                                        onChange={(e) => {
+                                                            setUnsavedChanges(true);
+                                                            const copy = [...(globalSettings.primary_menu || [])];
+                                                            copy[idx] = { ...copy[idx], link: e.target.value };
+                                                            updateGlobalSetting('primary_menu', copy);
+                                                        }}
+                                                        placeholder="Link/URL"
+                                                    />
+                                                    
+                                                    {/* Move Up/Down & Delete */}
+                                                    <div className="flex items-center gap-1 shrink-0">
+                                                        <button 
+                                                            disabled={idx === 0}
+                                                            onClick={() => {
+                                                                setUnsavedChanges(true);
+                                                                const copy = [...(globalSettings.primary_menu || [])];
+                                                                const temp = copy[idx];
+                                                                copy[idx] = copy[idx - 1];
+                                                                copy[idx - 1] = temp;
+                                                                updateGlobalSetting('primary_menu', copy);
+                                                            }}
+                                                            className="p-1 border border-[#333] bg-[#1a1a1a] hover:text-white rounded disabled:opacity-30"
+                                                        >
+                                                            <ArrowUp className="w-2.5 h-2.5" />
+                                                        </button>
+                                                        <button 
+                                                            disabled={idx === (globalSettings.primary_menu || []).length - 1}
+                                                            onClick={() => {
+                                                                setUnsavedChanges(true);
+                                                                const copy = [...(globalSettings.primary_menu || [])];
+                                                                const temp = copy[idx];
+                                                                copy[idx] = copy[idx + 1];
+                                                                copy[idx + 1] = temp;
+                                                                updateGlobalSetting('primary_menu', copy);
+                                                            }}
+                                                            className="p-1 border border-[#333] bg-[#1a1a1a] hover:text-white rounded disabled:opacity-30"
+                                                        >
+                                                            <ArrowDown className="w-2.5 h-2.5" />
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => {
+                                                                setUnsavedChanges(true);
+                                                                const copy = (globalSettings.primary_menu || []).filter((_: any, i: number) => i !== idx);
+                                                                updateGlobalSetting('primary_menu', copy);
+                                                            }}
+                                                            className="p-1 border border-red-950 bg-red-950/20 hover:bg-red-950 text-red-400 rounded"
+                                                        >
+                                                            <X className="w-2.5 h-2.5" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                {/* Submenus Manager */}
+                                                <div className="border-t border-[#333] pt-2 pl-3 space-y-1.5">
+                                                    <div className="flex justify-between items-center text-[9px] uppercase tracking-wider text-muted-foreground font-bold mb-1">
+                                                        <span>Submenus</span>
+                                                        <button 
+                                                            onClick={() => {
+                                                                setUnsavedChanges(true);
+                                                                const copy = [...(globalSettings.primary_menu || [])];
+                                                                const subs = copy[idx].submenus || [];
+                                                                copy[idx] = { 
+                                                                    ...copy[idx], 
+                                                                    submenus: [...subs, { label: 'New Submenu', link: '/collections' }] 
+                                                                };
+                                                                updateGlobalSetting('primary_menu', copy);
+                                                            }}
+                                                            className="text-[#D4AF37] hover:underline flex items-center gap-0.5"
+                                                        >
+                                                            <Plus className="w-2 h-2" /> Add Child
+                                                        </button>
+                                                    </div>
+                                                    {(item.submenus || []).map((sub: any, subIdx: number) => (
+                                                        <div key={subIdx} className="flex gap-2 items-center">
+                                                            <input 
+                                                                type="text" 
+                                                                className="text-[10px] p-1 bg-[#161616] border border-[#333] rounded w-20 text-zinc-300"
+                                                                value={sub.label || ''}
+                                                                onChange={(e) => {
+                                                                    setUnsavedChanges(true);
+                                                                    const copy = [...(globalSettings.primary_menu || [])];
+                                                                    const subs = [...(copy[idx].submenus || [])];
+                                                                    subs[subIdx] = { ...subs[subIdx], label: e.target.value };
+                                                                    copy[idx] = { ...copy[idx], submenus: subs };
+                                                                    updateGlobalSetting('primary_menu', copy);
+                                                                }}
+                                                                placeholder="Sub Label"
+                                                            />
+                                                            <input 
+                                                                type="text" 
+                                                                className="text-[9px] p-1 bg-[#161616] border border-[#333] rounded flex-1 text-zinc-400 font-mono"
+                                                                value={sub.link || ''}
+                                                                onChange={(e) => {
+                                                                    setUnsavedChanges(true);
+                                                                    const copy = [...(globalSettings.primary_menu || [])];
+                                                                    const subs = [...(copy[idx].submenus || [])];
+                                                                    subs[subIdx] = { ...subs[subIdx], link: e.target.value };
+                                                                    copy[idx] = { ...copy[idx], submenus: subs };
+                                                                    updateGlobalSetting('primary_menu', copy);
+                                                                }}
+                                                                placeholder="Sub Link"
+                                                            />
+                                                            <button 
+                                                                onClick={() => {
+                                                                    setUnsavedChanges(true);
+                                                                    const copy = [...(globalSettings.primary_menu || [])];
+                                                                    const subs = (copy[idx].submenus || []).filter((_: any, i: number) => i !== subIdx);
+                                                                    copy[idx] = { ...copy[idx], submenus: subs };
+                                                                    updateGlobalSetting('primary_menu', copy);
+                                                                }}
+                                                                className="p-1 border border-red-950/20 text-red-500 hover:text-red-400 bg-transparent shrink-0"
+                                                            >
+                                                                <X className="w-2 h-2" />
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    
+                                    <button 
+                                        onClick={() => {
+                                            setUnsavedChanges(true);
+                                            const copy = [...(globalSettings?.primary_menu || [])];
+                                            updateGlobalSetting('primary_menu', [...copy, { label: 'New Link', link: '/collections', submenus: [] }]);
+                                        }}
+                                        className="w-full py-2 bg-[#222] border border-[#333] hover:border-[#D4AF37] text-[#D4AF37] font-bold uppercase tracking-wider text-[10px] rounded-sm flex items-center justify-center gap-1.5"
+                                    >
+                                        <Plus className="w-3.5 h-3.5" /> Add Top Menu Item
+                                    </button>
+                                </div>
+
+                                {/* Spacing & Padding Controls */}
+                                <div className="border-t border-[#262626] pt-3 grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label className="block text-[8px] text-[#A3A3A3] mb-1 uppercase tracking-widest">Menu Spacing</label>
+                                        <select 
+                                            className="w-full text-[11px] p-1.5 border border-[#333] bg-[#222] text-white outline-none rounded"
+                                            value={globalSettings?.menu_spacing || 'default'}
+                                            onChange={(e) => { setUnsavedChanges(true); updateGlobalSetting('menu_spacing', e.target.value); }}
+                                        >
+                                            <option value="none">None (Compact)</option>
+                                            <option value="small">Small spacing</option>
+                                            <option value="default">Default spacing</option>
+                                            <option value="large">Spacious layout</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-[8px] text-[#A3A3A3] mb-1 uppercase tracking-widest">Menu Padding</label>
+                                        <select 
+                                            className="w-full text-[11px] p-1.5 border border-[#333] bg-[#222] text-white outline-none rounded"
+                                            value={globalSettings?.menu_padding || 'default'}
+                                            onChange={(e) => { setUnsavedChanges(true); updateGlobalSetting('menu_padding', e.target.value); }}
+                                        >
+                                            <option value="none">None (Narrow)</option>
+                                            <option value="small">Compact</option>
+                                            <option value="default">Default padding</option>
+                                            <option value="large">Spacious padding</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                {/* Bottom/Footer Menu Editor */}
+                                <div className="border-t border-[#262626] pt-4 space-y-3">
+                                    <h4 className="text-[10px] font-bold text-[#D4AF37] uppercase tracking-wider">Footer Navigation Links</h4>
+                                    
+                                    <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                                        {(globalSettings?.footer_menu || []).map((item: any, idx: number) => (
+                                            <div key={idx} className="flex gap-2 items-center bg-[#222] p-2 border border-[#333] rounded">
+                                                <input 
+                                                    type="text" 
+                                                    className="font-bold text-white text-[11px] p-1 bg-[#161616] border border-[#333] rounded w-24"
+                                                    value={item.label || ''}
+                                                    onChange={(e) => {
+                                                        setUnsavedChanges(true);
+                                                        const copy = [...(globalSettings.footer_menu || [])];
+                                                        copy[idx] = { ...copy[idx], label: e.target.value };
+                                                        updateGlobalSetting('footer_menu', copy);
+                                                    }}
+                                                    placeholder="Footer Label"
+                                                />
+                                                <input 
+                                                    type="text" 
+                                                    className="text-[#a3a3a3] font-mono text-[10px] p-1 bg-[#161616] border border-[#333] rounded flex-1"
+                                                    value={item.link || ''}
+                                                    onChange={(e) => {
+                                                        setUnsavedChanges(true);
+                                                        const copy = [...(globalSettings.footer_menu || [])];
+                                                        copy[idx] = { ...copy[idx], link: e.target.value };
+                                                        updateGlobalSetting('footer_menu', copy);
+                                                    }}
+                                                    placeholder="Footer Link"
+                                                />
+                                                <button 
+                                                    onClick={() => {
+                                                        setUnsavedChanges(true);
+                                                        const copy = (globalSettings.footer_menu || []).filter((_: any, i: number) => i !== idx);
+                                                        updateGlobalSetting('footer_menu', copy);
+                                                    }}
+                                                    className="p-1 border border-red-950 bg-red-950/20 hover:bg-red-950 text-red-400 rounded shrink-0"
+                                                >
+                                                    <X className="w-2.5 h-2.5" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    <button 
+                                        onClick={() => {
+                                            setUnsavedChanges(true);
+                                            const copy = [...(globalSettings?.footer_menu || [])];
+                                            updateGlobalSetting('footer_menu', [...copy, { label: 'New Link', link: '/collections' }]);
+                                        }}
+                                        className="w-full py-2 bg-[#222] border border-[#333] hover:border-[#D4AF37] text-[#D4AF37] font-bold uppercase tracking-wider text-[10px] rounded-sm flex items-center justify-center gap-1.5"
+                                    >
+                                        <Plus className="w-3.5 h-3.5" /> Add Footer Link
+                                    </button>
                                 </div>
                             </div>
                         )}

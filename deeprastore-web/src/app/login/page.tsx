@@ -34,7 +34,10 @@ export default function CustomerLogin() {
             });
             if (err) throw err;
         } catch (err: any) {
-            setError(err.message || 'Google Auth initiation failed.');
+            const isUnsupported = err.message?.includes('provider') || err.message?.includes('not enabled');
+            setError(isUnsupported 
+                ? 'Google Login is not enabled on this environment yet. Please use the Email & Password fallback below.' 
+                : (err.message || 'Google Auth initiation failed.'));
             setLoading(false);
         }
     };
@@ -58,7 +61,10 @@ export default function CustomerLogin() {
             setOtpSent(true);
             setMessage('Verification OTP sent successfully!');
         } catch (err: any) {
-            setError(err.message || 'Error sending OTP verification code.');
+            const isUnsupported = err.message?.includes('provider') || err.message?.includes('not enabled') || err.message?.includes('phone');
+            setError(isUnsupported 
+                ? 'Phone SMS OTP provider is not enabled on this environment yet. Please use the Email & Password fallback below.' 
+                : (err.message || 'Error sending OTP verification code.'));
         } finally {
             setLoading(false);
         }
