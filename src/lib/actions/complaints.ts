@@ -42,6 +42,76 @@ export async function createComplaintAction(data: z.infer<typeof ComplaintInsert
     }
 }
 
+export async function escalateToTailoringAction(complaintId: string) {
+    try {
+        await verifyAdminAccess(PERMISSIONS.CAN_ESCALATE_COMPLAINT, 'escalateToTailoring');
+
+        // Fetch the full complaint with order and customization data
+        const { data: complaint, error: fetchErr } = await supabaseServer
+            .from('complaints')
+            .select(`
+                id,
+                order_id,
+                issue_type,
+                issue_reason,
+                customer_id
+            `)
+            .eq('id', complaintId)
+            .single();
+
+        if (fetchErr || !complaint) throw new Error('Complaint not found');
+
+        // Get latest stitching customization for this order (if any)
+        const { data: custItems } = await supabaseServer
+            .from('order_items')
+            .select('id, stitching_customizations(id)')
+            .eq('order_id', complaint.order_id)
+            .limit(1);
+
+        const customizationId = custItems?.[0]?.stitching_customizations?.[0]?.id || null;
+
+        // Create alterations_history entry (the bridge)
+        const { data: altEntry, error: altErr } = await supabaseServer
+            .from('alterations_history')
+            .insert({
+                order_id: complaint.order_id,
+                customization_id: customizationId,
+                complaint_details: complaint.issue_reason || `Escalated: ${complaint.issue_type}`,
+                adjustment_notes: '',
+                tailor_remarks: '',
+                status: 'Requested'
+            })
+            .select('id')
+            .single();
+
+        if (altErr) throw altErr;
+
+        // Mark complaint as In Progress
+        await supabaseServer
+            .from('complaints')
+            .update({ status: 'In Progress' })
+            .eq('id', complaintId);
+
+        await logAuditAction({
+            tableName: 'alterations_history',
+            recordId: altEntry.id,
+            action: 'INSERT',
+            newData: { escalated_from_complaint: complaintId }
+        });
+
+        revalidatePath('/admin/complaints');
+        revalidatePath('/admin/alterations');
+        return { success: true, alterationId: altEntry.id };
+    } catch (err: any) {
+        const safeMessage = captureOperationalError(err, {
+            classification: 'INFRASTRUCTURE_FAILURE',
+            actionName: 'escalateToTailoringAction',
+            recordId: complaintId,
+        });
+        return { success: false, error: safeMessage };
+    }
+}
+
 export async function updateComplaintStatusAction(id: string, status: string, resolution_notes?: string, forceOverride: boolean = false) {
     const parsed = ComplaintUpdateSchema.safeParse({ id, status, resolution_notes });
     if (!parsed.success) return { success: false, error: parsed.error.message };

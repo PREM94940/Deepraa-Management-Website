@@ -5,10 +5,10 @@ import { Complaint, Order } from '@/types';
 import { 
     Search, Plus, X, ArrowRight, CheckCircle2, 
     ShieldAlert, Sparkles, Scale, RefreshCw, 
-    FileText, Image as ImageIcon, Check, User, Info
+    FileText, Image as ImageIcon, Check, User, Info, Scissors
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { updateComplaintStatusAction, createComplaintAction } from '@/lib/actions/complaints';
+import { updateComplaintStatusAction, createComplaintAction, escalateToTailoringAction } from '@/lib/actions/complaints';
 import { toggleOrderRefundEligibilityAction } from '@/lib/actions/orders';
 
 export default function ComplaintsPage() {
@@ -30,6 +30,7 @@ export default function ComplaintsPage() {
     const [refundAmount, setRefundAmount] = useState(0);
     const [saving, setSaving] = useState(false);
     const [actionLoading, setActionLoading] = useState<string | null>(null);
+    const [escalationSuccess, setEscalationSuccess] = useState<string | null>(null);
 
     const COMPLAINT_CATEGORIES = [
         'size adjustment / fitting alteration',
@@ -210,6 +211,21 @@ export default function ComplaintsPage() {
             fetchComplaints();
         } catch (err: any) {
             alert(err.message || 'Failed to update order refund eligibility');
+        } finally {
+            setActionLoading(null);
+        }
+    }
+
+    async function handleEscalateToTailoring(complaintId: string) {
+        setActionLoading('escalate');
+        setEscalationSuccess(null);
+        try {
+            const res = await escalateToTailoringAction(complaintId);
+            if (!res.success) throw new Error(res.error);
+            setEscalationSuccess(res.alterationId || 'created');
+            fetchComplaints();
+        } catch (err: any) {
+            alert(err.message || 'Failed to escalate to tailoring queue');
         } finally {
             setActionLoading(null);
         }
@@ -594,6 +610,41 @@ export default function ComplaintsPage() {
                                                 </button>
                                             </div>
                                         </div>
+
+                                        {/* Escalate to Tailoring Bridge */}
+                                        {(selectedComplaint.issue_type?.toLowerCase().includes('fitting') ||
+                                          selectedComplaint.issue_type?.toLowerCase().includes('alteration') ||
+                                          selectedComplaint.issue_type?.toLowerCase().includes('size') ||
+                                          selectedComplaint.issue_type?.toLowerCase().includes('stitching') ||
+                                          selectedComplaint.issue_type?.toLowerCase().includes('blouse')) && (
+                                            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-4 bg-zinc-950 border border-amber-900/20 rounded-sm">
+                                                <div className="max-w-md">
+                                                    <h4 className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                                                        <Scissors size={13} /> Escalate to Artisan Tailoring Queue
+                                                    </h4>
+                                                    <p className="text-[11px] text-zinc-400 mt-1 leading-relaxed">
+                                                        Creates an <span className="font-mono text-amber-400">alterations_history</span> entry for the Master Tailor Console at <span className="text-amber-400 font-mono">/admin/alterations</span>. The tailor will assign adjustment notes and execute the fitting correction.
+                                                    </p>
+                                                    {escalationSuccess && (
+                                                        <p className="text-[10px] text-emerald-400 font-mono mt-1.5">
+                                                            ✅ Escalated — Alteration Job ID: {escalationSuccess.slice(0, 8).toUpperCase()}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                                <button
+                                                    onClick={() => handleEscalateToTailoring(selectedComplaint.id)}
+                                                    disabled={actionLoading === 'escalate'}
+                                                    className="shrink-0 bg-amber-600/20 hover:bg-amber-600/30 border border-amber-600/40 text-amber-400 font-bold text-[10px] uppercase tracking-widest px-5 py-2.5 rounded-sm transition-all flex items-center gap-2 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                                                >
+                                                    {actionLoading === 'escalate' ? (
+                                                        <RefreshCw size={12} className="animate-spin" />
+                                                    ) : (
+                                                        <Scissors size={12} />
+                                                    )}
+                                                    {actionLoading === 'escalate' ? 'Escalating...' : 'Escalate to Tailoring'}
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                 </motion.div>
                             ) : (

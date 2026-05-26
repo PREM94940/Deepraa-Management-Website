@@ -113,9 +113,13 @@ export default function CustomizeBlousePage() {
   useEffect(() => {
     async function fetchProfiles() {
       try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
         const { data, error } = await supabase
           .from('measurement_profiles')
           .select('*')
+          .eq('customer_id', user.id)
           .order('created_at', { ascending: false });
         if (data) {
           setSavedProfiles(data);
@@ -211,10 +215,12 @@ export default function CustomizeBlousePage() {
     try {
       let profileId = null;
       if (saveAsProfile) {
+        const { data: { user } } = await supabase.auth.getUser();
         const { data: profData, error: profErr } = await supabase
           .from('measurement_profiles')
           .insert([
             {
+              customer_id: user ? user.id : null,
               profile_label: profileLabel || 'Bespoke Fit Profile',
               bust: measurements.bust,
               waist: measurements.waist,

@@ -27,11 +27,14 @@ interface AlterationJob {
   created_at: string;
   orders: {
     id: string;
+    order_number: string;
     notes: string;
     measurements: any;
     customers: {
       full_name: string;
-    }
+      email: string;
+      phone_number: string;
+    };
   };
 }
 
@@ -40,6 +43,7 @@ export default function AlterationConsolePage() {
   const [selectedJob, setSelectedJob] = useState<AlterationJob | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   // Form states for selected job
   const [adjustmentNotes, setAdjustmentNotes] = useState('');
@@ -63,10 +67,13 @@ export default function AlterationConsolePage() {
             created_at,
             orders (
               id,
+              order_number,
               notes,
               measurements,
               customers (
-                full_name
+                full_name,
+                email,
+                phone_number
               )
             )
           `)
@@ -127,7 +134,6 @@ export default function AlterationConsolePage() {
         return j;
       }));
 
-      // Update selected job state
       setSelectedJob(prev => prev ? {
         ...prev,
         adjustment_notes: adjustmentNotes,
@@ -135,7 +141,9 @@ export default function AlterationConsolePage() {
         status: status
       } : null);
 
-      alert("Fitting memory updated successfully!");
+      // Show inline success instead of alert
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err: any) {
       console.error("Failed to update alteration:", err);
       alert(`Error updating alteration: ${err.message}`);
@@ -333,14 +341,22 @@ export default function AlterationConsolePage() {
                   </div>
 
                   {/* Save button */}
-                  <button
-                    onClick={handleSaveAlteration}
-                    disabled={saving}
-                    className="w-full bg-[#D4AF37] hover:bg-[#b8952d] text-black font-bold py-2.5 rounded-lg text-xs flex items-center justify-center gap-1.5 transition-all shadow-md shadow-[#D4AF37]/10 disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
-                  >
-                    <Save size={14} />
-                    <span>{saving ? 'Saving Fitting Memory...' : 'Save to Sizing History'}</span>
-                  </button>
+                  <div className="flex flex-col gap-2">
+                    <button
+                      onClick={handleSaveAlteration}
+                      disabled={saving}
+                      className="w-full bg-[#D4AF37] hover:bg-[#b8952d] text-black font-bold py-2.5 rounded-lg text-xs flex items-center justify-center gap-1.5 transition-all shadow-md shadow-[#D4AF37]/10 disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
+                    >
+                      <Save size={14} />
+                      <span>{saving ? 'Saving Fitting Memory...' : 'Save to Sizing History'}</span>
+                    </button>
+                    {saveSuccess && (
+                      <div className="flex items-center gap-1.5 justify-center text-emerald-400 text-[10px] font-mono uppercase tracking-wider font-bold">
+                        <CheckCircle2 size={12} />
+                        <span>Fitting memory saved to DB successfully</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
               </div>
@@ -350,7 +366,15 @@ export default function AlterationConsolePage() {
             <div className="flex-1 bg-[#121212] border border-zinc-800/80 rounded-xl p-12 text-center text-zinc-500 flex flex-col items-center justify-center shadow-lg shadow-black/40 min-h-[50vh]">
               <History size={36} className="text-zinc-700 mb-3 animate-pulse" />
               <h3 className="text-white font-serif text-lg font-light">No Sizing Job Selected</h3>
-              <p className="text-xs text-zinc-500 max-w-xs mt-1">Select an active request from the queue list on the left to begin fitting evaluation.</p>
+              <p className="text-xs text-zinc-500 max-w-xs mt-1">Select an active request from the queue on the left to begin fitting evaluation.</p>
+              {jobs.length === 0 && (
+                <a
+                  href="/admin/complaints"
+                  className="mt-6 text-[10px] font-mono uppercase tracking-widest text-amber-400 border border-amber-800/40 bg-amber-950/20 px-4 py-2.5 rounded-lg hover:bg-amber-950/40 transition-all"
+                >
+                  Go to Complaints Console to Escalate Fitting Issues →
+                </a>
+              )}
             </div>
           )}
         </div>
