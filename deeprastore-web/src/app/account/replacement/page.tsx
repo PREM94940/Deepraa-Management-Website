@@ -17,7 +17,7 @@ function ReplacementFormContent() {
     const [user, setUser] = useState<any>(null);
     const [orders, setOrders] = useState<any[]>([]);
     const [orderId, setOrderId] = useState(initialOrderId);
-    const [issueType, setIssueType] = useState('size issue');
+    const [issueType, setIssueType] = useState('size adjustment / fitting alteration');
     const [issueReason, setIssueReason] = useState('');
     
     // File upload state
@@ -28,11 +28,43 @@ function ReplacementFormContent() {
     const [error, setError] = useState<string | null>(null);
 
     const COMPLAINT_CATEGORIES = [
-        'size issue', 'blouse issue', 'damage', 'wrong product', 
-        'stitching issue', 'delay in delivery', 'tailoring delay', 
-        'fabric sourcing issue', 'customization delay', 'fabric mismatch', 
-        'color variation', 'out-of-stock after order', 'production delay', 'other'
+        'size adjustment / fitting alteration',
+        'product replacement',
+        'stitching issue',
+        'blouse issue',
+        'damage / defective product',
+        'wrong product received',
+        'fabric mismatch',
+        'color variation',
+        'delay in delivery',
+        'tailoring delay',
+        'fabric sourcing issue',
+        'customization delay',
+        'out-of-stock after order',
+        'production delay',
+        'other'
     ];
+
+    const isWithinTwoMonths = (order: any) => {
+        if (!order) return false;
+        const dateStr = order.delivered_at || order.expected_delivery_date || order.created_at;
+        if (!dateStr) return false;
+        const orderDate = new Date(dateStr);
+        const limitDate = new Date(orderDate);
+        limitDate.setMonth(limitDate.getMonth() + 2);
+        return new Date() <= limitDate;
+    };
+
+    const selectedOrderObj = orders.find(o => o.id === orderId);
+    const isCustomized = selectedOrderObj?.order_items?.some((item: any) => 
+        item.is_customized === true || 
+        item.is_customized === 'true' || 
+        item.customization || 
+        item.customizations || 
+        (typeof item.metadata === 'object' && item.metadata?.customized)
+    ) || false;
+
+    const isEligible = orderId ? isWithinTwoMonths(selectedOrderObj) : true;
 
     useEffect(() => {
         async function fetchUserOrders() {
@@ -45,7 +77,7 @@ function ReplacementFormContent() {
 
             const { data: ords } = await supabase
                 .from('orders')
-                .select('id, order_number, created_at, status')
+                .select('id, order_number, created_at, status, order_items(*)')
                 .eq('customer_id', activeUser.id);
             setOrders(ords || []);
             setLoading(false);
@@ -62,6 +94,9 @@ function ReplacementFormContent() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!orderId) return setError('Please select an order reference.');
+        if (!isWithinTwoMonths(selectedOrderObj)) {
+            return setError('This order is past the 2-month window post-delivery and is no longer eligible for size adjustments or replacements.');
+        }
         if (!issueReason.trim()) return setError('Please provide details explaining the issue.');
         
         setUploading(true);
@@ -81,7 +116,6 @@ function ReplacementFormContent() {
 
                 if (uploadError) {
                     console.warn("Storage upload failed, falling back to dummy url:", uploadError.message);
-                    // Use a mock/dummy visual url in case the public storage bucket 'complaints' is not created yet
                     uploadedUrls.push(`https://images.unsplash.com/photo-1605000523098-944208a0d7d9?w=600`);
                 } else {
                     const { data: { publicUrl } } = supabase.storage
@@ -134,7 +168,7 @@ function ReplacementFormContent() {
                 <CheckCircle className="w-16 h-16 text-emerald-500 mx-auto" />
                 <h2 className="text-lg font-bold uppercase tracking-wider text-white">Issue Lodged Successfully</h2>
                 <p className="text-xs text-zinc-400 leading-relaxed">
-                    Your replacement request has been registered in our CRM database. A boutique staff representative will inspect your request and contact you shortly to coordinate sizing/adjustments.
+                    Your replacement/adjustment request has been registered in our CRM database. A boutique staff representative will inspect your request and contact you shortly to coordinate sizing/adjustments.
                 </p>
                 <div className="flex flex-col gap-3 pt-4">
                     <a 
@@ -175,9 +209,35 @@ function ReplacementFormContent() {
                 <p className="text-[11px] text-zinc-400 mt-1">Submit issues regarding sizes, customization delays, or damages.</p>
             </div>
 
+            {/* Policy Notice explaining routing difference */}
+            <div className="mb-6 p-4 bg-[#161616] border border-[#262626] rounded-sm">
+                <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1.5 text-[#D4AF37]">
+                    Bespoke Adjustment & Replacement Policy
+                </p>
+                <p className="text-[11px] text-[#A3A3A3] leading-relaxed font-light font-sans">
+                    Customized items are routed directly to tailoring alterations and adjustments, whereas ready-made items can be replaced depending on stock availability.
+                </p>
+                {orderId && (
+                    <div className="mt-2.5 pt-2.5 border-t border-[#222]">
+                        <span className="text-[10px] text-zinc-500 font-medium">
+                            Selected Order Status:{" "}
+                            <span className={isCustomized ? "text-amber-400 font-bold" : "text-emerald-400 font-bold"}>
+                                {isCustomized ? "Customized (Tailoring Alterations Route)" : "Ready-Made (Product Replacement Route)"}
+                            </span>
+                        </span>
+                    </div>
+                )}
+            </div>
+
             {error && (
                 <div className="mb-4 bg-red-950/20 border border-red-900/50 text-red-400 p-3 text-xs rounded-sm text-center">
                     {error}
+                </div>
+            )}
+
+            {!isEligible && (
+                <div className="mb-4 bg-amber-950/20 border border-amber-900/50 text-amber-300 p-3 text-xs rounded-sm text-center">
+                    This order is older than 2 months and is no longer eligible for replacement or size adjustments under our boutique policy.
                 </div>
             )}
 
@@ -215,10 +275,10 @@ function ReplacementFormContent() {
 
                 {/* Details Explanations */}
                 <div>
-                    <label className="block text-[8px] text-[#A3A3A3] mb-1.5 uppercase font-bold tracking-widest">Description of Issue</label>
+                    <label className="block text-[8px] text-[#A3A3A3] mb-1.5 uppercase font-bold tracking-widest font-mono">Description of Issue / Alteration Details</label>
                     <textarea 
                         rows={4}
-                        placeholder="Please describe sizing fit issues or damage detail..."
+                        placeholder={isCustomized ? "Please specify your exact body measurement changes or alteration details needed..." : "Please describe sizing fit issues or damage detail..."}
                         className="w-full text-xs p-4 border border-[#222] bg-[#161616] text-white outline-none focus:border-[#D4AF37] rounded-sm resize-none"
                         value={issueReason}
                         onChange={e => setIssueReason(e.target.value)}
@@ -247,10 +307,10 @@ function ReplacementFormContent() {
                 {/* Submit button */}
                 <button 
                     type="submit" 
-                    disabled={uploading}
-                    className="w-full bg-[#D4AF37] hover:bg-[#B8962B] text-black font-bold uppercase text-[10px] tracking-[0.15em] py-3.5 px-4 rounded-sm transition-all flex items-center justify-center gap-2 border-none cursor-pointer"
+                    disabled={uploading || !isEligible}
+                    className="w-full bg-[#D4AF37] hover:bg-[#B8962B] text-black font-bold uppercase text-[10px] tracking-[0.15em] py-3.5 px-4 rounded-sm transition-all flex items-center justify-center gap-2 border-none cursor-pointer disabled:bg-zinc-800 disabled:text-zinc-600 disabled:cursor-not-allowed"
                 >
-                    {uploading ? 'Registering Ticket...' : 'File Issue & Request Replacement'}
+                    {uploading ? 'Registering Ticket...' : isCustomized ? 'Submit Fitting Alteration Request' : 'File Issue & Request Replacement'}
                 </button>
             </form>
         </div>

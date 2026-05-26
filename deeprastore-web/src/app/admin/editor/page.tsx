@@ -8,6 +8,7 @@ import {
     Plus, Trash2, Copy, RotateCcw, Sparkles, AlertCircle, Check, History
 } from 'lucide-react';
 import { validateCMSPage } from '@/lib/validations/cms';
+import CMSOperationalEditor from './CMSOperationalEditor';
 import { getCurrentUserRoleAction, grantManagerRoleAction } from '@/lib/actions/auth';
 import { supabase } from '@/lib/supabase';
 
@@ -39,7 +40,7 @@ export default function ThemeEditor() {
     } = useCMSStore();
 
     const [viewport, setViewport] = useState<'desktop'|'tablet'|'mobile'>('desktop');
-    const [openSectionIdx, setOpenSectionIdx] = useState<number | 'global' | 'seo' | 'collections' | 'navigation' | null>('global');
+    const [openSectionIdx, setOpenSectionIdx] = useState<number | 'global' | 'seo' | 'collections' | 'navigation' | 'cms_content' | null>('global');
     const [searchQuery, setSearchQuery] = useState('');
     const [interactionLock, setInteractionLock] = useState(true);
     const [unsavedChanges, setUnsavedChanges] = useState(false);
@@ -1774,6 +1775,24 @@ export default function ThemeEditor() {
                                     </button>
                                 </div>
                             </div>
+                        )}
+                    </div>
+
+                    {/* CMS OPERATIONAL CONTENT ACCORDION */}
+                    <div className="border border-[#262626] bg-[#1C1C1C] rounded overflow-hidden">
+                        <div 
+                            className={`w-full flex items-center justify-between p-4 text-left hover:bg-[#262626] transition-colors cursor-pointer ${openSectionIdx === 'cms_content' ? 'bg-[#262626] border-b border-[#333]' : ''}`}
+                            onClick={() => setOpenSectionIdx(openSectionIdx === 'cms_content' ? null : 'cms_content')}
+                        >
+                            <div className="flex items-center gap-2">
+                                {openSectionIdx === 'cms_content' ? <ChevronDown className="w-4 h-4 text-[#D4AF37]" /> : <ChevronRight className="w-4 h-4 text-[#D4AF37]" />}
+                                <span className="text-xs font-bold uppercase tracking-wider text-[#D4AF37]">Operational CMS Content</span>
+                                <span className="text-[9px] px-1.5 py-0.5 bg-emerald-950/40 border border-emerald-800/40 text-emerald-400 rounded uppercase font-bold tracking-wider">Live</span>
+                            </div>
+                            <Sparkles className="w-3.5 h-3.5 text-[#D4AF37]" />
+                        </div>
+                        {openSectionIdx === 'cms_content' && (
+                            <CMSOperationalEditor />
                         )}
                     </div>
 

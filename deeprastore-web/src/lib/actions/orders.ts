@@ -98,3 +98,48 @@ export async function deleteOrdersAction(ids: string[]) {
         return { success: false, error: safeMessage };
     }
 }
+
+export async function toggleOrderRefundEligibilityAction(orderId: string, refundEligible: boolean) {
+    try {
+        await verifyAdminAccess(PERMISSIONS.CAN_RESOLVE_REFUND_COMPLAINT, 'toggleOrderRefundEligibility');
+        
+        const { data: oldData } = await supabaseServer.from('orders').select('*').eq('id', orderId).single();
+        
+        const updatePayload: any = { 
+            refund_eligible: refundEligible
+        };
+        
+        if (refundEligible) {
+            updatePayload.status = 'Refund Eligible';
+        } else {
+            updatePayload.status = 'Confirmed';
+        }
+        
+        const { error } = await supabaseServer
+            .from('orders')
+            .update(updatePayload)
+            .eq('id', orderId);
+            
+        if (error) throw error;
+        
+        await logAuditAction({
+            tableName: 'orders',
+            recordId: orderId,
+            action: 'UPDATE',
+            oldData,
+            newData: updatePayload
+        });
+        
+        revalidatePath('/admin/complaints');
+        revalidatePath('/admin/orders');
+        return { success: true };
+    } catch (err: any) {
+        const safeMessage = captureOperationalError(err, {
+            classification: 'INFRASTRUCTURE_FAILURE',
+            actionName: 'toggleOrderRefundEligibilityAction',
+            recordId: orderId,
+            metadata: { refundEligible }
+        });
+        return { success: false, error: safeMessage };
+    }
+}

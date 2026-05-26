@@ -18,6 +18,24 @@ export default function CustomerDashboard() {
     const [loading, setLoading] = useState(true);
     const [selectedOrder, setSelectedOrder] = useState<any>(null);
 
+    const isCustomized = selectedOrder?.order_items?.some((item: any) => 
+        item.is_customized === true || 
+        item.is_customized === 'true' || 
+        item.customization || 
+        item.customizations || 
+        (typeof item.metadata === 'object' && item.metadata?.customized)
+    ) || false;
+
+    const isWithinTwoMonths = (order: any) => {
+        if (!order) return false;
+        const dateStr = order.delivered_at || order.expected_delivery_date || order.created_at;
+        if (!dateStr) return false;
+        const orderDate = new Date(dateStr);
+        const limitDate = new Date(orderDate);
+        limitDate.setMonth(limitDate.getMonth() + 2);
+        return new Date() <= limitDate;
+    };
+
     // List of dynamic handcrafted steps in order
     const ORDER_STEPS = [
         'Order Confirmed',
@@ -233,15 +251,63 @@ export default function CustomerDashboard() {
                                         <span className="text-[9px] uppercase tracking-wider text-zinc-500 block">Total Investment</span>
                                         <span className="text-xs font-bold text-[#D4AF37]">₹{selectedOrder.total_amount.toLocaleString('en-IN')}</span>
                                     </div>
-                                    <div>
-                                        <a 
-                                            href={`/account/replacement?orderId=${selectedOrder.id}`}
-                                            className="px-3.5 py-2 border border-[#D4AF37] text-[9px] font-bold uppercase tracking-wider text-[#D4AF37] hover:bg-[#D4AF37] hover:text-black transition-colors rounded-sm"
-                                        >
-                                            Request Replacement
-                                        </a>
+                                    <div className="flex flex-wrap gap-2">
+                                        {isWithinTwoMonths(selectedOrder) ? (
+                                            <a 
+                                                href={`/account/replacement?orderId=${selectedOrder.id}`}
+                                                className="px-3.5 py-2 border border-[#D4AF37] text-[9px] font-bold uppercase tracking-wider text-[#D4AF37] hover:bg-[#D4AF37] hover:text-black transition-colors rounded-sm"
+                                            >
+                                                {isCustomized ? 'Request Adjustment / Fitting Help' : 'Request Replacement'}
+                                            </a>
+                                        ) : (
+                                            <button 
+                                                disabled
+                                                className="px-3.5 py-2 border border-zinc-800 text-[9px] font-bold uppercase tracking-wider text-zinc-500 cursor-not-allowed rounded-sm"
+                                                title="Size adjustments and replacements are only selectable within 2 months of delivery"
+                                            >
+                                                {isCustomized ? 'Adjustment Window Expired' : 'Replacement Window Expired'}
+                                            </button>
+                                        )}
+
+                                        {selectedOrder.refund_eligible && (
+                                            <button 
+                                                onClick={async () => {
+                                                    if (!confirm("Are you sure you want to request a refund for this order?")) return;
+                                                    try {
+                                                        const { error } = await supabase
+                                                            .from('orders')
+                                                            .update({ status: 'Refund Requested' })
+                                                            .eq('id', selectedOrder.id);
+                                                        if (error) throw error;
+                                                        
+                                                        setOrders(orders.map(o => o.id === selectedOrder.id ? { ...o, status: 'Refund Requested' } : o));
+                                                        setSelectedOrder((prev: any) => ({ ...prev, status: 'Refund Requested' }));
+                                                        alert("Refund request submitted successfully.");
+                                                    } catch (err: any) {
+                                                        console.error("Refund request failed:", err);
+                                                        alert("Failed to submit refund request.");
+                                                    }
+                                                }}
+                                                className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-600 border border-emerald-600 text-[9px] font-bold uppercase tracking-wider text-white transition-colors rounded-sm"
+                                            >
+                                                {selectedOrder.status === 'Refund Requested' ? 'Refund Requested' : 'Request Refund'}
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
+
+                                {/* Custom Products Disclaimer Warning */}
+                                {isCustomized && (
+                                    <div className="bg-amber-950/20 border border-amber-900/60 p-4 rounded-sm flex items-start gap-3">
+                                        <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                                        <div className="text-xs text-amber-300 leading-relaxed">
+                                            <p className="font-bold uppercase tracking-wider text-[10px] mb-1">Customized Product Disclaimer</p>
+                                            <p className="font-light text-[11px]">
+                                                Customized products are specially made for you and therefore handled through adjustment and correction workflows instead of standard replacement/refund.
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
 
                                 {/* Proactive Delay Trust Banner */}
                                 {hasDelay(selectedOrder) && (
