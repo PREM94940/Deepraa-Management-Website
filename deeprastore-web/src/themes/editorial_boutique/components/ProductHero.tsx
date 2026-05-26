@@ -220,6 +220,14 @@ export const ProductHero = ({
                     <div className="prose prose-p:font-light prose-p:leading-loose text-fg text-sm/7" dangerouslySetInnerHTML={{ __html: p.description || '' }} />
                 </div>
 
+                {/* Handcrafted Curation Timeline Notice */}
+                <div className="mb-8 p-4 bg-[#FCFBF8] border border-[#EBE8E0] rounded-sm flex items-start gap-3">
+                    <span className="text-[11px] text-[#A67C1E] font-bold uppercase tracking-widest bg-[#F5F2EA] px-2 py-0.5 rounded-sm shrink-0">Timeline</span>
+                    <p className="text-xs text-muted leading-relaxed font-light">
+                        <strong className="text-fg font-semibold">Handcrafted to Order:</strong> Fabric sourcing, weaving, and custom tailoring require 7-12 business days before dispatch. Expect premium attention to details.
+                    </p>
+                </div>
+
                 {/* Actions (Sticky on Mobile) */}
                 <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-md border-t border-border lg:static lg:bg-transparent lg:border-t-0 lg:p-0 z-40 flex flex-col gap-4">
                     <div className="flex gap-4 items-stretch">
