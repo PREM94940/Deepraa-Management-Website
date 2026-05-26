@@ -170,6 +170,12 @@ const INITIAL_MOCK_ITEMS: TailoringItem[] = [
   }
 ];
 
+const parseVal = (str: string): number => {
+  if (!str) return 0;
+  const num = parseFloat(str.replace(/[^0-9.]/g, ''));
+  return isNaN(num) ? 0 : num;
+};
+
 export default function TailoringCRMPage() {
   const [items, setItems] = useState<TailoringItem[]>(INITIAL_MOCK_ITEMS);
   const [staff, setStaff] = useState<any[]>(DEFAULT_STAFF);
@@ -550,6 +556,37 @@ export default function TailoringCRMPage() {
                         </p>
                       </div>
 
+                      {(() => {
+                        const bustVal = parseVal(item.measurements.bust);
+                        const waistVal = parseVal(item.measurements.waist);
+                        const shoulderVal = parseVal((item.measurements as any).shoulder);
+                        const frontNeckVal = parseVal(item.measurements.neckDepthFront);
+                        const backNeckVal = parseVal(item.measurements.neckDepthBack);
+
+                        const isSuspicious = 
+                          (bustVal > 0 && waistVal > 0 && bustVal <= waistVal) ||
+                          (shoulderVal > 0 && (shoulderVal <= 8 || shoulderVal >= 22)) ||
+                          (frontNeckVal > 0 && frontNeckVal >= 12) ||
+                          (backNeckVal > 0 && backNeckVal >= 15);
+
+                        if (!isSuspicious) return null;
+
+                        return (
+                          <div className="bg-amber-950/20 border border-amber-500/30 rounded-lg p-2.5 flex items-start gap-2 text-[10px] text-amber-400">
+                            <AlertTriangle size={14} className="flex-shrink-0 text-amber-400 mt-0.5" />
+                            <div>
+                              <span className="font-bold block uppercase tracking-wider text-amber-300">Suspicious Sizing Warning</span>
+                              <span className="block mt-0.5 leading-relaxed text-zinc-400 font-mono">
+                                {bustVal > 0 && waistVal > 0 && bustVal <= waistVal && `• Bust (${bustVal}") <= Waist (${waistVal}"). `}
+                                {shoulderVal > 0 && (shoulderVal <= 8 || shoulderVal >= 22) && `• Shoulder (${shoulderVal}") out of scale. `}
+                                {frontNeckVal >= 12 && `• Front Neck (${frontNeckVal}") too deep. `}
+                                {backNeckVal >= 15 && `• Back Neck (${backNeckVal}") too deep. `}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })()}
+
                       {/* Quick Details Grid */}
                       <div className="grid grid-cols-2 gap-2 py-2 border-y border-zinc-900 text-[10px] text-zinc-400">
                         <div className="flex items-center gap-1">
@@ -790,6 +827,67 @@ export default function TailoringCRMPage() {
                     </div>
                   </div>
                 </div>
+
+                {/* WHATSAPP CONCIERGE TEXT HANDOFF */}
+                <div className="mt-6 border-t border-zinc-200 pt-6 no-print">
+                  <h3 className="text-xs font-bold uppercase tracking-wider bg-zinc-800 text-white px-2 py-1.5 mb-2 rounded flex justify-between items-center">
+                    <span>WhatsApp Handoff Concierge</span>
+                  </h3>
+                  <div className="bg-zinc-50 border border-zinc-200 rounded p-3 relative">
+                    <pre className="text-xs leading-relaxed text-zinc-800 select-all font-sans whitespace-pre-wrap">
+                      {`*DEEPRASTORE ATELIER JOB SHEET*
+Order ID: ${selectedItem.orderNumber}
+Client Name: ${selectedItem.customerName}
+Garment: ${selectedItem.productName}
+Master Assigned: ${selectedItem.assignedStaffName}
+
+*Measurements:*
+- Bust: ${selectedItem.measurements.bust}
+- Waist: ${selectedItem.measurements.waist}
+- Hips: ${selectedItem.measurements.hips}
+- Sleeve: ${selectedItem.measurements.sleeveLength} (Width: ${selectedItem.measurements.sleeveWidth})
+- Neck Depth (Front/Back): ${selectedItem.measurements.neckDepthFront} / ${selectedItem.measurements.neckDepthBack}
+- Length: ${selectedItem.measurements.length}
+- Open Style: ${selectedItem.measurements.openStyle}
+- Lining Type: ${selectedItem.measurements.liningType}
+
+*Special Notes:* ${selectedItem.notes}
+*Instructions:* ${selectedItem.sketchInstructions}
+
+Please proceed with cutting/stitching as scheduled.`}
+                    </pre>
+                    <button
+                      onClick={() => {
+                        const msg = `*DEEPRASTORE ATELIER JOB SHEET*
+Order ID: ${selectedItem.orderNumber}
+Client Name: ${selectedItem.customerName}
+Garment: ${selectedItem.productName}
+Master Assigned: ${selectedItem.assignedStaffName}
+
+*Measurements:*
+- Bust: ${selectedItem.measurements.bust}
+- Waist: ${selectedItem.measurements.waist}
+- Hips: ${selectedItem.measurements.hips}
+- Sleeve: ${selectedItem.measurements.sleeveLength} (Width: ${selectedItem.measurements.sleeveWidth})
+- Neck Depth (Front/Back): ${selectedItem.measurements.neckDepthFront} / ${selectedItem.measurements.neckDepthBack}
+- Length: ${selectedItem.measurements.length}
+- Open Style: ${selectedItem.measurements.openStyle}
+- Lining Type: ${selectedItem.measurements.liningType}
+
+*Special Notes:* ${selectedItem.notes}
+*Instructions:* ${selectedItem.sketchInstructions}
+
+Please proceed with cutting/stitching as scheduled.`;
+                        navigator.clipboard.writeText(msg);
+                        alert("WhatsApp Concierge text copied to clipboard!");
+                      }}
+                      className="mt-3 w-full py-1.5 bg-[#25D366] hover:bg-[#20ba59] text-white font-bold rounded text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer border-0"
+                    >
+                      Copy for WhatsApp Share
+                    </button>
+                  </div>
+                </div>
+
               </div>
 
               {/* Modal Footer */}

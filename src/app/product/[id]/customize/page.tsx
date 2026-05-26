@@ -103,6 +103,30 @@ export default function CustomizeBlousePage() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [submissionId, setSubmissionId] = useState<string | null>(null);
 
+  // Saved profiles state
+  const [savedProfiles, setSavedProfiles] = useState<any[]>([]);
+  const [selectedProfileId, setSelectedProfileId] = useState<string>('');
+  const [saveAsProfile, setSaveAsProfile] = useState(false);
+  const [profileLabel, setProfileLabel] = useState('');
+
+  // Fetch Saved Sizing Profiles on mount
+  useEffect(() => {
+    async function fetchProfiles() {
+      try {
+        const { data, error } = await supabase
+          .from('measurement_profiles')
+          .select('*')
+          .order('created_at', { ascending: false });
+        if (data) {
+          setSavedProfiles(data);
+        }
+      } catch (err) {
+        console.error('Error fetching measurement profiles:', err);
+      }
+    }
+    fetchProfiles();
+  }, []);
+
   // Fetch Page Context
   useEffect(() => {
     async function determineContext() {
@@ -185,6 +209,34 @@ export default function CustomizeBlousePage() {
   const handleSaveCustomization = async () => {
     setIsSubmitting(true);
     try {
+      let profileId = null;
+      if (saveAsProfile) {
+        const { data: profData, error: profErr } = await supabase
+          .from('measurement_profiles')
+          .insert([
+            {
+              profile_label: profileLabel || 'Bespoke Fit Profile',
+              bust: measurements.bust,
+              waist: measurements.waist,
+              shoulder: measurements.shoulder,
+              front_neck_depth: measurements.frontNeckDepth,
+              back_neck_depth: measurements.backNeckDepth,
+              sleeve_length: measurements.sleeveLength,
+              sleeve_round: measurements.armHole,
+              unit: unit
+            }
+          ])
+          .select()
+          .single();
+
+        if (profErr) {
+          console.error("Failed to save sizing profile:", profErr.message);
+        } else if (profData) {
+          profileId = profData.id;
+          setSavedProfiles(prev => [profData, ...prev]);
+        }
+      }
+
       const payload = {
         blouse_style: `${selectedNeck} - ${selectedSleeve}`,
         sleeve_length: selectedSleeve,
@@ -195,6 +247,7 @@ export default function CustomizeBlousePage() {
           unit
         },
         notes: `Padding: ${selectedPadding}. Opening: ${selectedOpening}. Notes: ${notes}`,
+        profile_id: profileId,
         created_at: new Date().toISOString()
       };
 
@@ -497,10 +550,10 @@ export default function CustomizeBlousePage() {
                                 </button>
                               ))}
                             </div>
-                          </div>
                         </div>
                       </div>
-                    )}
+                    </div>
+                  )}
 
                     {/* STEP 4: Measurements Grid */}
                     {currentStepIdx === 3 && (
@@ -535,6 +588,42 @@ export default function CustomizeBlousePage() {
                           </div>
                         </div>
 
+                        {/* Saved Profile Loader */}
+                        {savedProfiles.length > 0 && (
+                          <div className="bg-white/[0.02] border border-white/5 p-4 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div>
+                              <span className="block text-xs font-bold text-white">Load Saved Sizing Profile</span>
+                              <span className="text-[10px] text-gray-400 block mt-0.5">Quick-load previously verified measurements.</span>
+                            </div>
+                            <select
+                              value={selectedProfileId}
+                              onChange={(e) => {
+                                const profId = e.target.value;
+                                setSelectedProfileId(profId);
+                                const selected = savedProfiles.find(p => p.id === profId);
+                                if (selected) {
+                                  setMeasurements({
+                                    bust: Number(selected.bust) || DEFAULT_MEASUREMENTS.bust,
+                                    waist: Number(selected.waist) || DEFAULT_MEASUREMENTS.waist,
+                                    shoulder: Number(selected.shoulder) || DEFAULT_MEASUREMENTS.shoulder,
+                                    frontNeckDepth: Number(selected.front_neck_depth) || DEFAULT_MEASUREMENTS.frontNeckDepth,
+                                    backNeckDepth: Number(selected.back_neck_depth) || DEFAULT_MEASUREMENTS.backNeckDepth,
+                                    sleeveLength: Number(selected.sleeve_length) || DEFAULT_MEASUREMENTS.sleeveLength,
+                                    armHole: Number(selected.sleeve_round) || DEFAULT_MEASUREMENTS.armHole,
+                                  });
+                                  setUnit(selected.unit || 'inches');
+                                }
+                              }}
+                              className="bg-[#1A1A1A] border border-white/10 rounded-lg px-3 py-2 text-xs font-semibold text-white focus:outline-none focus:border-[#D4AF37]"
+                            >
+                              <option value="">-- Select Profile --</option>
+                              {savedProfiles.map(p => (
+                                <option key={p.id} value={p.id}>{p.profile_label}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+
                         {/* Measurement Inputs Grid */}
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 bg-white/[0.01] p-5 rounded-2xl border border-white/5">
                           {(Object.keys(measurements) as Array<MeasurementKey>).map((key) => {
@@ -563,6 +652,31 @@ export default function CustomizeBlousePage() {
                               </div>
                             );
                           })}
+                        </div>
+
+                        {/* Save as New Profile Toggle */}
+                        <div className="bg-white/[0.01] border border-white/5 p-4 rounded-xl flex flex-col gap-3">
+                          <label className="flex items-center gap-2.5 cursor-pointer text-xs font-semibold text-gray-300">
+                            <input
+                              type="checkbox"
+                              checked={saveAsProfile}
+                              onChange={(e) => setSaveAsProfile(e.target.checked)}
+                              className="accent-[#D4AF37] w-4 h-4"
+                            />
+                            <span>Save these measurements as a reusable profile</span>
+                          </label>
+                          {saveAsProfile && (
+                            <div className="flex flex-col gap-2 mt-1">
+                              <label className="text-[10px] uppercase font-mono tracking-wider text-gray-400 font-bold">Profile Label Name</label>
+                              <input
+                                type="text"
+                                value={profileLabel}
+                                onChange={(e) => setProfileLabel(e.target.value)}
+                                placeholder="e.g. Bridal Trousseau Sizing, Sister Fit"
+                                className="bg-[#1A1A1A] border border-white/10 focus:border-[#D4AF37] focus:outline-none rounded-lg px-3 py-2 text-xs text-white"
+                              />
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}
