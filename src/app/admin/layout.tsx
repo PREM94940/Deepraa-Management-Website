@@ -20,6 +20,11 @@ function AdminSidebar({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let mounted = true;
     async function checkSecurity() {
+      // Exclude admin login page from secure layout gating to prevent redirect loops
+      if (pathname === '/admin/login') {
+        if (mounted) setIsVerifying(false);
+        return;
+      }
       try {
         const res = await getCurrentUserRoleAction();
         if (!mounted) return;
@@ -37,7 +42,7 @@ function AdminSidebar({ children }: { children: React.ReactNode }) {
     }
     checkSecurity();
     return () => { mounted = false; };
-  }, [router]);
+  }, [router, pathname]);
 
   let sidebarItems = [
     { id: 'overview', label: config.tabLabels.overview || 'Overview', icon: 'fa-chart-line', path: '/admin' },
