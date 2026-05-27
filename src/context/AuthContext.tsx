@@ -75,16 +75,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // ── Bootstrap session on mount + listen for changes ──
     useEffect(() => {
         let mounted = true;
-
         // Get existing session immediately
-        supabase.auth.getSession().then(({ data: { session: s } }) => {
-            if (!mounted) return;
-            setSession(s);
-            setUser(s?.user ?? null);
-            setLoading(false);
-        });
-
-        // Listen for auth state changes (login, logout, token refresh)
+        supabase.auth.getSession()
+            .then(({ data: { session: s } }) => {
+                if (!mounted) return;
+                setSession(s);
+                setUser(s?.user ?? null);
+                setLoading(false);
+            })
+            .catch((err) => {
+                console.error('[AuthContext] getSession error:', err);
+                if (mounted) setLoading(false);
+            });        // Listen for auth state changes (login, logout, token refresh)
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (event, s) => {
                 if (!mounted) return;
