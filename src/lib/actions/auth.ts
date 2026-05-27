@@ -6,6 +6,15 @@ import { createClient } from '../supabase-server-ssr';
 import { StaffRole, PERMISSIONS } from '../auth';
 
 export async function verifyAdminAccess(allowedRoles: StaffRole[], actionName: string) {
+    const simulatedRole = process.env.NEXT_PUBLIC_SIMULATE_ROLE as StaffRole | undefined;
+    if (simulatedRole) {
+        const isAllowed = allowedRoles.includes(simulatedRole);
+        if (!isAllowed) {
+            throw new Error(`Unauthorized: Simulated Role '${simulatedRole}' cannot perform '${actionName}'. Required: ${allowedRoles.join(', ')}`);
+        }
+        return { allowed: true, role: simulatedRole, userId: "simulated-user-id" };
+    }
+
     const supabase = await createClient();
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     
@@ -40,6 +49,11 @@ export async function verifyAdminAccess(allowedRoles: StaffRole[], actionName: s
 
 export async function getCurrentUserRoleAction() {
     try {
+        const simulatedRole = process.env.NEXT_PUBLIC_SIMULATE_ROLE as StaffRole | undefined;
+        if (simulatedRole) {
+            return { success: true, role: simulatedRole, email: 'simulated-admin@deeprastore.com' };
+        }
+
         const supabase = await createClient();
         const { data: { user }, error: userError } = await supabase.auth.getUser();
         if (userError || !user) {

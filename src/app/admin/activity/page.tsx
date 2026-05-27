@@ -14,10 +14,22 @@ export default function ActivityDashboard() {
     useEffect(() => {
         async function init() {
             setLoading(true);
-            const { role } = await getCurrentUserRoleAction();
-            setRole(role || 'Staff');
+            let userRole = 'Staff';
+            try {
+                const res = await getCurrentUserRoleAction();
+                if (res && res.role && res.role !== 'anonymous') {
+                    userRole = res.role;
+                } else {
+                    // Client-side fallback if server action returns anonymous
+                    userRole = (process.env.NEXT_PUBLIC_SIMULATE_ROLE as string) || 'Staff';
+                }
+            } catch (err) {
+                userRole = (process.env.NEXT_PUBLIC_SIMULATE_ROLE as string) || 'Staff';
+            }
+            
+            setRole(userRole);
 
-            if (role === 'Manager') {
+            if (userRole === 'Manager') {
                 await fetchActivity();
             }
             setLoading(false);

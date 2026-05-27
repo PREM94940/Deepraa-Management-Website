@@ -3,14 +3,21 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { Mail, Lock, Eye, EyeOff, ArrowRight, X, User as UserIcon, Sparkles } from 'lucide-react';
 
 // ─── AuthModal ────────────────────────────────────────────────────────────────
 
 export default function AuthModal() {
+    const pathname = usePathname();
+    if (pathname?.startsWith('/admin')) return null;
+    return <AuthModalContent />;
+}
+
+function AuthModalContent() {
     const { isModalOpen, closeLoginModal, syncCustomerProfile } = useAuth();
     const router = useRouter();
+    const pathname = usePathname();
     const returnToRef = useRef<string>('/account');
 
     const [isSignUp, setIsSignUp]         = useState(false);
@@ -106,7 +113,7 @@ export default function AuthModal() {
         }
     };
 
-    if (!isModalOpen) return null;
+    if (!isModalOpen || pathname?.startsWith('/admin')) return null;
 
     // Portal render so it sits above everything
     if (typeof document === 'undefined') return null;
