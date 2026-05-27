@@ -49,25 +49,36 @@ export async function verifyAdminAccess(allowedRoles: StaffRole[], actionName: s
 
 export async function getCurrentUserRoleAction() {
     try {
-        const simulatedRole = process.env.NEXT_PUBLIC_SIMULATE_ROLE as StaffRole | undefined;
-        if (simulatedRole) {
-            return { success: true, role: simulatedRole, email: 'simulated-admin@deeprastore.com' };
-        }
-
         const supabase = await createClient();
         const { data: { user }, error: userError } = await supabase.auth.getUser();
+        
+        // If there is no active user logged in, check for local dev simulation
         if (userError || !user) {
+            const simulatedRole = process.env.NEXT_PUBLIC_SIMULATE_ROLE as StaffRole | undefined;
+            if (simulatedRole) {
+                return { success: true, role: simulatedRole, email: 'simulated-admin@deeprastore.com' };
+            }
             return { success: false, role: 'anonymous' as const, email: null };
         }
 
+        // Look up verified user role in Supabase database
         const { data: roleData } = await supabaseServer
             .from('staff_roles')
             .select('role')
             .eq('id', user.id)
-            .single();
+            .maybeSingle();
 
-        const userRole = (roleData?.role as StaffRole) || 'Staff';
-        return { success: true, role: userRole, email: user.email || '' };
+        if (roleData?.role) {
+            return { success: true, role: roleData.role as StaffRole, email: user.email || '' };
+        }
+
+        // Fallback for developers if they are logged in but lack database roles
+        const simulatedRole = process.env.NEXT_PUBLIC_SIMULATE_ROLE as StaffRole | undefined;
+        if (simulatedRole) {
+            return { success: true, role: simulatedRole, email: user.email || '' };
+        }
+
+        return { success: false, role: 'anonymous' as const, email: null };
     } catch (err) {
         return { success: false, role: 'anonymous' as const, email: null };
     }
