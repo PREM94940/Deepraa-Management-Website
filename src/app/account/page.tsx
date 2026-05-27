@@ -6,6 +6,7 @@ import {
     RefreshCcw, User, LogOut, ArrowRight, CheckCircle2, AlertCircle 
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
@@ -129,9 +130,11 @@ export default function CustomerDashboard() {
             {/* Header / Navbar */}
             <div className="border-b border-[#1A1A1A] bg-[#0E0E0E]">
                 <div className="max-w-[1200px] mx-auto px-6 py-4 flex justify-between items-center">
-                    <h1 className="font-display text-xl tracking-[0.15em] font-light">
-                        DEEPRA<span className="text-[#D4AF37] font-normal">STORE</span>
-                    </h1>
+                    <Link href="/">
+                        <h1 className="font-display text-xl tracking-[0.15em] font-light cursor-pointer hover:opacity-85 transition-opacity">
+                            DEEPRA<span className="text-[#D4AF37] font-normal">STORE</span>
+                        </h1>
+                    </Link>
                     <div className="flex items-center gap-4">
                         <span className="text-[10px] text-zinc-400 font-mono hidden sm:inline">{user?.email}</span>
                         <button 

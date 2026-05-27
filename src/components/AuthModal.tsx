@@ -102,8 +102,11 @@ function AuthModalContent() {
             }
 
             // Auth state change in AuthContext will close modal
-            // Navigate to returnTo
-            const returnTo = returnToRef.current || '/account';
+            // Navigate to returnTo or homepage if it was '/account' to continue seamless browsing
+            let returnTo = returnToRef.current || '/';
+            if (returnTo === '/account') {
+                returnTo = '/';
+            }
             closeLoginModal();
             router.push(returnTo);
         } catch (err: any) {
