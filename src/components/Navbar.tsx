@@ -104,9 +104,6 @@ export const Navbar = ({ globalSettings }: { globalSettings?: any }) => {
                                 <Link href="/account" className="flex items-center gap-2 px-3 py-2 text-xs md:text-sm hover:bg-white/5 hover:text-accent rounded-lg transition-colors font-medium">
                                     Your Dashboard
                                 </Link>
-                                <Link href="/account" className="flex items-center gap-2 px-3 py-2 text-xs md:text-sm hover:bg-white/5 hover:text-accent rounded-lg transition-colors font-medium">
-                                    Your Orders
-                                </Link>
                                 <Link href="/wishlist" className="flex items-center gap-2 px-3 py-2 text-xs md:text-sm hover:bg-white/5 hover:text-accent rounded-lg transition-colors font-medium">
                                     Your Wishlist
                                 </Link>
