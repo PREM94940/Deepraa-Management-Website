@@ -107,6 +107,13 @@ function AuthModalContent() {
             if (returnTo === '/account') {
                 returnTo = '/';
             }
+            
+            // Clean up and clear active DOM trigger states
+            returnToRef.current = '/';
+            if (typeof document !== 'undefined') {
+                document.body.removeAttribute('data-auth-return-to');
+            }
+            
             closeLoginModal();
             router.push(returnTo);
         } catch (err: any) {
