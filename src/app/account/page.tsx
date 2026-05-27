@@ -6,12 +6,13 @@ import {
     RefreshCcw, User, LogOut, ArrowRight, CheckCircle2, AlertCircle 
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 
 export default function CustomerDashboard() {
     const router = useRouter();
-    const [user, setUser] = useState<any>(null);
+    const { user, loading: authLoading, openLoginModal } = useAuth();
     const [customer, setCustomer] = useState<any>(null);
     const [orders, setOrders] = useState<any[]>([]);
     const [complaints, setComplaints] = useState<any[]>([]);
@@ -49,21 +50,21 @@ export default function CustomerDashboard() {
     ];
 
     useEffect(() => {
+        if (authLoading) return;
+        if (!user) {
+            openLoginModal('/account');
+            return;
+        }
+
         async function fetchUserData() {
+            if (!user) return;
             setLoading(true);
             try {
-                const { data: { user: activeUser }, error: userError } = await supabase.auth.getUser();
-                if (userError || !activeUser) {
-                    router.push('/login');
-                    return;
-                }
-                setUser(activeUser);
-
                 // Fetch customer details
                 const { data: custData } = await supabase
                     .from('customers')
                     .select('*')
-                    .eq('id', activeUser.id)
+                    .eq('id', user.id)
                     .maybeSingle();
                 setCustomer(custData);
 
@@ -71,7 +72,7 @@ export default function CustomerDashboard() {
                 const { data: ords } = await supabase
                     .from('orders')
                     .select('*, order_items(*)')
-                    .eq('customer_id', activeUser.id)
+                    .eq('customer_id', user.id)
                     .order('created_at', { ascending: false });
                 setOrders(ords || []);
                 
@@ -83,7 +84,7 @@ export default function CustomerDashboard() {
                 const { data: comps } = await supabase
                     .from('complaints')
                     .select('*')
-                    .eq('customer_id', activeUser.id)
+                    .eq('customer_id', user.id)
                     .order('created_at', { ascending: false });
                 setComplaints(comps || []);
 
@@ -94,7 +95,7 @@ export default function CustomerDashboard() {
             }
         }
         fetchUserData();
-    }, []);
+    }, [user, authLoading, openLoginModal]);
 
     const handleLogout = async () => {
         await supabase.auth.signOut();
@@ -113,7 +114,7 @@ export default function CustomerDashboard() {
         return delayStatuses.includes(order.status) || order.target_days > 15;
     };
 
-    if (loading) {
+    if (authLoading || !user || loading) {
         return (
             <main className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
                 <div className="animate-pulse text-sm text-[#A3A3A3] uppercase tracking-[0.2em] font-light">

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/context/AuthContext';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { CartDrawer } from '@/components/CartDrawer';
@@ -77,6 +78,7 @@ export default function CustomizeBlousePage() {
   const id = params.id as string;
   const { addItem } = useCartStore();
   const { globalSettings, loading: cmsLoading } = useStorefrontCMS('product');
+  const { user, openLoginModal } = useAuth();
 
   // Context loading state
   const [contextType, setContextType] = useState<'product' | 'order_item' | 'unknown'>('unknown');
@@ -109,13 +111,11 @@ export default function CustomizeBlousePage() {
   const [saveAsProfile, setSaveAsProfile] = useState(false);
   const [profileLabel, setProfileLabel] = useState('');
 
-  // Fetch Saved Sizing Profiles on mount
+  // Fetch Saved Sizing Profiles when user is available
   useEffect(() => {
     async function fetchProfiles() {
+      if (!user) return;
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
         const { data, error } = await supabase
           .from('measurement_profiles')
           .select('*')
@@ -129,7 +129,7 @@ export default function CustomizeBlousePage() {
       }
     }
     fetchProfiles();
-  }, []);
+  }, [user]);
 
   // Fetch Page Context
   useEffect(() => {
@@ -211,16 +211,25 @@ export default function CustomizeBlousePage() {
 
   // Submission handler
   const handleSaveCustomization = async () => {
+    if (contextType === 'order_item' && !user) {
+      openLoginModal(window.location.pathname + window.location.search);
+      return;
+    }
+
+    if (saveAsProfile && !user) {
+      openLoginModal(window.location.pathname + window.location.search);
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       let profileId = null;
-      if (saveAsProfile) {
-        const { data: { user } } = await supabase.auth.getUser();
+      if (saveAsProfile && user) {
         const { data: profData, error: profErr } = await supabase
           .from('measurement_profiles')
           .insert([
             {
-              customer_id: user ? user.id : null,
+              customer_id: user.id,
               profile_label: profileLabel || 'Bespoke Fit Profile',
               bust: measurements.bust,
               waist: measurements.waist,

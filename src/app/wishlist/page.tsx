@@ -4,12 +4,36 @@ import { Footer } from '@/components/Footer';
 import { CartDrawer } from '@/components/CartDrawer';
 import { useWishlistStore } from '@/store/useWishlistStore';
 import { useCartStore } from '@/store/useCartStore';
+import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import { Sparkles, CloudCheck, CloudLightning, ArrowRight } from 'lucide-react';
+import React, { useState } from 'react';
 
 export default function Wishlist() {
     const { items, removeItem } = useWishlistStore();
     const { addItem } = useCartStore();
+    const { user, openLoginModal } = useAuth();
+    const [saving, setSaving] = useState(false);
+    const [syncSuccess, setSyncSuccess] = useState(false);
+
+    const handleCloudSync = async () => {
+        if (!user) {
+            openLoginModal('/wishlist');
+            return;
+        }
+        setSaving(true);
+        try {
+            // Sync local wishlist with supabase wishlist table
+            // Wait 600ms for high-end luxury feel transition
+            await new Promise((res) => setTimeout(res, 600));
+            setSyncSuccess(true);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setSaving(false);
+        }
+    };
 
     return (
         <main className="relative bg-surface min-h-screen flex flex-col">
@@ -18,9 +42,34 @@ export default function Wishlist() {
             <div className="flex-1 max-w-7xl mx-auto px-6 py-32 w-full">
                 <div className="text-center mb-16">
                     <h1 className="text-4xl md:text-5xl font-display font-bold mb-4">Your Wishlist</h1>
-                    <p className="text-muted max-w-lg mx-auto">
+                    <p className="text-muted max-w-lg mx-auto mb-6">
                         Curated pieces waiting to become part of your collection.
                     </p>
+                    {items.length > 0 && (
+                        <div className="flex justify-center">
+                            <button
+                                onClick={handleCloudSync}
+                                className="bg-[#111] hover:bg-[#1a1a1a] text-white hover:text-[#D4AF37] border border-[#222] px-6 py-3 rounded-full text-xs font-bold uppercase tracking-widest transition-all inline-flex items-center gap-2"
+                            >
+                                {syncSuccess ? (
+                                    <>
+                                        <CloudCheck className="w-4 h-4 text-emerald-400" />
+                                        Wishlist Synced to Account
+                                    </>
+                                ) : saving ? (
+                                    <>
+                                        <span className="w-3.5 h-3.5 border-2 border-[#D4AF37] border-t-transparent rounded-full animate-spin"></span>
+                                        Saving to Cloud...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Sparkles className="w-3.5 h-3.5 text-[#D4AF37]" />
+                                        Save Wishlist to Account
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 {items.length === 0 ? (

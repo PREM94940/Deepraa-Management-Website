@@ -26,6 +26,9 @@ const poppins = Poppins({
 
 const EditorialBoutique = dynamic(() => import("@/themes/editorial_boutique/index"));
 
+import { AuthProvider } from "@/context/AuthContext";
+import AuthModal from "@/components/AuthModal";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -36,11 +39,14 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${playfair.variable} ${poppins.variable}`}>
       <body className="font-body min-h-screen bg-bg text-fg">
-        {theme === 'editorial_boutique' ? <EditorialBoutique /> : null}
-        {/* Preserve global UI elements */}
-        {children}
-        <WhatsAppConcierge />
-        <Analytics />
+        <AuthProvider>
+          {theme === 'editorial_boutique' ? <EditorialBoutique /> : null}
+          {/* Preserve global UI elements */}
+          {children}
+          <AuthModal />
+          <WhatsAppConcierge />
+          <Analytics />
+        </AuthProvider>
       </body>
     </html>
   );

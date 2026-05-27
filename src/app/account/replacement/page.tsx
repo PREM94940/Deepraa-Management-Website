@@ -9,12 +9,14 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 
+import { useAuth } from '@/context/AuthContext';
+
 function ReplacementFormContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
+    const { user, loading: authLoading, openLoginModal } = useAuth();
     const initialOrderId = searchParams.get('orderId') || '';
 
-    const [user, setUser] = useState<any>(null);
     const [orders, setOrders] = useState<any[]>([]);
     const [orderId, setOrderId] = useState(initialOrderId);
     const [issueType, setIssueType] = useState('size adjustment / fitting alteration');
@@ -67,23 +69,23 @@ function ReplacementFormContent() {
     const isEligible = orderId ? isWithinTwoMonths(selectedOrderObj) : true;
 
     useEffect(() => {
-        async function fetchUserOrders() {
-            const { data: { user: activeUser } } = await supabase.auth.getUser();
-            if (!activeUser) {
-                router.push('/login');
-                return;
-            }
-            setUser(activeUser);
+        if (authLoading) return;
+        if (!user) {
+            openLoginModal(`/account/replacement?orderId=${initialOrderId}`);
+            return;
+        }
 
+        async function fetchUserOrders() {
+            if (!user) return;
             const { data: ords } = await supabase
                 .from('orders')
                 .select('id, order_number, created_at, status, order_items(*)')
-                .eq('customer_id', activeUser.id);
+                .eq('customer_id', user.id);
             setOrders(ords || []);
             setLoading(false);
         }
         fetchUserOrders();
-    }, []);
+    }, [user, authLoading, openLoginModal, initialOrderId]);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
@@ -93,6 +95,7 @@ function ReplacementFormContent() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!user) return;
         if (!orderId) return setError('Please select an order reference.');
         if (!isWithinTwoMonths(selectedOrderObj)) {
             return setError('This order is past the 2-month window post-delivery and is no longer eligible for size adjustments or replacements.');
@@ -154,7 +157,7 @@ function ReplacementFormContent() {
         }
     };
 
-    if (loading) {
+    if (authLoading || !user || loading) {
         return (
             <div className="py-20 text-center text-sm uppercase tracking-widest font-light text-zinc-500">
                 Loading order details...
