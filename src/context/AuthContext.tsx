@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { User, Session } from '@supabase/supabase-js';
+import { useCartStore } from '@/store/useCartStore';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -110,6 +111,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 if (event === 'SIGNED_OUT') {
                     setUser(null);
                     setSession(null);
+                    // Clear cart on logout to prevent carry-over
+                    try {
+                        useCartStore.getState().clearCart();
+                    } catch (e) {
+                        console.error('Failed to clear cart on sign out:', e);
+                    }
                 }
             }
         );
