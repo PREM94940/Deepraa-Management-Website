@@ -13,12 +13,13 @@ import { Footer } from '@/components/Footer';
 
 export default function CustomerDashboard() {
     const router = useRouter();
-    const { user, loading: authLoading, openLoginModal } = useAuth();
+    const { user, loading: authLoading, openLoginModal, isModalOpen } = useAuth();
     const [customer, setCustomer] = useState<any>(null);
     const [orders, setOrders] = useState<any[]>([]);
     const [complaints, setComplaints] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedOrder, setSelectedOrder] = useState<any>(null);
+    const [loginPrompted, setLoginPrompted] = useState(false);
 
     const isCustomized = selectedOrder?.order_items?.some((item: any) => 
         item.is_customized === true || 
@@ -53,7 +54,10 @@ export default function CustomerDashboard() {
     useEffect(() => {
         if (authLoading) return;
         if (!user) {
-            openLoginModal('/account');
+            if (!loginPrompted) {
+                setLoginPrompted(true);
+                openLoginModal('/account');
+            }
             return;
         }
 
@@ -96,7 +100,14 @@ export default function CustomerDashboard() {
             }
         }
         fetchUserData();
-    }, [user, authLoading, openLoginModal]);
+    }, [user, authLoading, openLoginModal, loginPrompted]);
+
+    // If user closed the login modal without logging in, redirect to homepage
+    useEffect(() => {
+        if (loginPrompted && !isModalOpen && !user && !authLoading) {
+            router.push('/');
+        }
+    }, [loginPrompted, isModalOpen, user, authLoading, router]);
 
     const handleLogout = async () => {
         await supabase.auth.signOut();

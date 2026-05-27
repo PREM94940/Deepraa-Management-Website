@@ -8,8 +8,14 @@ export const Navbar = ({ globalSettings }: { globalSettings?: any }) => {
     const { items, setIsOpen } = useCartStore();
     const { nav: headerNav } = useNavigationManager('header');
     
+    // Required nav items that must always appear
+    const REQUIRED_ITEMS = [
+        { label: 'Track Order', link: '/track' },
+        { label: 'Support', link: '/support' }
+    ];
+
     // Determine menuItems dynamically from database or fallback to settings/defaults
-    const menuItems = (headerNav && headerNav.items && headerNav.items.length > 0)
+    let menuItems = (headerNav && headerNav.items && headerNav.items.length > 0)
         ? headerNav.items.map((item: any) => ({ label: item.label, link: item.url }))
         : (globalSettings?.primary_menu || [
             { label: 'Collections', link: '/collections' },
@@ -18,6 +24,14 @@ export const Navbar = ({ globalSettings }: { globalSettings?: any }) => {
             { label: 'Track Order', link: '/track' },
             { label: 'Support', link: '/support' }
         ]);
+    
+    // Ensure required items are always present (Track Order, Support)
+    const existingLabels = menuItems.map((item: any) => item.label.toLowerCase());
+    REQUIRED_ITEMS.forEach(req => {
+        if (!existingLabels.includes(req.label.toLowerCase())) {
+            menuItems = [...menuItems, req];
+        }
+    });
     
     // Calculate total quantity for the badge
     const totalItems = items.reduce((sum, item) => sum + item.qty, 0);
