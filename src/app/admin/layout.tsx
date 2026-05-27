@@ -25,19 +25,36 @@ function AdminSidebar({ children }: { children: React.ReactNode }) {
         if (mounted) setIsVerifying(false);
         return;
       }
-      try {
-        const res = await getCurrentUserRoleAction();
-        if (!mounted) return;
-        if (!res.success || !['Staff', 'Manager'].includes(res.role)) {
-          // Absolute security isolation: send unauthorized accounts back to home instantly
+      // Retry up to 3 times with delay — after a fresh client-side login,
+      // the server-side auth cookie may need a moment to propagate.
+      const MAX_RETRIES = 3;
+      const RETRY_DELAY = 1000; // ms
+      for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+        try {
+          const res = await getCurrentUserRoleAction();
+          if (!mounted) return;
+          if (res.success && ['Staff', 'Manager'].includes(res.role)) {
+            setUserEmail(res.email || 'admin@deeprastore.com');
+            setUserRoleName(res.role === 'Manager' ? 'Manager Account' : 'Staff Account');
+            setIsVerifying(false);
+            return; // Success — stop retrying
+          }
+          // Role check failed — if we still have retries left, wait and try again
+          if (attempt < MAX_RETRIES - 1) {
+            await new Promise(r => setTimeout(r, RETRY_DELAY));
+            continue;
+          }
+          // Final attempt failed — redirect to home
           router.replace('/');
           return;
+        } catch (err) {
+          if (attempt < MAX_RETRIES - 1) {
+            await new Promise(r => setTimeout(r, RETRY_DELAY));
+            continue;
+          }
+          if (mounted) router.replace('/');
+          return;
         }
-        setUserEmail(res.email || 'admin@deeprastore.com');
-        setUserRoleName(res.role === 'Manager' ? 'Manager Account' : 'Staff Account');
-        setIsVerifying(false);
-      } catch (err) {
-        if (mounted) router.replace('/');
       }
     }
     checkSecurity();
@@ -154,7 +171,18 @@ function AdminSidebar({ children }: { children: React.ReactNode }) {
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <SettingsProvider>
-      <AdminSidebar>{children}</AdminSidebar>
+      <AdminLayoutInner>{children}</AdminLayoutInner>
     </SettingsProvider>
   );
+}
+
+/** If we are on /admin/login, render ONLY the children (the login form)
+ *  without the sidebar wrapper. This prevents sidebar tabs from leaking
+ *  on the login screen. */
+function AdminLayoutInner({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  if (pathname === '/admin/login') {
+    return <>{children}</>;
+  }
+  return <AdminSidebar>{children}</AdminSidebar>;
 }
