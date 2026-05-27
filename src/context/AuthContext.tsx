@@ -83,17 +83,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 setSession(s);
                 setUser(s?.user ?? null);
                 setLoading(false);
+                // Initialize cart with correct user ID
+                try {
+                    useCartStore.getState().setCurrentUser(s?.user?.id ?? null);
+                } catch (e) {
+                    console.error('Failed to sync cart user state on boot:', e);
+                }
             })
             .catch((err) => {
                 console.error('[AuthContext] getSession error:', err);
                 if (mounted) setLoading(false);
-            });        // Listen for auth state changes (login, logout, token refresh)
+            });
+
+        // Listen for auth state changes (login, logout, token refresh)
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (event, s) => {
                 if (!mounted) return;
                 setSession(s);
                 setUser(s?.user ?? null);
                 setLoading(false);
+
+                // Update the current user in the cart store so correct cart is loaded/merged
+                try {
+                    useCartStore.getState().setCurrentUser(s?.user?.id ?? null);
+                } catch (e) {
+                    console.error('Failed to sync cart user state:', e);
+                }
 
                 // On new sign-in, sync customer profile
                 if (event === 'SIGNED_IN' && s?.user) {
@@ -111,12 +126,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 if (event === 'SIGNED_OUT') {
                     setUser(null);
                     setSession(null);
-                    // Clear cart on logout to prevent carry-over
-                    try {
-                        useCartStore.getState().clearCart();
-                    } catch (e) {
-                        console.error('Failed to clear cart on sign out:', e);
-                    }
                 }
             }
         );
