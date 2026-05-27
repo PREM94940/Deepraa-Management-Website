@@ -49,7 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
             const { data } = await supabase
                 .from('customers')
-                .select('id')
+                .select('id, email, full_name')
                 .eq('id', id)
                 .maybeSingle();
 
@@ -67,6 +67,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     risk_level: 'Low',
                     loyalty_level: 'Bronze',
                 });
+            } else {
+                // Update email or full_name if missing from the existing profile
+                const updates: any = {};
+                if (!data.email && email) updates.email = email;
+                if ((!data.full_name || data.full_name === 'Customer') && name) updates.full_name = name;
+
+                if (Object.keys(updates).length > 0) {
+                    await supabase
+                        .from('customers')
+                        .update(updates)
+                        .eq('id', id);
+                }
             }
         } catch (err) {
             console.error('[AuthContext] Failed to sync customer profile:', err);

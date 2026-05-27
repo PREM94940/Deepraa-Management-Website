@@ -21,6 +21,68 @@ export default function CustomerDashboard() {
     const [selectedOrder, setSelectedOrder] = useState<any>(null);
     const [loginPrompted, setLoginPrompted] = useState(false);
 
+    // Profile Editing States
+    const [isEditingProfile, setIsEditingProfile] = useState(false);
+    const [editName, setEditName] = useState('');
+    const [editPhone, setEditPhone] = useState('');
+    const [editAltPhone1, setEditAltPhone1] = useState('');
+    const [editAltPhone2, setEditAltPhone2] = useState('');
+    const [editCity, setEditCity] = useState('');
+    const [editAddress, setEditAddress] = useState('');
+    const [updatingProfile, setUpdatingProfile] = useState(false);
+    const [profileError, setProfileError] = useState<string | null>(null);
+
+    const handleSaveProfile = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!user) return;
+        if (!editName.trim()) {
+            setProfileError('Name is required.');
+            return;
+        }
+        if (!editPhone.trim()) {
+            setProfileError('Primary Mobile number is required.');
+            return;
+        }
+        setUpdatingProfile(true);
+        setProfileError(null);
+        try {
+            const preferences = customer?.preferences || {};
+            const updatedPreferences = {
+                ...preferences,
+                alternative_mobile_1: editAltPhone1.trim(),
+                alternative_mobile_2: editAltPhone2.trim()
+            };
+
+            const { error: updateErr } = await supabase
+                .from('customers')
+                .update({
+                    full_name: editName.trim(),
+                    phone_number: editPhone.trim(),
+                    city: editCity.trim(),
+                    address: editAddress.trim(),
+                    preferences: updatedPreferences
+                })
+                .eq('id', user.id);
+
+            if (updateErr) throw updateErr;
+
+            // Refresh customer profile state
+            setCustomer((prev: any) => ({
+                ...prev,
+                full_name: editName.trim(),
+                phone_number: editPhone.trim(),
+                city: editCity.trim(),
+                address: editAddress.trim(),
+                preferences: updatedPreferences
+            }));
+            setIsEditingProfile(false);
+        } catch (err: any) {
+            setProfileError(err.message || 'Failed to update profile. Please try again.');
+        } finally {
+            setUpdatingProfile(false);
+        }
+    };
+
     const isCustomized = selectedOrder?.order_items?.some((item: any) => 
         item.is_customized === true || 
         item.is_customized === 'true' || 
@@ -72,6 +134,14 @@ export default function CustomerDashboard() {
                     .eq('id', user.id)
                     .maybeSingle();
                 setCustomer(custData);
+                if (custData) {
+                    setEditName(custData.full_name || '');
+                    setEditPhone(custData.phone_number || '');
+                    setEditAltPhone1(custData.preferences?.alternative_mobile_1 || '');
+                    setEditAltPhone2(custData.preferences?.alternative_mobile_2 || '');
+                    setEditCity(custData.city || '');
+                    setEditAddress(custData.address || '');
+                }
 
                 // Fetch customer orders
                 const { data: ords } = await supabase
@@ -178,19 +248,39 @@ export default function CustomerDashboard() {
                             </div>
                         </div>
 
-                        <div className="space-y-3.5 text-xs border-t border-[#1C1C1C] pt-4">
+                         <div className="space-y-3.5 text-xs border-t border-[#1C1C1C] pt-4">
                             <div className="flex justify-between">
                                 <span className="text-zinc-500">Contact Number:</span>
                                 <span className="font-mono text-zinc-300">{customer?.phone_number || 'N/A'}</span>
                             </div>
                             <div className="flex justify-between">
+                                <span className="text-zinc-500">Alt Contact 1:</span>
+                                <span className="font-mono text-zinc-300">{customer?.preferences?.alternative_mobile_1 || 'N/A'}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-zinc-500">Alt Contact 2:</span>
+                                <span className="font-mono text-zinc-300">{customer?.preferences?.alternative_mobile_2 || 'N/A'}</span>
+                            </div>
+                            <div className="flex justify-between">
                                 <span className="text-zinc-500">Email Address:</span>
-                                <span className="text-zinc-300 truncate max-w-[180px]">{customer?.email || 'N/A'}</span>
+                                <span className="text-zinc-300 truncate max-w-[180px]" title={customer?.email}>{customer?.email || 'N/A'}</span>
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-zinc-500">City / Region:</span>
                                 <span className="text-zinc-300">{customer?.city || 'N/A'}</span>
                             </div>
+                            <div className="flex flex-col gap-1 border-t border-[#1C1C1C] pt-3.5 mt-2">
+                                <span className="text-zinc-500">Full Shipping Address:</span>
+                                <p className="text-zinc-300 leading-relaxed break-words whitespace-pre-line text-[11px]">
+                                    {customer?.address || 'No address added yet.'}
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setIsEditingProfile(true)}
+                                className="w-full mt-4 py-2 bg-[#1C1C1C] hover:bg-[#252525] border border-[#2a2a2a] hover:border-[#D4AF37]/50 text-white hover:text-[#D4AF37] text-[10px] uppercase font-bold tracking-widest rounded-sm transition-all text-center cursor-pointer"
+                            >
+                                Edit Profile Details
+                            </button>
                         </div>
                     </div>
 
@@ -432,6 +522,94 @@ export default function CustomerDashboard() {
             <div className="border-t border-[#1A1A1A] bg-[#0E0E0E] py-6 text-center text-[10px] text-zinc-600 uppercase tracking-widest">
                 Deeprastore Premium Editorial © 2026. All Rights Reserved.
             </div>
+            {/* Edit Profile Modal */}
+            {isEditingProfile && (
+                <div className="fixed inset-0 z-[999] flex items-center justify-center">
+                    <div className="absolute inset-0 bg-black/85 backdrop-blur-sm" onClick={() => setIsEditingProfile(false)} />
+                    <div className="relative z-10 w-full max-w-[450px] mx-4 bg-[#111111] border border-[#242424] rounded-sm shadow-2xl p-6 text-left">
+                        <div className="flex justify-between items-center mb-6 pb-2 border-b border-[#222]">
+                            <h3 className="text-sm font-bold uppercase tracking-wider text-white">Edit Your Profile</h3>
+                            <button onClick={() => setIsEditingProfile(false)} className="text-zinc-500 hover:text-white transition-colors cursor-pointer text-xs uppercase tracking-wider font-bold">Cancel</button>
+                        </div>
+                        {profileError && (
+                            <div className="mb-4 bg-red-950/40 border border-red-900/50 text-red-400 p-2.5 text-[11px] rounded-sm text-center">
+                                {profileError}
+                            </div>
+                        )}
+                        <form onSubmit={handleSaveProfile} className="space-y-4">
+                            <div>
+                                <label className="block text-[9px] text-zinc-400 mb-1.5 uppercase tracking-widest font-bold">Full Name *</label>
+                                <input
+                                    type="text"
+                                    value={editName}
+                                    onChange={e => setEditName(e.target.value)}
+                                    className="w-full text-xs py-2.5 px-3 border border-[#2a2a2a] bg-[#161616] text-white outline-none focus:border-[#D4AF37] rounded-sm transition-all"
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-[9px] text-zinc-400 mb-1.5 uppercase tracking-widest font-bold">Primary Mobile *</label>
+                                <input
+                                    type="tel"
+                                    value={editPhone}
+                                    onChange={e => setEditPhone(e.target.value)}
+                                    className="w-full text-xs py-2.5 px-3 border border-[#2a2a2a] bg-[#161616] text-white outline-none focus:border-[#D4AF37] rounded-sm transition-all font-mono"
+                                    required
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-[9px] text-zinc-400 mb-1.5 uppercase tracking-widest font-bold">Alt Contact 1</label>
+                                    <input
+                                        type="tel"
+                                        placeholder="Alt Mobile 1"
+                                        value={editAltPhone1}
+                                        onChange={e => setEditAltPhone1(e.target.value)}
+                                        className="w-full text-xs py-2.5 px-3 border border-[#2a2a2a] bg-[#161616] text-white outline-none focus:border-[#D4AF37] rounded-sm transition-all font-mono"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[9px] text-zinc-400 mb-1.5 uppercase tracking-widest font-bold">Alt Contact 2</label>
+                                    <input
+                                        type="tel"
+                                        placeholder="Alt Mobile 2"
+                                        value={editAltPhone2}
+                                        onChange={e => setEditAltPhone2(e.target.value)}
+                                        className="w-full text-xs py-2.5 px-3 border border-[#2a2a2a] bg-[#161616] text-white outline-none focus:border-[#D4AF37] rounded-sm transition-all font-mono"
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-[9px] text-zinc-400 mb-1.5 uppercase tracking-widest font-bold">City / Region</label>
+                                <input
+                                    type="text"
+                                    placeholder="E.g. Hyderabad, Telangana"
+                                    value={editCity}
+                                    onChange={e => setEditCity(e.target.value)}
+                                    className="w-full text-xs py-2.5 px-3 border border-[#2a2a2a] bg-[#161616] text-white outline-none focus:border-[#D4AF37] rounded-sm transition-all"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-[9px] text-zinc-400 mb-1.5 uppercase tracking-widest font-bold">Full Address</label>
+                                <textarea
+                                    rows={2}
+                                    placeholder="Enter your shipping/billing address"
+                                    value={editAddress}
+                                    onChange={e => setEditAddress(e.target.value)}
+                                    className="w-full text-xs py-2.5 px-3 border border-[#2a2a2a] bg-[#161616] text-white outline-none focus:border-[#D4AF37] rounded-sm transition-all resize-none"
+                                />
+                            </div>
+                            <button
+                                type="submit"
+                                disabled={updatingProfile}
+                                className="w-full bg-[#D4AF37] hover:bg-[#b8952d] text-black font-bold uppercase text-[10px] tracking-[0.18em] py-3.5 px-4 rounded-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-2 shadow-lg shadow-[#D4AF37]/10 cursor-pointer"
+                            >
+                                {updatingProfile ? 'Saving Changes...' : 'Save Changes'}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
         </main>
     );
 }
