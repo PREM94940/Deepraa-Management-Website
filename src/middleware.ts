@@ -104,6 +104,10 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL('/', request.url));
     }
 
+    // Force allow framing for the same origin (fixes Vercel Next.js default DENY on dynamic routes)
+    supabaseResponse.headers.set('X-Frame-Options', 'SAMEORIGIN');
+    supabaseResponse.headers.set('Content-Security-Policy', "frame-ancestors 'self' https://deepraa-management-website.vercel.app http://localhost:3000;");
+
     return supabaseResponse;
 }
 
