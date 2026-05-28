@@ -11,7 +11,7 @@ export async function middleware(request: NextRequest) {
     const now = Date.now();
     const isAdminLogin = request.nextUrl.pathname === '/admin/login';
     const rateLimitWindow = isAdminLogin ? 15 * 60 * 1000 : 60000; // 15 mins for login, 1 min otherwise
-    const maxRequests = isAdminLogin ? 5 : 100; // 5 attempts per 15 mins for login
+    const maxRequests = isAdminLogin ? 50 : 100; // Increased to 50 to prevent Server Action crash loops during dev
 
     // Use a composite key for specific rate limiting buckets
     const rateKey = `${ip}_${isAdminLogin ? 'admin_login' : 'global'}`;
@@ -24,7 +24,13 @@ export async function middleware(request: NextRequest) {
     ipRequestCounts.set(rateKey, rateData);
 
     if (rateData.count > maxRequests) {
+        console.warn(`[MIDDLEWARE-DEBUG] Rate limit exceeded for IP: ${ip} on path: ${request.nextUrl.pathname}`);
         return new NextResponse("Too Many Requests. Please slow down.", { status: 429 });
+    }
+    
+    // Add debug log for admin login hits
+    if (isAdminLogin) {
+        console.log(`[MIDDLEWARE-DEBUG] Admin login hit. IP: ${ip}, Count: ${rateData.count}`);
     }
 
     // 2. Supabase Auth Session Refresh

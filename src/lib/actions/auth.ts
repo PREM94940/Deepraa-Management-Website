@@ -123,9 +123,25 @@ export async function logSuspiciousLoginAction(email: string) {
 }
 
 export async function verifyGatekeyAction(gatekey: string) {
-    const validGatekey = process.env.ADMIN_GATEKEY;
-    if (!validGatekey || gatekey === validGatekey) {
-        return { success: true };
+    try {
+        console.log("[DEBUG-GATEKEY] Action called. Received gatekey length:", gatekey?.length);
+        const validGatekey = process.env.ADMIN_GATEKEY;
+        console.log("[DEBUG-GATEKEY] Environment check - validGatekey exists:", !!validGatekey, "Length:", validGatekey?.length);
+        
+        if (!validGatekey) {
+            console.log("[DEBUG-GATEKEY] No ADMIN_GATEKEY in env, bypassing for safety fallback.");
+            return { success: true };
+        }
+        
+        if (gatekey === validGatekey) {
+            console.log("[DEBUG-GATEKEY] Match successful.");
+            return { success: true };
+        }
+        
+        console.log("[DEBUG-GATEKEY] Match failed.");
+        return { success: false, error: "Invalid Admin Gatekey" };
+    } catch (err: any) {
+        console.error("[DEBUG-GATEKEY] Exception caught:", err);
+        throw err;
     }
-    return { success: false, error: "Invalid Admin Gatekey" };
 }

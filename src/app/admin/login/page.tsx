@@ -33,7 +33,9 @@ export default function AdminLogin() {
         setError(null);
 
         try {
+            console.log("[FRONTEND-DEBUG] Calling verifyGatekeyAction...");
             const gatekeyRes = await verifyGatekeyAction(gatekey);
+            console.log("[FRONTEND-DEBUG] Response from action:", gatekeyRes);
             if (!gatekeyRes.success) {
                 // If there's an email typed, log it, otherwise log 'anonymous_gatekey_attempt'
                 await logSuspiciousLoginAction('anonymous_gatekey_attempt');
@@ -41,6 +43,7 @@ export default function AdminLogin() {
             }
             setGatekeyVerified(true);
         } catch (err: any) {
+            console.error("[FRONTEND-DEBUG] Caught exception in gatekey flow:", err);
             setError(err.message || 'Invalid Gatekey.');
         } finally {
             setLoading(false);
