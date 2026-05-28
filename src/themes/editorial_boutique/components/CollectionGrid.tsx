@@ -60,9 +60,9 @@ export const CollectionGrid = ({
     const changeSelectedCategory = setSelectedCategory || setLocalSelectedCategory;
     const changePriceRange = setPriceRange || setLocalPriceRange;
 
+    // Filter local products if we are using mock data
     useEffect(() => {
         if (products === undefined) {
-            setLocalLoading(true);
             let filtered = [...mockProducts];
             if (currentSelectedCategory !== 'All') {
                 filtered = filtered.filter(p => p.category === currentSelectedCategory);
@@ -72,7 +72,6 @@ export const CollectionGrid = ({
                 filtered = filtered.filter(p => p.title.toLowerCase().includes(currentSearchQuery.toLowerCase()));
             }
             setLocalProducts(filtered);
-            setLocalLoading(false);
         }
     }, [currentSelectedCategory, currentPriceRange, currentSearchQuery, products]);
 

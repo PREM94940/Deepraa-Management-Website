@@ -340,17 +340,13 @@ export function useNavigationManager(menuType: string): UseNavigationManagerRetu
         .from('navigation_manager')
         .select('*')
         .eq('menu_type', menuType)
-        .single();
+        .maybeSingle();
 
       if (cancelled) return;
 
       if (supabaseError) {
-        if (supabaseError.code === 'PGRST116') {
-          setNav(null);
-        } else {
-          setError(supabaseError.message);
-          setNav(null);
-        }
+        setError(supabaseError.message);
+        setNav(null);
       } else {
         setNav(data as NavigationManager);
       }
@@ -395,17 +391,13 @@ export function useFooterManager(): UseFooterManagerReturn {
         .from('footer_manager')
         .select('*')
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (cancelled) return;
 
       if (supabaseError) {
-        if (supabaseError.code === 'PGRST116') {
-          setFooter(null);
-        } else {
-          setError(supabaseError.message);
-          setFooter(null);
-        }
+        setError(supabaseError.message);
+        setFooter(null);
       } else {
         setFooter(data as FooterManager);
       }
