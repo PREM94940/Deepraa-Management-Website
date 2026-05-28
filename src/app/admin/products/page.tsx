@@ -61,17 +61,30 @@ export default function ProductsPage() {
     async function fetchProducts() {
         setLoading(true);
         try {
-            const { data, error } = await supabase
-                .from('products')
-                .select('*')
-                .order('created_at', { ascending: false });
+            console.log("[FRONTEND-DEBUG] fetchProducts starting. Checking session...");
             
-            if (error) throw error;
-            setProducts(data || []);
+            // Add a timeout to session fetch to see if auth hangs
+            const sessionPromise = supabase.auth.getSession();
+            const sessionTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Supabase auth.getSession() timed out after 5s")), 5000));
+            
+            await Promise.race([sessionPromise, sessionTimeout]);
+            
+            console.log("[FRONTEND-DEBUG] Session checked. Fetching products...");
+            
+            // Add a timeout to the actual fetch
+            const fetchPromise = supabase.from('products').select('*').order('created_at', { ascending: false });
+            const fetchTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Supabase products fetch timed out after 10s")), 10000));
+            
+            const response = await Promise.race([fetchPromise, fetchTimeout]) as any;
+            
+            console.log("[FRONTEND-DEBUG] Fetch complete. Response:", response);
+            
+            if (response.error) throw response.error;
+            setProducts(response.data || []);
             setErrorMsg(null);
         } catch (err: any) {
-            console.error("Error fetching products:", err);
-            setErrorMsg(err.message);
+            console.error("[FRONTEND-DEBUG] Error fetching products:", err);
+            setErrorMsg(`Debug Error: ${err.message}`);
         } finally {
             setLoading(false);
         }

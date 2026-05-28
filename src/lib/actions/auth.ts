@@ -110,6 +110,7 @@ export async function grantManagerRoleAction() {
 
 export async function logSuspiciousLoginAction(email: string) {
     try {
+        console.log("[PRODUCTION-LOG] logSuspiciousLoginAction:", email);
         await logAuditAction({
             tableName: 'auth_security',
             recordId: email || 'unknown',
@@ -117,31 +118,37 @@ export async function logSuspiciousLoginAction(email: string) {
             newData: { email, timestamp: new Date().toISOString() }
         });
         return { success: true };
-    } catch (err) {
-        return { success: false };
+    } catch (err: any) {
+        console.error("[PRODUCTION-LOG] logSuspiciousLoginAction Failed:", err);
+        return { success: false, error: err.message };
     }
 }
 
 export async function verifyGatekeyAction(gatekey: string) {
     try {
-        console.log("[DEBUG-GATEKEY] Action called. Received gatekey length:", gatekey?.length);
+        const payload = {
+            receivedLength: gatekey?.length,
+            envHasGatekey: !!process.env.ADMIN_GATEKEY,
+            envGatekeyLength: process.env.ADMIN_GATEKEY?.length
+        };
+        console.log("[PRODUCTION-LOG] verifyGatekeyAction START:", JSON.stringify(payload));
+        
         const validGatekey = process.env.ADMIN_GATEKEY;
-        console.log("[DEBUG-GATEKEY] Environment check - validGatekey exists:", !!validGatekey, "Length:", validGatekey?.length);
         
         if (!validGatekey) {
-            console.log("[DEBUG-GATEKEY] No ADMIN_GATEKEY in env, bypassing for safety fallback.");
-            return { success: true };
+            console.log("[PRODUCTION-LOG] No ADMIN_GATEKEY in env, bypassing for safety fallback.");
+            return { success: true, debug: payload };
         }
         
         if (gatekey === validGatekey) {
-            console.log("[DEBUG-GATEKEY] Match successful.");
-            return { success: true };
+            console.log("[PRODUCTION-LOG] Match successful.");
+            return { success: true, debug: payload };
         }
         
-        console.log("[DEBUG-GATEKEY] Match failed.");
-        return { success: false, error: "Invalid Admin Gatekey" };
+        console.log("[PRODUCTION-LOG] Match failed.");
+        return { success: false, error: "Invalid Admin Gatekey", debug: payload };
     } catch (err: any) {
-        console.error("[DEBUG-GATEKEY] Exception caught:", err);
-        throw err;
+        console.error("[PRODUCTION-LOG] Exception caught:", err);
+        return { success: false, error: `Server Exception: ${err.message}`, debug: { errorType: err.name, errorMessage: err.message } };
     }
 }

@@ -36,10 +36,18 @@ export default function AdminLogin() {
             console.log("[FRONTEND-DEBUG] Calling verifyGatekeyAction...");
             const gatekeyRes = await verifyGatekeyAction(gatekey);
             console.log("[FRONTEND-DEBUG] Response from action:", gatekeyRes);
+            
             if (!gatekeyRes.success) {
                 // If there's an email typed, log it, otherwise log 'anonymous_gatekey_attempt'
                 await logSuspiciousLoginAction('anonymous_gatekey_attempt');
-                throw new Error("Access Denied: Invalid Security Gatekey.");
+                
+                let debugInfo = "";
+                if (gatekeyRes.debug) {
+                    debugInfo = ` | Debug: ${JSON.stringify(gatekeyRes.debug)}`;
+                }
+                
+                setError(`Access Denied: ${gatekeyRes.error || 'Invalid Security Gatekey'}${debugInfo}`);
+                return;
             }
             setGatekeyVerified(true);
         } catch (err: any) {
