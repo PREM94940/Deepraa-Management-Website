@@ -28,6 +28,7 @@ const EditorialBoutique = dynamic(() => import("@/themes/editorial_boutique/inde
 
 import { AuthProvider } from "@/context/AuthContext";
 import AuthModal from "@/components/AuthModal";
+import { OperationalShortcut } from "@/components/admin/OperationalShortcut";
 
 export default function RootLayout({
   children,
@@ -43,6 +44,7 @@ export default function RootLayout({
           {theme === 'editorial_boutique' ? <EditorialBoutique /> : null}
           {/* Preserve global UI elements */}
           {children}
+          <OperationalShortcut />
           <AuthModal />
           <WhatsAppConcierge />
           <Analytics />

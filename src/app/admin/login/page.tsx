@@ -1,9 +1,9 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Mail, Lock, Shield, Eye, EyeOff, ArrowRight, KeyRound } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { logSuspiciousLoginAction, verifyGatekeyAction } from '@/lib/actions/auth';
+import { logSuspiciousLoginAction, verifyGatekeyAction, getCurrentUserRoleAction } from '@/lib/actions/auth';
 
 export default function AdminLogin() {
     const router = useRouter();
@@ -13,6 +13,16 @@ export default function AdminLogin() {
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        const checkAuth = async () => {
+            const { success, role } = await getCurrentUserRoleAction();
+            if (success && (role === 'Staff' || role === 'Manager')) {
+                router.push('/admin');
+            }
+        };
+        checkAuth();
+    }, [router]);
 
     const handleAdminLogin = async (e: React.FormEvent) => {
         e.preventDefault();

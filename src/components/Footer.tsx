@@ -24,23 +24,7 @@ export const Footer = ({ globalSettings }: { globalSettings?: any }) => {
         { label: 'Terms', url: '/c/terms' }
     ];
 
-    const [showAdminGate, setShowAdminGate] = useState(false);
-    const [gateKey, setGateKey] = useState('');
-    const [gateError, setGateError] = useState(false);
-    const router = useRouter();
-
-    const handleVerifyGate = (e: React.FormEvent) => {
-        e.preventDefault();
-        // Secure operational gatekey check
-        if (gateKey === 'deeprastaff2026') {
-            setShowAdminGate(false);
-            setGateKey('');
-            setGateError(false);
-            router.push('/admin/login');
-        } else {
-            setGateError(true);
-        }
-    };
+    // Admin access modal removed; gatekey handled directly at /admin/login
 
     return (
         <footer className="bg-[#0A0A0A] text-white pt-24 pb-12 px-6 border-t border-[#1C1C1C]">
@@ -94,66 +78,15 @@ export const Footer = ({ globalSettings }: { globalSettings?: any }) => {
                         <Link key={idx} href={link.url} className="hover:text-accent transition-colors">{link.label}</Link>
                     ))}
                     <div className="w-[1px] h-3 bg-white/20"></div>
-                    <button 
-                        onClick={() => setShowAdminGate(true)}
+                    <Link 
+                        href="/admin/login"
                         className="hover:text-accent transition-colors text-[10px] tracking-widest uppercase font-bold text-zinc-500 hover:text-white"
                         aria-label="Staff Administration Link"
                     >
                         Admin Access
-                    </button>
+                    </Link>
                 </div>
             </div>
-
-            {/* Hidden Admin Access Password Security Modal */}
-            {showAdminGate && (
-                <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-sm">
-                    <div className="bg-[#111] border border-zinc-800 p-8 rounded-sm w-[90%] max-w-[380px] shadow-2xl relative">
-                        <button 
-                            onClick={() => { setShowAdminGate(false); setGateKey(''); setGateError(false); }}
-                            className="absolute top-4 right-4 text-zinc-500 hover:text-white transition-colors"
-                            aria-label="Close Admin Access"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                        </button>
-
-                        <div className="text-center mb-6">
-                            <span className="text-[9px] text-[#D4AF37] uppercase tracking-[0.3em] font-bold block mb-1">
-                                Security Shield
-                            </span>
-                            <h3 className="text-white text-lg font-light tracking-[0.08em]">
-                                Gatekey Required
-                            </h3>
-                            <p className="text-[10px] text-zinc-500 mt-1 uppercase tracking-wider">
-                                Enter boutique staff entry key
-                            </p>
-                        </div>
-
-                        {gateError && (
-                            <div className="mb-4 bg-red-950/40 border border-red-900/50 text-red-400 p-3 text-[11px] rounded-sm text-center">
-                                Invalid Staff Gatekey. Access Logged.
-                            </div>
-                        )}
-
-                        <form onSubmit={handleVerifyGate} className="space-y-4">
-                            <input 
-                                type="password" 
-                                placeholder="Enter operational gatekey" 
-                                value={gateKey}
-                                onChange={e => setGateKey(e.target.value)}
-                                className="w-full text-xs py-3.5 px-4 border border-[#2a2a2a] bg-[#161616] text-white outline-none focus:border-[#D4AF37] rounded-sm transition-all text-center placeholder:text-zinc-700"
-                                required
-                                autoFocus
-                            />
-                            <button 
-                                type="submit"
-                                className="w-full bg-[#D4AF37] hover:bg-[#b8952d] text-black font-bold uppercase text-[10px] tracking-[0.18em] py-3.5 px-4 rounded-sm transition-all"
-                            >
-                                Unlock Gateway
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            )}
         </footer>
     );
 };
