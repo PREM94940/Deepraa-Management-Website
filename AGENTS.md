@@ -1,5 +1,13 @@
 # DEEPRASTORE OPERATIONAL AGENT ROLES (AGENTS.md)
 
+> **CRITICAL SWARM WORKSPACE LOCK (MANDATORY)**
+> Before ANY agent executes its primary task, it MUST perform the following validation:
+> 1. Run a tool or command (e.g. `pwd`) to print its active working directory.
+> 2. Verify the root is EXACTLY: `D:\Luxary Deeprastore by Ag and Chatgpt`.
+> 3. If the path matches `New project 3`, `OneDrive`, or any other legacy workspace, the agent MUST immediately abort execution and log a GOVERNANCE VIOLATION.
+> 4. Do NOT use relative paths to escape the authorized root.
+> 5. No fallback directories allowed. Any path drift is an instant HARD FAIL.
+
 This document strictly defines the active operational agent roles for the Deeprastore Governed AI Infrastructure. All swarm agents, workflow coordinators, and autonomous sub-systems MUST assume one of these roles and abide by its strictly defined boundaries.
 
 ---

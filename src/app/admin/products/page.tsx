@@ -11,6 +11,10 @@ type EditableProduct = Partial<Product> & { id?: string };
 export default function ProductsPage() {
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [page, setPage] = useState(0);
+    const [hasMore, setHasMore] = useState(true);
+    const pageSize = 50;
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [userRole] = useState<'Manager' | 'Staff'>(process.env.NEXT_PUBLIC_SIMULATE_ROLE as any || 'Manager');
     
@@ -37,7 +41,7 @@ export default function ProductsPage() {
     const [inlineStock, setInlineStock] = useState<Record<string, number>>({});
 
     useEffect(() => {
-        fetchProducts();
+        fetchProducts(false);
     }, []);
 
     useEffect(() => {
@@ -58,8 +62,12 @@ export default function ProductsPage() {
         };
     }, []);
 
-    async function fetchProducts() {
-        setLoading(true);
+    async function fetchProducts(isLoadMore = false) {
+        if (!isLoadMore) {
+            setLoading(true);
+        } else {
+            setLoadingMore(true);
+        }
         try {
             console.log("[FRONTEND-DEBUG] fetchProducts starting. Checking session...");
             
@@ -71,8 +79,15 @@ export default function ProductsPage() {
             
             console.log("[FRONTEND-DEBUG] Session checked. Fetching products...");
             
+            const currentPage = isLoadMore ? page + 1 : 0;
+            const from = currentPage * pageSize;
+            const to = from + pageSize - 1;
+
             // Add a timeout to the actual fetch
-            const fetchPromise = supabase.from('products').select('*').order('created_at', { ascending: false });
+            const fetchPromise = supabase.from('products').select('*')
+                .order('created_at', { ascending: false })
+                .range(from, to);
+                
             const fetchTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Supabase products fetch timed out after 10s")), 10000));
             
             const response = await Promise.race([fetchPromise, fetchTimeout]) as any;
@@ -80,13 +95,23 @@ export default function ProductsPage() {
             console.log("[FRONTEND-DEBUG] Fetch complete. Response:", response);
             
             if (response.error) throw response.error;
-            setProducts(response.data || []);
+            const newData = response.data || [];
+            
+            if (isLoadMore) {
+                setProducts(prev => [...prev, ...newData]);
+            } else {
+                setProducts(newData);
+            }
+            
+            setHasMore(newData.length === pageSize);
+            setPage(currentPage);
             setErrorMsg(null);
         } catch (err: any) {
             console.error("[FRONTEND-DEBUG] Error fetching products:", err);
             setErrorMsg(`Debug Error: ${err.message}`);
         } finally {
             setLoading(false);
+            setLoadingMore(false);
         }
     }
 
@@ -163,7 +188,7 @@ export default function ProductsPage() {
             const res = await upsertProductAction(editingProduct as any);
             if (!res.success) throw new Error(res.error);
             setIsModalOpen(false);
-            fetchProducts();
+            fetchProducts(false);
         } catch (err: any) {
             alert('Error saving product: ' + err.message);
         } finally {
@@ -296,7 +321,7 @@ export default function ProductsPage() {
                     await processBuffer();
                 }
                 setCsvUploading(false);
-                fetchProducts();
+                fetchProducts(false);
                 if (csvInputRef.current) csvInputRef.current.value = '';
             },
             error: (error) => {
@@ -506,6 +531,19 @@ export default function ProductsPage() {
                             ))}
                         </tbody>
                     </table>
+                </div>
+            )}
+
+            {!loading && hasMore && filteredProducts.length > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'center', marginTop: '24px' }}>
+                    <button 
+                        onClick={() => fetchProducts(true)} 
+                        disabled={loadingMore}
+                        className="btn btn-outline"
+                        style={{ padding: '8px 24px', borderRadius: '8px' }}
+                    >
+                        {loadingMore ? 'Loading more...' : 'Load More Products'}
+                    </button>
                 </div>
             )}
 

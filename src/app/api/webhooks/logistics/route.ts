@@ -11,9 +11,26 @@ export async function POST(req: NextRequest) {
         const providerStr = req.nextUrl.searchParams.get('provider') || 'shiprocket';
         const provider = providerStr as LogisticsProvider;
 
-        // Security: Verify payload authenticity (skip in dev if secret not set, but enforce in prod)
+        // Security: Verify payload authenticity (strict enforcement)
         const secret = process.env.LOGISTICS_WEBHOOK_SECRET;
-        if (secret && !verifyWebhookSignature(rawBody, signature, secret)) {
+        
+        if (!secret) {
+            await logAuditAction({
+                tableName: 'webhook_events',
+                recordId: 'SYSTEM',
+                action: 'WEBHOOK_FAILURE',
+                newData: { error: 'Missing LOGISTICS_WEBHOOK_SECRET configuration' }
+            });
+            return NextResponse.json({ error: 'Internal Server Configuration Error' }, { status: 500 });
+        }
+
+        if (!verifyWebhookSignature(rawBody, signature, secret)) {
+            await logAuditAction({
+                tableName: 'webhook_events',
+                recordId: 'SYSTEM',
+                action: 'WEBHOOK_UNAUTHORIZED',
+                newData: { error: 'Invalid logistics webhook signature provided', provider }
+            });
             return NextResponse.json({ error: 'Invalid webhook signature' }, { status: 401 });
         }
 
