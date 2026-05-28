@@ -369,7 +369,7 @@ function TrackingContent() {
         "Couture Master Anand Mahapatra"
     ];
     const tailorCharSum = order.id.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
-    const masterTailorAssigned = tailors[tailorCharSum % tailors.length];
+    const masterTailorAssigned = order.assigned_tailor_name || tailors[tailorCharSum % tailors.length];
 
     const orderRef = order.order_number || order.id.substring(0, 8).toUpperCase();
     const waText = encodeURIComponent(`Hi! I'm tracking my order #${orderRef}. Status is currently "${order.status}". I would like to check-in with the concierge.`);
@@ -438,6 +438,11 @@ function TrackingContent() {
                                     <p className={`text-[11px] leading-relaxed transition-colors ${isCompleted ? 'text-zinc-300' : 'text-zinc-600'}`}>
                                         {m.desc}
                                     </p>
+                                    {isCurrent && index < activeMilestones.length - 1 && (
+                                        <p className="text-[10px] text-[#D4AF37] mt-2 bg-[#D4AF37]/10 inline-block px-2 py-0.5 rounded uppercase tracking-wider font-bold border border-[#D4AF37]/20">
+                                            Estimated Stage Duration: {Math.max(1, 3 - (index % 2))} Business Days
+                                        </p>
+                                    )}
                                 </div>
                             </div>
                         );
@@ -533,6 +538,23 @@ function TrackingContent() {
                 >
                     <MessageSquare className="w-4 h-4 text-[#25D366]" /> Personal Curation Concierge
                 </a>
+            </div>
+
+            {/* Refund & Support Reassurance Block */}
+            <div className="mt-8 pt-8 border-t border-zinc-900 flex justify-center">
+                <div className="max-w-2xl bg-[#0A0A0A] border border-[#222] p-6 rounded shadow-xl text-center space-y-3">
+                    <h4 className="text-xs font-bold uppercase tracking-widest text-zinc-300 flex items-center justify-center gap-2">
+                        <Scissors className="w-4 h-4 text-[#D4AF37]" /> Atelier Adjustment Protocol
+                    </h4>
+                    <p className="text-[11px] text-zinc-500 leading-relaxed font-light px-4">
+                        Because this piece was meticulously hand-crafted to your unique measurements, we prioritize complimentary Atelier Adjustments to perfect the fit. Direct refunds are restricted pending master tailor evaluation.
+                    </p>
+                    <div className="pt-2">
+                        <button onClick={() => window.open(waUrl, '_blank')} className="text-[10px] text-[#D4AF37] uppercase tracking-wider font-bold hover:underline underline-offset-4">
+                            Request Fit Adjustment
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     );

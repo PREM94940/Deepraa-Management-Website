@@ -31,8 +31,36 @@ export async function GET(request: Request) {
             }
         );
 
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
-        if (!error) {
+        const { data: authData, error } = await supabase.auth.exchangeCodeForSession(code);
+        if (!error && authData.user) {
+            const user = authData.user;
+            const email = user.email || '';
+            const fullName = user.user_metadata?.full_name || (email ? email.split('@')[0] : 'Customer');
+            const phone = user.phone || null;
+
+            // Sync Customer Profile for Google Login
+            const { data: existingCustomer } = await supabase
+                .from('customers')
+                .select('id')
+                .eq('id', user.id)
+                .maybeSingle();
+
+            if (!existingCustomer) {
+                await supabase.from('customers').insert({
+                    id: user.id,
+                    email: email || undefined,
+                    phone_number: phone || undefined,
+                    full_name: fullName,
+                    created_at: new Date().toISOString(),
+                    total_orders: 0,
+                    total_spent: 0,
+                    complaint_count: 0,
+                    refund_count: 0,
+                    risk_level: 'Low',
+                    loyalty_level: 'Bronze',
+                });
+            }
+
             // Ensure next URL is relative or on the same origin
             if (next.startsWith('/')) {
                 return NextResponse.redirect(`${origin}${next}`);

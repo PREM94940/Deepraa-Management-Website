@@ -10,7 +10,8 @@ export const ProductCard = ({ product, aspectRatio }: { product: any; aspectRati
     const secondaryImage = product.images?.[1] || mainImage;
     const title = product.title || product.name || 'Premium Handloom Product';
 
-    const isOutOfStock = product.stock_quantity !== undefined && product.stock_quantity !== null && product.stock_quantity <= 0;
+    const stockCount = product.inventory_quantity ?? product.stock_quantity ?? 1; // Default to 1 if neither exists
+    const isOutOfStock = stockCount <= 0;
     const isSoldOut = isOutOfStock || product.status === 'Out of Stock' || product.status === 'Sold Out';
 
     // Map string values like '3/4', '1/1', '16/9' to Tailwind aspect classes
@@ -42,12 +43,11 @@ export const ProductCard = ({ product, aspectRatio }: { product: any; aspectRati
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                     className={`object-cover transition-all duration-700 ease-out absolute inset-0 ${isHovered ? 'opacity-100 scale-105' : 'opacity-0 scale-100'}`}
                 />
-                
                 {/* Floating Tags */}
                 <div className="absolute top-4 left-4 flex flex-col gap-2 z-10">
                     {isSoldOut ? (
-                        <span className="bg-black/85 backdrop-blur-sm text-gray-300 border border-white/10 px-2 py-1 text-[10px] font-bold tracking-widest uppercase">
-                            Sold Out
+                        <span className="bg-black/85 backdrop-blur-sm text-[#D4AF37] border border-[#D4AF37]/30 px-2 py-1 text-[10px] font-bold tracking-widest uppercase">
+                            Waitlist
                         </span>
                     ) : (
                         <>

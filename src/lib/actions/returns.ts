@@ -17,7 +17,7 @@ export async function trackOrderPublicAction(orderIdOrNumber: string, phoneOrEma
     try {
         const query = supabaseServer
             .from('orders')
-            .select('*, customers(id, full_name, phone_number, email)');
+            .select('*, customers(id, full_name, phone_number, email), order_items(*)');
 
         // Check if input is UUID-like
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(orderIdOrNumber);
@@ -53,17 +53,17 @@ export async function trackOrderPublicAction(orderIdOrNumber: string, phoneOrEma
             return { success: false, error: "Verification failed. The contact details provided do not match this order." };
         }
 
-        // Also fetch active complaints (returns) if any exist
-        const { data: complaints } = await supabaseServer
-            .from('complaints')
-            .select('*')
+        // Also fetch active support tickets if any exist
+        const { data: tickets } = await supabaseServer
+            .from('support_tickets')
+            .select(`*, ticket_replies(*)`)
             .eq('order_id', data.id)
             .order('created_at', { ascending: false });
 
         return { 
             success: true, 
             order: data,
-            activeReturn: complaints && complaints.length > 0 ? complaints[0] : null
+            activeReturn: tickets && tickets.length > 0 ? tickets[0] : null
         };
     } catch (err: any) {
         const safeMessage = captureOperationalError(err, {
@@ -158,16 +158,18 @@ export async function submitReturnRequestAction(payload: {
             return { success: false, error: "Verification failed. Contact number does not match this order." };
         }
 
-        // Create complaint (Return request)
+        // Create Support Ticket (Return request)
         const issueReasonCombined = `[Resolution: ${resolution}] ${reason}`;
         const { data: inserted, error: insertError } = await supabaseServer
-            .from('complaints')
+            .from('support_tickets')
             .insert({
                 order_id: orderId,
                 customer_id: order.customer_id,
-                issue_type: issueType,
-                issue_reason: issueReasonCombined,
-                status: 'Open'
+                category: issueType,
+                subject: `${issueType} Request for Order ${order.order_number || order.id.substring(0,8)}`,
+                description: issueReasonCombined,
+                status: 'New',
+                priority: 'Medium'
             })
             .select()
             .single();
@@ -176,10 +178,10 @@ export async function submitReturnRequestAction(payload: {
 
         // Log audit
         await logAuditAction({
-            tableName: 'complaints',
+            tableName: 'support_tickets',
             recordId: inserted.id,
             action: 'CUSTOMER_RETURN_REQUEST',
-            newData: { order_id: orderId, issue_type: issueType, issue_reason: issueReasonCombined }
+            newData: { order_id: orderId, category: issueType, description: issueReasonCombined }
         });
 
         return { success: true };

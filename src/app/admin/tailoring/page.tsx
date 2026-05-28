@@ -197,7 +197,7 @@ export default function TailoringCRMPage() {
         // Query orders & customers to build a real representation of tailoring lines if possible
         const { data: dbOrders } = await supabase
           .from('orders')
-          .select('id, created_at, measurements, notes, customers(full_name), order_items(product_name, customizations)')
+          .select('id, created_at, measurements, notes, assigned_tailor_id, assigned_tailor_name, customers(full_name), order_items(product_name, customizations)')
           .limit(10);
         
         // Query staff if available
@@ -235,8 +235,8 @@ export default function TailoringCRMPage() {
                 stage: stages[idx % 4],
                 dateAdded: new Date(o.created_at).toISOString().split('T')[0],
                 targetDays: Math.max(1, 7 - (idx % 5)),
-                assignedStaffId: DEFAULT_STAFF[idx % DEFAULT_STAFF.length].id,
-                assignedStaffName: DEFAULT_STAFF[idx % DEFAULT_STAFF.length].name,
+                assignedStaffId: o.assigned_tailor_id || DEFAULT_STAFF[idx % DEFAULT_STAFF.length].id,
+                assignedStaffName: o.assigned_tailor_name || DEFAULT_STAFF[idx % DEFAULT_STAFF.length].name,
                 measurements: {
                   bust: cust.bust || '36 in',
                   waist: cust.waist || '30 in',
@@ -301,10 +301,11 @@ export default function TailoringCRMPage() {
   };
 
   // Assign staff
-  const assignStaff = (itemId: string, staffId: string) => {
+  const assignStaff = async (itemId: string, staffId: string) => {
     const selectedStaff = staff.find(s => s.id === staffId);
     if (!selectedStaff) return;
 
+    // Update local state first for optimistic UI
     setItems(prev => prev.map(item => {
       if (item.id === itemId) {
         return { 
@@ -316,6 +317,19 @@ export default function TailoringCRMPage() {
       return item;
     }));
     setActiveDropdownId(null);
+
+    // Persist to Supabase
+    try {
+      await supabase
+        .from('orders')
+        .update({ 
+          assigned_tailor_id: staffId,
+          assigned_tailor_name: selectedStaff.name 
+        })
+        .eq('id', itemId);
+    } catch (err) {
+      console.error("Failed to assign staff", err);
+    }
   };
 
   // Handle printing

@@ -153,10 +153,14 @@ export async function updateComplaintStatusAction(id: string, status: string, re
 
         if (error) throw error;
 
+        const actionType = (oldData?.issue_type === 'Refund' && (status === 'Resolved' || status === 'Closed'))
+                           ? 'REFUND_PROCESSED'
+                           : 'UPDATE';
+
         await logAuditAction({
             tableName: 'complaints',
             recordId: id,
-            action: 'UPDATE',
+            action: actionType,
             oldData,
             newData: updatePayload
         });

@@ -3,6 +3,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 import { supabase } from '@/lib/supabase';
 import type { User, Session } from '@supabase/supabase-js';
 import { useCartStore } from '@/store/useCartStore';
+import { useWishlistStore } from '@/store/useWishlistStore';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -95,11 +96,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 setSession(s);
                 setUser(s?.user ?? null);
                 setLoading(false);
-                // Initialize cart with correct user ID
+                // Initialize cart and wishlist with correct user ID
                 try {
                     useCartStore.getState().setCurrentUser(s?.user?.id ?? null);
+                    useWishlistStore.getState().setCurrentUser(s?.user?.id ?? null);
                 } catch (e) {
-                    console.error('Failed to sync cart user state on boot:', e);
+                    console.error('Failed to sync user state on boot:', e);
                 }
             })
             .catch((err) => {
@@ -115,11 +117,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 setUser(s?.user ?? null);
                 setLoading(false);
 
-                // Update the current user in the cart store so correct cart is loaded/merged
+                // Update the current user in stores so correct data is loaded/merged
                 try {
                     useCartStore.getState().setCurrentUser(s?.user?.id ?? null);
+                    useWishlistStore.getState().setCurrentUser(s?.user?.id ?? null);
                 } catch (e) {
-                    console.error('Failed to sync cart user state:', e);
+                    console.error('Failed to sync user state:', e);
                 }
 
                 // On new sign-in, sync customer profile
@@ -138,6 +141,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 if (event === 'SIGNED_OUT') {
                     setUser(null);
                     setSession(null);
+                    // Clear cart and wishlist on logout to prevent carry-over
+                    try {
+                        useCartStore.getState().clearCart();
+                        useWishlistStore.getState().clearWishlist();
+                    } catch (e) {}
                 }
             }
         );

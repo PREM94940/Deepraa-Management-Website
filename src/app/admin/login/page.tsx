@@ -1,25 +1,34 @@
 "use client";
 import React, { useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Mail, Lock, Shield, Eye, EyeOff, ArrowRight } from 'lucide-react';
+import { Mail, Lock, Shield, Eye, EyeOff, ArrowRight, KeyRound } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { logSuspiciousLoginAction, verifyGatekeyAction } from '@/lib/actions/auth';
 
 export default function AdminLogin() {
     const router = useRouter();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [gatekey, setGatekey] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     const handleAdminLogin = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!email || !password) return setError('Please enter both email and password.');
+        if (!email || !password || !gatekey) return setError('Please enter email, password, and gatekey.');
         setLoading(true);
         setError(null);
 
         try {
-            // Sign in
+            // 1. Verify Gatekey first (cheap, blocks brute force without hitting Auth)
+            const gatekeyRes = await verifyGatekeyAction(gatekey);
+            if (!gatekeyRes.success) {
+                await logSuspiciousLoginAction(email);
+                throw new Error("Access Denied: Invalid Security Gatekey.");
+            }
+
+            // 2. Sign in
             const { data, error: err } = await supabase.auth.signInWithPassword({
                 email,
                 password
@@ -40,10 +49,10 @@ export default function AdminLogin() {
                     throw new Error("Access Denied: You do not have Staff or Manager privileges.");
                 }
 
-                // Redirect to admin dashboard
                 router.push('/admin');
             }
         } catch (err: any) {
+            await logSuspiciousLoginAction(email);
             setError(err.message || 'Authentication failed. Please verify credentials.');
         } finally {
             setLoading(false);
@@ -104,6 +113,20 @@ export default function AdminLogin() {
                             >
                                 {showPassword ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
                             </button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-[8px] text-[#A3A3A3] mb-1.5 uppercase font-bold tracking-widest">Admin Gatekey</label>
+                        <div className="relative">
+                            <KeyRound className="w-4 h-4 absolute left-3.5 top-3.5 text-zinc-500" />
+                            <input 
+                                type="password"
+                                placeholder="••••••••" 
+                                className="w-full text-xs py-3.5 pl-10 pr-4 border border-zinc-800 bg-[#0A0A0A] text-white outline-none focus:border-[#D4AF37] rounded-sm transition-all"
+                                value={gatekey}
+                                onChange={e => setGatekey(e.target.value)}
+                            />
                         </div>
                     </div>
 

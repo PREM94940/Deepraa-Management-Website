@@ -125,7 +125,7 @@ export async function toggleOrderRefundEligibilityAction(orderId: string, refund
         await logAuditAction({
             tableName: 'orders',
             recordId: orderId,
-            action: 'UPDATE',
+            action: 'ORDER_STATUS_CHANGED',
             oldData,
             newData: updatePayload
         });

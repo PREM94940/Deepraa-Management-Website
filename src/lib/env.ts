@@ -16,11 +16,14 @@ const envSchema = z.object({
     WHATSAPP_ACCESS_TOKEN: z.string().optional(),
     WHATSAPP_PHONE_NUMBER_ID: z.string().optional(),
     LOGISTICS_WEBHOOK_SECRET: z.string().optional(),
+    ADMIN_GATEKEY: z.string().optional(),
+    OPENAI_API_KEY: z.string().optional(),
 });
 
 // For strict production validation
 const prodEnvSchema = envSchema.extend({
     SUPABASE_SERVICE_ROLE_KEY: z.string().min(10, "Service Role Key must be valid"),
+    ADMIN_GATEKEY: z.string().min(8, "Admin Gatekey must be robust in production"),
     CRON_SECRET: z.string().optional(),
     // In a fully ready production app, we might strictly require WHATSAPP and LOGISTICS secrets too.
 });

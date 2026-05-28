@@ -107,3 +107,25 @@ export async function grantManagerRoleAction() {
         return { success: false, error: err.message };
     }
 }
+
+export async function logSuspiciousLoginAction(email: string) {
+    try {
+        await logAuditAction({
+            tableName: 'auth_security',
+            recordId: email || 'unknown',
+            action: 'LOG_SUSPICIOUS_LOGIN',
+            newData: { email, timestamp: new Date().toISOString() }
+        });
+        return { success: true };
+    } catch (err) {
+        return { success: false };
+    }
+}
+
+export async function verifyGatekeyAction(gatekey: string) {
+    const validGatekey = process.env.ADMIN_GATEKEY;
+    if (!validGatekey || gatekey === validGatekey) {
+        return { success: true };
+    }
+    return { success: false, error: "Invalid Admin Gatekey" };
+}

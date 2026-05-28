@@ -10,6 +10,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { updateComplaintStatusAction, createComplaintAction, escalateToTailoringAction } from '@/lib/actions/complaints';
 import { toggleOrderRefundEligibilityAction } from '@/lib/actions/orders';
+import { createConciergeDraftAction, reviewAiSuggestionAction } from '@/lib/actions/ai';
 
 export default function ComplaintsPage() {
     const [complaints, setComplaints] = useState<any[]>([]);
@@ -31,6 +32,12 @@ export default function ComplaintsPage() {
     const [saving, setSaving] = useState(false);
     const [actionLoading, setActionLoading] = useState<string | null>(null);
     const [escalationSuccess, setEscalationSuccess] = useState<string | null>(null);
+    
+    // AI Draft States
+    const [generatingDraft, setGeneratingDraft] = useState(false);
+    const [aiDraftId, setAiDraftId] = useState<string | null>(null);
+    const [aiDraftText, setAiDraftText] = useState('');
+    const [originalAiDraft, setOriginalAiDraft] = useState('');
 
     const COMPLAINT_CATEGORIES = [
         'size adjustment / fitting alteration',
@@ -102,6 +109,13 @@ export default function ComplaintsPage() {
             supabase.removeChannel(channel);
         };
     }, []);
+    
+    useEffect(() => {
+        // Reset AI states when selected complaint changes
+        setAiDraftId(null);
+        setAiDraftText('');
+        setOriginalAiDraft('');
+    }, [selectedComplaint?.id]);
 
     async function fetchComplaints() {
         setLoading(true);
@@ -228,6 +242,55 @@ export default function ComplaintsPage() {
             alert(err.message || 'Failed to escalate to tailoring queue');
         } finally {
             setActionLoading(null);
+        }
+    }
+
+    async function handleGenerateWhatsAppDraft() {
+        if (!selectedComplaint) return;
+        setGeneratingDraft(true);
+        try {
+            const res = await createConciergeDraftAction(
+                selectedComplaint.id,
+                selectedComplaint.order_id,
+                selectedComplaint.customers?.full_name || 'Customer',
+                selectedComplaint.issue_type
+            );
+            if (res.success && res.suggestion) {
+                setAiDraftId(res.suggestion.id);
+                setAiDraftText(res.suggestion.generated_content.text);
+                setOriginalAiDraft(res.suggestion.generated_content.text);
+            } else {
+                alert(res.error || 'Failed to generate draft');
+            }
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setGeneratingDraft(false);
+        }
+    }
+
+    async function handleReviewAiDraft(status: 'Approved' | 'Rejected') {
+        if (!aiDraftId) return;
+        try {
+            const finalContent = { text: aiDraftText };
+            const res = await reviewAiSuggestionAction(aiDraftId, status, finalContent);
+            if (res.success) {
+                if (status === 'Approved') {
+                    // Pre-fill WhatsApp link and open it
+                    const phone = selectedComplaint.customers?.phone_number || '';
+                    const url = `https://wa.me/${phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(aiDraftText)}`;
+                    window.open(url, '_blank');
+                    alert('Draft approved, logged, and opened in WhatsApp.');
+                } else {
+                    alert('Draft rejected and logged.');
+                }
+                setAiDraftId(null);
+                setAiDraftText('');
+            } else {
+                alert(res.error);
+            }
+        } catch (err) {
+            console.error(err);
         }
     }
 
@@ -645,6 +708,66 @@ export default function ComplaintsPage() {
                                                 </button>
                                             </div>
                                         )}
+
+                                        {/* AI WhatsApp Concierge Draft */}
+                                        <div className="flex flex-col gap-4 p-4 bg-zinc-950 border border-[#8B5CF6]/30 rounded-sm mt-4">
+                                            <div className="flex items-center justify-between">
+                                                <div className="max-w-md">
+                                                    <h4 className="text-xs font-bold text-[#A78BFA] uppercase tracking-wider flex items-center gap-1.5">
+                                                        <Sparkles size={13} /> Concierge WhatsApp Draft Engine
+                                                    </h4>
+                                                    <p className="text-[11px] text-zinc-400 mt-1 leading-relaxed">
+                                                        Generate a highly empathetic, premium WhatsApp message. Drafts are generated via <span className="font-mono text-purple-400">gpt-4o-mini</span> and must be reviewed/edited before sending to comply with Phase E governance.
+                                                    </p>
+                                                </div>
+                                                {!aiDraftId && (
+                                                    <button
+                                                        onClick={handleGenerateWhatsAppDraft}
+                                                        disabled={generatingDraft}
+                                                        className="shrink-0 bg-[#4C1D95] hover:bg-[#5B21B6] text-white font-bold text-[10px] uppercase tracking-widest px-5 py-2.5 rounded-sm transition-all flex items-center gap-2 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed border border-[#6D28D9]"
+                                                    >
+                                                        {generatingDraft ? <RefreshCw size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                                                        {generatingDraft ? 'Drafting...' : 'Generate AI Draft'}
+                                                    </button>
+                                                )}
+                                            </div>
+
+                                            {aiDraftId && (
+                                                <div className="mt-2 border-t border-[#8B5CF6]/20 pt-4 animate-fadeIn">
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <span className="bg-[#4C1D95] text-white text-[9px] px-2 py-0.5 rounded-sm uppercase tracking-widest font-bold">AI Suggested Draft</span>
+                                                        <span className="text-[9px] text-zinc-500 font-mono">{new Date().toLocaleString()}</span>
+                                                    </div>
+                                                    <textarea 
+                                                        value={aiDraftText}
+                                                        onChange={(e) => setAiDraftText(e.target.value)}
+                                                        className="w-full bg-[#1A1525] border border-[#6D28D9] rounded-sm p-3 text-xs text-zinc-200 outline-none focus:border-[#A78BFA] transition-colors leading-relaxed min-h-[80px]"
+                                                        placeholder="Edit your draft here..."
+                                                    />
+                                                    {originalAiDraft !== aiDraftText && (
+                                                        <p className="text-[10px] text-[#A78BFA] mt-1 font-mono">
+                                                            ✏️ Draft modified by human
+                                                        </p>
+                                                    )}
+                                                    
+                                                    <div className="flex items-center gap-3 mt-4">
+                                                        <button 
+                                                            onClick={() => handleReviewAiDraft('Approved')}
+                                                            disabled={!aiDraftText.trim()}
+                                                            className="flex-1 bg-emerald-950/40 hover:bg-emerald-900/60 border border-emerald-800/60 text-emerald-400 font-bold text-[10px] uppercase tracking-widest px-4 py-2.5 rounded-sm transition-all flex items-center justify-center gap-2"
+                                                        >
+                                                            <Check size={14} /> Approve & Open WhatsApp
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => handleReviewAiDraft('Rejected')}
+                                                            className="flex-1 bg-red-950/40 hover:bg-red-900/60 border border-red-800/60 text-red-400 font-bold text-[10px] uppercase tracking-widest px-4 py-2.5 rounded-sm transition-all flex items-center justify-center gap-2"
+                                                        >
+                                                            <X size={14} /> Reject Suggestion
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </motion.div>
                             ) : (

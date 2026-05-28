@@ -1,615 +1,146 @@
 "use client";
-import React, { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
-import { 
-    Package, Truck, Calendar, MessageSquare, AlertTriangle, 
-    RefreshCcw, User, LogOut, ArrowRight, CheckCircle2, AlertCircle 
-} from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { Navbar } from '@/components/Navbar';
-import { Footer } from '@/components/Footer';
+import { supabase } from '@/lib/supabase';
+import Link from 'next/link';
+import { Package, ArrowRight, Activity, Scissors, AlertCircle } from 'lucide-react';
+import { motion } from 'framer-motion';
 
-export default function CustomerDashboard() {
-    const router = useRouter();
-    const { user, loading: authLoading, openLoginModal, isModalOpen } = useAuth();
-    const [customer, setCustomer] = useState<any>(null);
-    const [orders, setOrders] = useState<any[]>([]);
-    const [complaints, setComplaints] = useState<any[]>([]);
+export default function AccountDashboard() {
+    const { user } = useAuth();
+    const [stats, setStats] = useState({ totalOrders: 0, activeOrders: 0, activeTickets: 0 });
+    const [recentOrders, setRecentOrders] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [selectedOrder, setSelectedOrder] = useState<any>(null);
-    const [loginPrompted, setLoginPrompted] = useState(false);
 
-    // Profile Editing States
-    const [isEditingProfile, setIsEditingProfile] = useState(false);
-    const [editName, setEditName] = useState('');
-    const [editPhone, setEditPhone] = useState('');
-    const [editAltPhone1, setEditAltPhone1] = useState('');
-    const [editAltPhone2, setEditAltPhone2] = useState('');
-    const [editCity, setEditCity] = useState('');
-    const [editAddress, setEditAddress] = useState('');
-    const [updatingProfile, setUpdatingProfile] = useState(false);
-    const [profileError, setProfileError] = useState<string | null>(null);
+    useEffect(() => {
+        if (user) {
+            fetchDashboardData();
+        }
+    }, [user]);
 
-    const handleSaveProfile = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!user) return;
-        if (!editName.trim()) {
-            setProfileError('Name is required.');
-            return;
-        }
-        if (!editPhone.trim()) {
-            setProfileError('Primary Mobile number is required.');
-            return;
-        }
-        setUpdatingProfile(true);
-        setProfileError(null);
+    const fetchDashboardData = async () => {
         try {
-            const preferences = customer?.preferences || {};
-            const updatedPreferences = {
-                ...preferences,
-                alternative_mobile_1: editAltPhone1.trim(),
-                alternative_mobile_2: editAltPhone2.trim()
-            };
+            // Fetch Orders
+            const { data: orders } = await supabase
+                .from('orders')
+                .select('*')
+                .eq('customer_id', user?.id)
+                .order('created_at', { ascending: false });
 
-            const { error: updateErr } = await supabase
-                .from('customers')
-                .update({
-                    full_name: editName.trim(),
-                    phone_number: editPhone.trim(),
-                    city: editCity.trim(),
-                    address: editAddress.trim(),
-                    preferences: updatedPreferences
-                })
-                .eq('id', user.id);
+            // Fetch Active Tickets
+            const { data: tickets } = await supabase
+                .from('support_tickets')
+                .select('*')
+                .eq('customer_id', user?.id)
+                .not('status', 'in', '("Resolved","Rejected")');
 
-            if (updateErr) throw updateErr;
+            const orderList = orders || [];
+            const activeCount = orderList.filter(o => !['Delivered', 'Cancelled'].includes(o.status || '')).length;
 
-            // Refresh customer profile state
-            setCustomer((prev: any) => ({
-                ...prev,
-                full_name: editName.trim(),
-                phone_number: editPhone.trim(),
-                city: editCity.trim(),
-                address: editAddress.trim(),
-                preferences: updatedPreferences
-            }));
-            setIsEditingProfile(false);
-        } catch (err: any) {
-            setProfileError(err.message || 'Failed to update profile. Please try again.');
+            setStats({
+                totalOrders: orderList.length,
+                activeOrders: activeCount,
+                activeTickets: tickets?.length || 0
+            });
+
+            setRecentOrders(orderList.slice(0, 3));
+        } catch (error) {
+            console.error("Error fetching dashboard data:", error);
         } finally {
-            setUpdatingProfile(false);
+            setLoading(false);
         }
     };
 
-    const isCustomized = selectedOrder?.order_items?.some((item: any) => 
-        item.is_customized === true || 
-        item.is_customized === 'true' || 
-        item.customization || 
-        item.customizations || 
-        (typeof item.metadata === 'object' && item.metadata?.customized)
-    ) || false;
-
-    const isWithinTwoMonths = (order: any) => {
-        if (!order) return false;
-        const dateStr = order.delivered_at || order.expected_delivery_date || order.created_at;
-        if (!dateStr) return false;
-        const orderDate = new Date(dateStr);
-        const limitDate = new Date(orderDate);
-        limitDate.setMonth(limitDate.getMonth() + 2);
-        return new Date() <= limitDate;
-    };
-
-    // List of dynamic handcrafted steps in order
-    const ORDER_STEPS = [
-        'Order Confirmed',
-        'Fabric Sourcing',
-        'Tailoring In Progress',
-        'Quality Check',
-        'Preparing Dispatch',
-        'Ready for Dispatch',
-        'Shipped',
-        'Delivered'
-    ];
-
-    useEffect(() => {
-        if (authLoading) return;
-        if (!user) {
-            if (!loginPrompted) {
-                setLoginPrompted(true);
-                openLoginModal('/account');
-            }
-            return;
-        }
-
-        async function fetchUserData() {
-            if (!user) return;
-            setLoading(true);
-            try {
-                // Fetch customer details
-                const { data: custData } = await supabase
-                    .from('customers')
-                    .select('*')
-                    .eq('id', user.id)
-                    .maybeSingle();
-                setCustomer(custData);
-                if (custData) {
-                    setEditName(custData.full_name || '');
-                    setEditPhone(custData.phone_number || '');
-                    setEditAltPhone1(custData.preferences?.alternative_mobile_1 || '');
-                    setEditAltPhone2(custData.preferences?.alternative_mobile_2 || '');
-                    setEditCity(custData.city || '');
-                    setEditAddress(custData.address || '');
-                }
-
-                // Fetch customer orders
-                const { data: ords } = await supabase
-                    .from('orders')
-                    .select('*, order_items(*)')
-                    .eq('customer_id', user.id)
-                    .order('created_at', { ascending: false });
-                setOrders(ords || []);
-                
-                if (ords && ords.length > 0) {
-                    setSelectedOrder(ords[0]); // Default to show latest order
-                }
-
-                // Fetch active complaints
-                const { data: comps } = await supabase
-                    .from('complaints')
-                    .select('*')
-                    .eq('customer_id', user.id)
-                    .order('created_at', { ascending: false });
-                setComplaints(comps || []);
-
-            } catch (err) {
-                console.error("Dashboard data fetching failed:", err);
-            } finally {
-                setLoading(false);
-            }
-        }
-        fetchUserData();
-    }, [user, authLoading, openLoginModal, loginPrompted]);
-
-    // If user closed the login modal without logging in, redirect to homepage
-    useEffect(() => {
-        if (loginPrompted && !isModalOpen && !user && !authLoading) {
-            router.push('/');
-        }
-    }, [loginPrompted, isModalOpen, user, authLoading, router]);
-
-    const handleLogout = async () => {
-        await supabase.auth.signOut();
-        router.push('/');
-    };
-
-    const getStepIndex = (status: string) => {
-        return ORDER_STEPS.indexOf(status);
-    };
-
-    // Dynamic delay communication message checker
-    const hasDelay = (order: any) => {
-        if (!order) return false;
-        // Mock checking logic: custom status indicating delay or customization queue
-        const delayStatuses = ['Fabric Sourcing', 'Tailoring In Progress', 'Replacement Requested'];
-        return delayStatuses.includes(order.status) || order.target_days > 15;
-    };
-
-    if (authLoading || !user || loading) {
-        return (
-            <main className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
-                <div className="animate-pulse text-sm text-[#A3A3A3] uppercase tracking-[0.2em] font-light">
-                    Securing Customer Curation...
-                </div>
-            </main>
-        );
+    if (loading) {
+        return <div className="text-center py-20 text-[#A3A3A3] text-[10px] uppercase tracking-widest font-bold animate-pulse">Loading Curation Data...</div>;
     }
 
     return (
-        <main className="min-h-screen bg-[#0A0A0A] text-white flex flex-col justify-between">
-            {/* Header / Navbar */}
-            <div className="border-b border-[#1A1A1A] bg-[#0E0E0E]">
-                <div className="max-w-[1200px] mx-auto px-6 py-4 flex justify-between items-center">
-                    <Link href="/">
-                        <h1 className="font-display text-xl tracking-[0.15em] font-light cursor-pointer hover:opacity-85 transition-opacity">
-                            DEEPRA<span className="text-[#D4AF37] font-normal">STORE</span>
-                        </h1>
-                    </Link>
-                    <div className="flex items-center gap-4">
-                        <span className="text-[10px] text-zinc-400 font-mono hidden sm:inline">{user?.email}</span>
-                        <button 
-                            onClick={handleLogout}
-                            className="flex items-center gap-1.5 px-3 py-1.5 border border-zinc-800 text-[10px] uppercase font-bold tracking-wider hover:bg-red-950/20 hover:text-red-400 hover:border-red-900 transition-colors rounded-sm"
-                        >
-                            <LogOut className="w-3.5 h-3.5" />
-                            Log Out
-                        </button>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+            <div className="flex items-center justify-between">
+                <h1 className="text-3xl font-display font-light text-white">VIP Dashboard</h1>
+                <span className="bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/30 px-3 py-1 rounded text-[9px] font-extrabold uppercase tracking-widest">
+                    Verified Member
+                </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-[#161616] border border-[#222] p-6 rounded shadow-xl">
+                    <div className="flex items-center gap-3 mb-2 text-[#A3A3A3]">
+                        <Package size={16} />
+                        <span className="text-[9px] font-bold uppercase tracking-widest">Total Curations</span>
                     </div>
+                    <div className="text-4xl font-display font-light text-white">{stats.totalOrders}</div>
+                </div>
+                <div className="bg-[#161616] border border-[#222] p-6 rounded shadow-xl">
+                    <div className="flex items-center gap-3 mb-2 text-[#D4AF37]">
+                        <Activity size={16} />
+                        <span className="text-[9px] font-bold uppercase tracking-widest">Active Orders</span>
+                    </div>
+                    <div className="text-4xl font-display font-light text-white">{stats.activeOrders}</div>
+                </div>
+                <div className="bg-[#161616] border border-[#222] p-6 rounded shadow-xl">
+                    <div className="flex items-center gap-3 mb-2 text-rose-500">
+                        <AlertCircle size={16} />
+                        <span className="text-[9px] font-bold uppercase tracking-widest">Open Support</span>
+                    </div>
+                    <div className="text-4xl font-display font-light text-white">{stats.activeTickets}</div>
                 </div>
             </div>
 
-            {/* Main Content Area */}
-            <div className="max-w-[1200px] mx-auto w-full px-4 py-8 md:py-12 flex-1 grid grid-cols-1 lg:grid-cols-3 gap-8">
-                
-                {/* Left Side: Profile & Quick Info */}
-                <div className="space-y-6">
-                    {/* Customer Info Card */}
-                    <div className="bg-[#121212] border border-[#222] p-6 rounded-sm">
-                        <div className="flex items-center gap-3.5 mb-6">
-                            <div className="w-12 h-12 rounded-full bg-zinc-800 border border-[#D4AF37] flex items-center justify-center text-lg font-bold text-[#D4AF37]">
-                                {(customer?.full_name || 'C')[0]}
-                            </div>
-                            <div>
-                                <h2 className="text-sm font-semibold tracking-wide text-white">{customer?.full_name || 'Customer'}</h2>
-                                <p className="text-[10px] text-zinc-400 tracking-wider">
-                                    Loyalty Tier: <span className="text-[#D4AF37] font-bold">{customer?.loyalty_level || 'Bronze'}</span>
-                                </p>
-                            </div>
-                        </div>
-
-                         <div className="space-y-3.5 text-xs border-t border-[#1C1C1C] pt-4">
-                            <div className="flex justify-between">
-                                <span className="text-zinc-500">Contact Number:</span>
-                                <span className="font-mono text-zinc-300">{customer?.phone_number || 'N/A'}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-zinc-500">Alt Contact 1:</span>
-                                <span className="font-mono text-zinc-300">{customer?.preferences?.alternative_mobile_1 || 'N/A'}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-zinc-500">Alt Contact 2:</span>
-                                <span className="font-mono text-zinc-300">{customer?.preferences?.alternative_mobile_2 || 'N/A'}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-zinc-500">Email Address:</span>
-                                <span className="text-zinc-300 truncate max-w-[180px]" title={customer?.email}>{customer?.email || 'N/A'}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-zinc-500">City / Region:</span>
-                                <span className="text-zinc-300">{customer?.city || 'N/A'}</span>
-                            </div>
-                            <div className="flex flex-col gap-1 border-t border-[#1C1C1C] pt-3.5 mt-2">
-                                <span className="text-zinc-500">Full Shipping Address:</span>
-                                <p className="text-zinc-300 leading-relaxed break-words whitespace-pre-line text-[11px]">
-                                    {customer?.address || 'No address added yet.'}
-                                </p>
-                            </div>
-                            <button
-                                onClick={() => setIsEditingProfile(true)}
-                                className="w-full mt-4 py-2 bg-[#1C1C1C] hover:bg-[#252525] border border-[#2a2a2a] hover:border-[#D4AF37]/50 text-white hover:text-[#D4AF37] text-[10px] uppercase font-bold tracking-widest rounded-sm transition-all text-center cursor-pointer"
-                            >
-                                Edit Profile Details
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* WhatsApp First Service Link */}
-                    <div className="bg-[#121212] border border-emerald-900/40 bg-gradient-to-br from-[#121212] to-emerald-950/10 p-6 rounded-sm">
-                        <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-400 mb-2 flex items-center gap-2">
-                            <MessageSquare className="w-4 h-4" />
-                            WhatsApp-First Support
+            {/* Quick Actions */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Link href="/account/measurements" className="bg-[#110D0A] hover:bg-[#1A140F] border border-[#D4AF37]/30 p-6 rounded shadow-xl transition-colors group flex justify-between items-center">
+                    <div>
+                        <h3 className="text-[#D4AF37] font-bold uppercase tracking-wider text-xs mb-1 flex items-center gap-2">
+                            <Scissors size={14} /> Update Measurements
                         </h3>
-                        <p className="text-[11px] text-zinc-400 leading-relaxed mb-4">
-                            Need immediate timeline updates, custom stitching changes, or design assistance? Contact our boutique support directly on WhatsApp.
-                        </p>
-                        <a 
-                            href="https://wa.me/919876543210?text=Hi%20Deeprastore%20Support%2C%20I%20have%20an%20inquiry%20regarding%20my%20recent%20order."
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="w-full bg-emerald-700 hover:bg-emerald-600 text-white font-bold uppercase text-[9px] tracking-widest py-3 px-4 rounded-sm transition-all flex items-center justify-center gap-2"
-                        >
-                            Open Support Chat
-                        </a>
+                        <p className="text-[10px] text-[#A3A3A3] leading-relaxed">Ensure your bespoke tailoring profiles are up to date for your next order.</p>
                     </div>
-
-                    {/* Active Replacement Requests */}
-                    <div className="bg-[#121212] border border-[#222] p-6 rounded-sm">
-                        <h3 className="text-xs font-bold uppercase tracking-wider text-[#D4AF37] mb-4 flex items-center gap-2">
-                            <RefreshCcw className="w-4 h-4" />
-                            Replacement Tickets
+                    <ArrowRight size={18} className="text-[#D4AF37] transform group-hover:translate-x-1 transition-transform" />
+                </Link>
+                <Link href="/lookbook" className="bg-[#161616] hover:bg-[#1A1A1A] border border-[#333] p-6 rounded shadow-xl transition-colors group flex justify-between items-center">
+                    <div>
+                        <h3 className="text-white font-bold uppercase tracking-wider text-xs mb-1">
+                            Explore Collections
                         </h3>
-                        <div className="space-y-3">
-                            {complaints.map(c => (
-                                <div key={c.id} className="p-3 bg-[#161616] border border-[#262626] rounded-sm text-xs space-y-2">
-                                    <div className="flex justify-between items-center">
-                                        <span className="font-bold text-zinc-300 uppercase text-[9px] tracking-wider">{c.issue_type}</span>
-                                        <span className={`px-2 py-0.5 text-[8px] font-bold uppercase tracking-wider rounded-sm ${c.status === 'Resolved' ? 'bg-emerald-950 text-emerald-400' : 'bg-amber-950 text-amber-400'}`}>
-                                            {c.status}
-                                        </span>
+                        <p className="text-[10px] text-[#A3A3A3] leading-relaxed">Discover our latest premium curation pieces.</p>
+                    </div>
+                    <ArrowRight size={18} className="text-white transform group-hover:translate-x-1 transition-transform" />
+                </Link>
+            </div>
+
+            {/* Recent Orders Snapshot */}
+            <div className="bg-[#161616] border border-[#222] rounded shadow-xl overflow-hidden">
+                <div className="p-6 border-b border-[#222] flex justify-between items-center">
+                    <h3 className="text-xs font-bold uppercase tracking-widest text-[#E5E5E5]">Recent Orders</h3>
+                    <Link href="/account/orders" className="text-[9px] font-bold uppercase tracking-widest text-[#D4AF37] hover:text-[#B8962B]">View All</Link>
+                </div>
+                <div className="p-6">
+                    {recentOrders.length === 0 ? (
+                        <p className="text-[#737373] text-xs">No orders found.</p>
+                    ) : (
+                        <div className="space-y-4">
+                            {recentOrders.map(o => (
+                                <div key={o.id} className="flex justify-between items-center pb-4 border-b border-[#222] last:border-0 last:pb-0">
+                                    <div>
+                                        <p className="text-xs font-bold text-white">{o.order_number || o.id.substring(0,8)}</p>
+                                        <p className="text-[10px] text-[#A3A3A3] mt-1">{new Date(o.created_at).toLocaleDateString()}</p>
                                     </div>
-                                    <p className="text-[10px] text-zinc-500 line-clamp-2">{c.issue_reason}</p>
-                                    <div className="text-[8px] text-zinc-600">Opened on {new Date(c.created_at).toLocaleDateString()}</div>
+                                    <div className="text-right flex flex-col items-end">
+                                        <span className="text-[9px] font-bold uppercase tracking-wider text-[#D4AF37] bg-[#D4AF37]/10 px-2 py-1 rounded">
+                                            {o.status || 'Pending'}
+                                        </span>
+                                        <div className="mt-2">
+                                            <Link href={`/track/${o.id}`} className="text-[9px] text-white hover:text-[#D4AF37] underline underline-offset-2">Track & Manage</Link>
+                                        </div>
+                                    </div>
                                 </div>
                             ))}
-                            {complaints.length === 0 && (
-                                <p className="text-[11px] text-zinc-500 italic text-center py-2">No active replacement tickets.</p>
-                            )}
                         </div>
-                    </div>
-                </div>
-
-                {/* Right Side: My Orders List & Active Order Step Tracking */}
-                <div className="lg:col-span-2 space-y-6">
-                    {/* Dynamic Order Step Tracking */}
-                    <div className="bg-[#121212] border border-[#222] p-6 rounded-sm">
-                        <h2 className="text-sm font-bold uppercase tracking-widest text-[#D4AF37] mb-6 flex items-center gap-2">
-                            <Package className="w-4 h-4" />
-                            Bespoke Fabrication Tracking
-                        </h2>
-
-                        {selectedOrder ? (
-                            <div className="space-y-6">
-                                {/* Order Quick Info */}
-                                <div className="flex flex-wrap justify-between items-center gap-4 bg-[#161616] p-4 border border-[#262626] rounded-sm">
-                                    <div>
-                                        <span className="text-[9px] uppercase tracking-wider text-zinc-500 block">Order Reference</span>
-                                        <span className="font-mono text-xs font-bold text-white">#{selectedOrder.order_number || selectedOrder.id.slice(0, 8).toUpperCase()}</span>
-                                    </div>
-                                    <div>
-                                        <span className="text-[9px] uppercase tracking-wider text-zinc-500 block">Fulfillment Timeline</span>
-                                        <span className="text-xs font-semibold text-zinc-300">
-                                            {selectedOrder.expected_delivery_date ? new Date(selectedOrder.expected_delivery_date).toLocaleDateString() : '7-12 Business Days'}
-                                        </span>
-                                    </div>
-                                    <div>
-                                        <span className="text-[9px] uppercase tracking-wider text-zinc-500 block">Total Investment</span>
-                                        <span className="text-xs font-bold text-[#D4AF37]">₹{selectedOrder.total_amount.toLocaleString('en-IN')}</span>
-                                    </div>
-                                    <div className="flex flex-wrap gap-2">
-                                        {isWithinTwoMonths(selectedOrder) ? (
-                                            <a 
-                                                href={`/account/replacement?orderId=${selectedOrder.id}`}
-                                                className="px-3.5 py-2 border border-[#D4AF37] text-[9px] font-bold uppercase tracking-wider text-[#D4AF37] hover:bg-[#D4AF37] hover:text-black transition-colors rounded-sm"
-                                            >
-                                                {isCustomized ? 'Request Adjustment / Fitting Help' : 'Request Replacement'}
-                                            </a>
-                                        ) : (
-                                            <button 
-                                                disabled
-                                                className="px-3.5 py-2 border border-zinc-800 text-[9px] font-bold uppercase tracking-wider text-zinc-500 cursor-not-allowed rounded-sm"
-                                                title="Size adjustments and replacements are only selectable within 2 months of delivery"
-                                            >
-                                                {isCustomized ? 'Adjustment Window Expired' : 'Replacement Window Expired'}
-                                            </button>
-                                        )}
-
-                                        {selectedOrder.refund_eligible && (
-                                            <button 
-                                                onClick={async () => {
-                                                    if (!confirm("Are you sure you want to request a refund for this order?")) return;
-                                                    try {
-                                                        const { error } = await supabase
-                                                            .from('orders')
-                                                            .update({ status: 'Refund Requested' })
-                                                            .eq('id', selectedOrder.id);
-                                                        if (error) throw error;
-                                                        
-                                                        setOrders(orders.map(o => o.id === selectedOrder.id ? { ...o, status: 'Refund Requested' } : o));
-                                                        setSelectedOrder((prev: any) => ({ ...prev, status: 'Refund Requested' }));
-                                                        alert("Refund request submitted successfully.");
-                                                    } catch (err: any) {
-                                                        console.error("Refund request failed:", err);
-                                                        alert("Failed to submit refund request.");
-                                                    }
-                                                }}
-                                                className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-600 border border-emerald-600 text-[9px] font-bold uppercase tracking-wider text-white transition-colors rounded-sm"
-                                            >
-                                                {selectedOrder.status === 'Refund Requested' ? 'Refund Requested' : 'Request Refund'}
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Custom Products Disclaimer Warning */}
-                                {isCustomized && (
-                                    <div className="bg-amber-950/20 border border-amber-900/60 p-4 rounded-sm flex items-start gap-3">
-                                        <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
-                                        <div className="text-xs text-amber-300 leading-relaxed">
-                                            <p className="font-bold uppercase tracking-wider text-[10px] mb-1">Customized Product Disclaimer</p>
-                                            <p className="font-light text-[11px]">
-                                                Customized products are specially made for you and therefore handled through adjustment and correction workflows instead of standard replacement/refund.
-                                            </p>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Proactive Delay Trust Banner */}
-                                {hasDelay(selectedOrder) && (
-                                    <div className="bg-amber-950/20 border border-amber-900/60 p-4 rounded-sm flex items-start gap-3">
-                                        <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
-                                        <div className="text-xs text-amber-300 leading-relaxed">
-                                            <p className="font-bold uppercase tracking-wider text-[10px] mb-1">Handcrafted Curation Notice</p>
-                                            <p className="font-light text-[11px]">
-                                                Your order is currently in fabric sourcing and quality tailor-finishing. Deeprastore orders are uniquely handcrafted, requiring dedicated preparation time to maintain premium boutique quality. Expected dispatch updated to 3-4 business days. Thank you for your trust and patience.
-                                            </p>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* visual timeline list tracker */}
-                                <div className="pt-4 relative">
-                                    {/* Mobile vertical line, desktop horizontal lines */}
-                                    <div className="space-y-6 md:space-y-0 md:grid md:grid-cols-4 md:gap-4">
-                                        {ORDER_STEPS.map((step, idx) => {
-                                            const currentIdx = getStepIndex(selectedOrder.status);
-                                            const isCompleted = idx < currentIdx;
-                                            const isCurrent = idx === currentIdx;
-                                            const isPending = idx > currentIdx;
-
-                                            return (
-                                                <div key={step} className="flex md:flex-col items-center gap-3 md:text-center md:gap-2">
-                                                    {/* Circle icon */}
-                                                    <div className="relative z-10">
-                                                        {isCompleted && <CheckCircle2 className="w-5 h-5 text-emerald-500 bg-[#121212]" />}
-                                                        {isCurrent && <AlertCircle className="w-5 h-5 text-[#D4AF37] animate-pulse bg-[#121212]" />}
-                                                        {isPending && <div className="w-5 h-5 rounded-full border border-zinc-800 bg-[#1a1a1a]" />}
-                                                    </div>
-                                                    <div>
-                                                        <span className={`text-[10px] font-bold block uppercase tracking-wider ${isCurrent ? 'text-[#D4AF37]' : isCompleted ? 'text-zinc-300' : 'text-zinc-600'}`}>
-                                                            {step}
-                                                        </span>
-                                                        <span className="text-[8px] text-zinc-500 font-mono block">
-                                                            {isCurrent ? 'Current Phase' : isCompleted ? 'Completed' : 'Pending'}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="py-12 text-center text-zinc-500 italic text-xs">
-                                No active orders found. Begin your premium catalog selection.
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Order History Table */}
-                    <div className="bg-[#121212] border border-[#222] p-6 rounded-sm">
-                        <h2 className="text-sm font-bold uppercase tracking-widest text-[#D4AF37] mb-6 flex items-center gap-2">
-                            <Truck className="w-4 h-4" />
-                            Curation Order History
-                        </h2>
-
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-xs text-left border-collapse">
-                                <thead>
-                                    <tr className="border-b border-[#222] text-[#A3A3A3] uppercase text-[9px] tracking-wider">
-                                        <th className="pb-3.5 font-bold">Order ID</th>
-                                        <th className="pb-3.5 font-bold">Status</th>
-                                        <th className="pb-3.5 font-bold">Items</th>
-                                        <th className="pb-3.5 font-bold">Total</th>
-                                        <th className="pb-3.5 font-bold text-right">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-[#1C1C1C]">
-                                    {orders.map(o => (
-                                        <tr key={o.id} className="hover:bg-[#161616] transition-colors">
-                                            <td className="py-4 font-mono font-bold text-white">#{o.order_number || o.id.slice(0, 8).toUpperCase()}</td>
-                                            <td className="py-4">
-                                                <span className={`px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded-sm ${o.status === 'Delivered' ? 'bg-emerald-950 text-emerald-400' : 'bg-[#1C1C1C] text-[#A3A3A3]'}`}>
-                                                    {o.status}
-                                                </span>
-                                            </td>
-                                            <td className="py-4 text-zinc-400">{o.order_items?.length || 0} Products</td>
-                                            <td className="py-4 text-[#D4AF37] font-semibold">₹{o.total_amount.toLocaleString('en-IN')}</td>
-                                            <td className="py-4 text-right">
-                                                <button 
-                                                    onClick={() => setSelectedOrder(o)}
-                                                    className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-[#D4AF37] hover:underline"
-                                                >
-                                                    Track
-                                                    <ArrowRight className="w-3 h-3" />
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                    {orders.length === 0 && (
-                                        <tr>
-                                            <td colSpan={5} className="py-8 text-center text-zinc-500 italic">No orders found.</td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                    )}
                 </div>
             </div>
-            
-            {/* Footer */}
-            <div className="border-t border-[#1A1A1A] bg-[#0E0E0E] py-6 text-center text-[10px] text-zinc-600 uppercase tracking-widest">
-                Deeprastore Premium Editorial © 2026. All Rights Reserved.
-            </div>
-            {/* Edit Profile Modal */}
-            {isEditingProfile && (
-                <div className="fixed inset-0 z-[999] flex items-center justify-center">
-                    <div className="absolute inset-0 bg-black/85 backdrop-blur-sm" onClick={() => setIsEditingProfile(false)} />
-                    <div className="relative z-10 w-full max-w-[450px] mx-4 bg-[#111111] border border-[#242424] rounded-sm shadow-2xl p-6 text-left">
-                        <div className="flex justify-between items-center mb-6 pb-2 border-b border-[#222]">
-                            <h3 className="text-sm font-bold uppercase tracking-wider text-white">Edit Your Profile</h3>
-                            <button onClick={() => setIsEditingProfile(false)} className="text-zinc-500 hover:text-white transition-colors cursor-pointer text-xs uppercase tracking-wider font-bold">Cancel</button>
-                        </div>
-                        {profileError && (
-                            <div className="mb-4 bg-red-950/40 border border-red-900/50 text-red-400 p-2.5 text-[11px] rounded-sm text-center">
-                                {profileError}
-                            </div>
-                        )}
-                        <form onSubmit={handleSaveProfile} className="space-y-4">
-                            <div>
-                                <label className="block text-[9px] text-zinc-400 mb-1.5 uppercase tracking-widest font-bold">Full Name *</label>
-                                <input
-                                    type="text"
-                                    value={editName}
-                                    onChange={e => setEditName(e.target.value)}
-                                    className="w-full text-xs py-2.5 px-3 border border-[#2a2a2a] bg-[#161616] text-white outline-none focus:border-[#D4AF37] rounded-sm transition-all"
-                                    required
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-[9px] text-zinc-400 mb-1.5 uppercase tracking-widest font-bold">Primary Mobile *</label>
-                                <input
-                                    type="tel"
-                                    value={editPhone}
-                                    onChange={e => setEditPhone(e.target.value)}
-                                    className="w-full text-xs py-2.5 px-3 border border-[#2a2a2a] bg-[#161616] text-white outline-none focus:border-[#D4AF37] rounded-sm transition-all font-mono"
-                                    required
-                                />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-[9px] text-zinc-400 mb-1.5 uppercase tracking-widest font-bold">Alt Contact 1</label>
-                                    <input
-                                        type="tel"
-                                        placeholder="Alt Mobile 1"
-                                        value={editAltPhone1}
-                                        onChange={e => setEditAltPhone1(e.target.value)}
-                                        className="w-full text-xs py-2.5 px-3 border border-[#2a2a2a] bg-[#161616] text-white outline-none focus:border-[#D4AF37] rounded-sm transition-all font-mono"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-[9px] text-zinc-400 mb-1.5 uppercase tracking-widest font-bold">Alt Contact 2</label>
-                                    <input
-                                        type="tel"
-                                        placeholder="Alt Mobile 2"
-                                        value={editAltPhone2}
-                                        onChange={e => setEditAltPhone2(e.target.value)}
-                                        className="w-full text-xs py-2.5 px-3 border border-[#2a2a2a] bg-[#161616] text-white outline-none focus:border-[#D4AF37] rounded-sm transition-all font-mono"
-                                    />
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-[9px] text-zinc-400 mb-1.5 uppercase tracking-widest font-bold">City / Region</label>
-                                <input
-                                    type="text"
-                                    placeholder="E.g. Hyderabad, Telangana"
-                                    value={editCity}
-                                    onChange={e => setEditCity(e.target.value)}
-                                    className="w-full text-xs py-2.5 px-3 border border-[#2a2a2a] bg-[#161616] text-white outline-none focus:border-[#D4AF37] rounded-sm transition-all"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-[9px] text-zinc-400 mb-1.5 uppercase tracking-widest font-bold">Full Address</label>
-                                <textarea
-                                    rows={2}
-                                    placeholder="Enter your shipping/billing address"
-                                    value={editAddress}
-                                    onChange={e => setEditAddress(e.target.value)}
-                                    className="w-full text-xs py-2.5 px-3 border border-[#2a2a2a] bg-[#161616] text-white outline-none focus:border-[#D4AF37] rounded-sm transition-all resize-none"
-                                />
-                            </div>
-                            <button
-                                type="submit"
-                                disabled={updatingProfile}
-                                className="w-full bg-[#D4AF37] hover:bg-[#b8952d] text-black font-bold uppercase text-[10px] tracking-[0.18em] py-3.5 px-4 rounded-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-2 shadow-lg shadow-[#D4AF37]/10 cursor-pointer"
-                            >
-                                {updatingProfile ? 'Saving Changes...' : 'Save Changes'}
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            )}
-        </main>
+        </motion.div>
     );
 }

@@ -88,6 +88,10 @@ export const ProductHero = ({
 
     const isSplit = data?.layout !== 'full';
 
+    const stockCount = p.inventory_quantity ?? p.stock_quantity ?? 1;
+    const isOutOfStock = stockCount <= 0;
+    const isLowStock = stockCount > 0 && stockCount < 3;
+
     return (
         <section className={`py-12 md:py-16 px-4 md:px-8 max-w-7xl mx-auto ${isSplit ? 'grid lg:grid-cols-2 gap-12 lg:gap-16' : 'flex flex-col'}`}>
             {/* Gallery Column */}
@@ -155,7 +159,16 @@ export const ProductHero = ({
                             </p>
                         )}
                     </div>
-                    <p className="text-xs text-muted font-medium uppercase tracking-widest">Taxes Included. Free Shipping in India.</p>
+                    <p className="text-xs text-muted font-medium uppercase tracking-widest mb-4">Taxes Included. Free Shipping in India.</p>
+                    {isOutOfStock ? (
+                        <div className="inline-block bg-black text-[#D4AF37] border border-[#D4AF37]/30 px-3 py-1.5 text-xs font-bold tracking-widest uppercase mb-4">
+                            Currently on Waitlist
+                        </div>
+                    ) : isLowStock ? (
+                        <div className="inline-block bg-amber-500/10 text-amber-600 border border-amber-500/20 px-3 py-1.5 text-xs font-bold tracking-widest uppercase mb-4 animate-pulse">
+                            Only {stockCount} Left in Atelier
+                        </div>
+                    ) : null}
                 </div>
 
                 <div className="h-px w-full bg-border mb-10"></div>
@@ -239,7 +252,9 @@ export const ProductHero = ({
                         <button 
                             onClick={onAddToCart}
                             className="flex-1 bg-black text-white h-14 font-bold text-xs uppercase tracking-widest hover:bg-gray-900 transition-all shadow-lg hover:shadow-xl active:scale-[0.98] flex items-center justify-center group relative overflow-hidden">
-                            <span className="relative z-10">Add to Cart • ₹{(p.price * currentQty + (currentNeedsStitching ? 1500 : 0) + (currentNeedsFallPico ? 300 : 0)).toLocaleString('en-IN')}</span>
+                            <span className="relative z-10">
+                                {isOutOfStock ? "Join Waitlist" : `Add to Cart • ₹${(p.price * currentQty + (currentNeedsStitching ? 1500 : 0) + (currentNeedsFallPico ? 300 : 0)).toLocaleString('en-IN')}`}
+                            </span>
                             <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-in-out"></div>
                         </button>
                     </div>

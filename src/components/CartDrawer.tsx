@@ -2,13 +2,20 @@
 
 import { useState } from 'react';
 import { useCartStore } from '@/store/useCartStore';
+import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 
 export const CartDrawer = () => {
     const { items, isOpen, setIsOpen, updateQty, removeItem, getTotal } = useCartStore();
+    const { user, openLoginModal } = useAuth();
     const [loading, setLoading] = useState(false);
 
     const handleCheckout = async () => {
+        if (!user) {
+            openLoginModal(window.location.pathname + window.location.search);
+            return;
+        }
+
         if (items.length === 0) {
             alert("Your cart is empty!");
             return;
@@ -64,35 +71,32 @@ export const CartDrawer = () => {
                         const items = useCartStore.getState().items;
                         const total = useCartStore.getState().getTotal();
                         
-                        const { data: order, error: orderErr } = await supabase.from('orders').insert({
-                            order_number: `WEB-${Date.now().toString().slice(-6)}`,
-                            total_amount: total,
-                            status: 'Confirmed',
-                            approval_status: 'Approved',
-                            payment_status: 'Paid',
-                            source: 'web',
-                            payment_screenshot: response.razorpay_payment_id
-                        }).select().single();
-                        
-                        if (orderErr) throw orderErr;
-                        
-                        if (items.length > 0 && order) {
-                            const orderItems = items.map(item => ({
-                                order_id: order.id,
-                                product_id: item.id,
-                                product_name: item.name,
-                                price: item.price,
-                                quantity: item.qty
-                            }));
-                            await supabase.from('order_items').insert(orderItems);
-                        }
-                    } catch (err) {
-                        console.error('Failed to create order in DB:', err);
-                    }
+                        // Hand off to secure backend verification and order creation
+                        const verifyRes = await fetch('/api/razorpay/verify', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                paymentId: response.razorpay_payment_id,
+                                orderId: response.razorpay_order_id,
+                                signature: response.razorpay_signature,
+                                total,
+                                items
+                            })
+                        });
 
-                    alert(`Payment successful! Payment ID: ${response.razorpay_payment_id}`);
-                    useCartStore.getState().clearCart();
-                    setIsOpen(false);
+                        const verifyData = await verifyRes.json();
+                        
+                        if (!verifyRes.ok) {
+                            throw new Error(verifyData.error || 'Payment verified but order creation failed.');
+                        }
+
+                        alert(`Payment & Order successful! Order ID: ${verifyData.order_number}`);
+                        useCartStore.getState().clearCart();
+                        setIsOpen(false);
+                    } catch (err: any) {
+                        console.error('Failed to finalize order:', err);
+                        alert(`Error finalizing order: ${err.message}. Please contact support with Payment ID: ${response.razorpay_payment_id}`);
+                    }
                 },
                 theme: { color: "#D4AF37" }
             };

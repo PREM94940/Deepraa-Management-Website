@@ -22,6 +22,8 @@ export default function OrderDetailsPage() {
     const [editPaymentStatus, setEditPaymentStatus] = useState('');
     const [editNotes, setEditNotes] = useState('');
     const [editAmount, setEditAmount] = useState(0);
+    const [editTrackingNumber, setEditTrackingNumber] = useState('');
+    const [editCourierName, setEditCourierName] = useState('Delhivery');
 
     useEffect(() => {
         if (id) fetchOrder();
@@ -49,6 +51,8 @@ export default function OrderDetailsPage() {
             setEditPaymentStatus(data.payment_status || '');
             setEditNotes(data.notes || '');
             setEditAmount(data.total_amount || 0);
+            setEditTrackingNumber(data.tracking_number || '');
+            setEditCourierName(data.courier_name || 'Delhivery');
         }
         setLoading(false);
     }
@@ -60,7 +64,9 @@ export default function OrderDetailsPage() {
                 status: editStatus,
                 payment_status: editPaymentStatus,
                 notes: editNotes,
-                total_amount: editAmount
+                total_amount: editAmount,
+                tracking_number: editTrackingNumber,
+                courier_name: editCourierName
             };
             const { error } = await supabase.from('orders').update(updates).eq('id', id);
             if (error) throw error;
@@ -71,7 +77,7 @@ export default function OrderDetailsPage() {
                     order_id: id,
                     old_status: order.status,
                     new_status: editStatus,
-                    notes: 'Updated via admin edit'
+                    notes: `Updated via admin edit${editStatus === 'dispatched' ? ` (Tracking: ${editTrackingNumber})` : ''}`
                 }]);
             }
 
@@ -91,7 +97,7 @@ export default function OrderDetailsPage() {
     if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading order details...</div>;
     if (!order) return <div style={{ padding: '40px', textAlign: 'center' }}>Order not found.</div>;
 
-    const statuses = ['Pending Approval', 'Pending Verification', 'Payment Pending', 'confirmed', 'to stitching', 'in stitching', 'ready', 'dispatched', 'delivered', 'cancelled'];
+    const statuses = ['Pending Approval', 'Pending Verification', 'Payment Pending', 'confirmed', 'awaiting fabric', 'to stitching', 'in stitching', 'ready', 'dispatched', 'delivered', 'cancelled'];
 
     return (
         <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
@@ -128,7 +134,15 @@ export default function OrderDetailsPage() {
                         </button>
                     ) : (
                         <>
-                            <button onClick={() => { setEditMode(false); setEditStatus(order.status); setEditPaymentStatus(order.payment_status); setEditNotes(order.notes || ''); setEditAmount(order.total_amount); }} className="btn btn-outline">Cancel</button>
+                            <button onClick={() => { 
+                                setEditMode(false); 
+                                setEditStatus(order.status); 
+                                setEditPaymentStatus(order.payment_status); 
+                                setEditNotes(order.notes || ''); 
+                                setEditAmount(order.total_amount); 
+                                setEditTrackingNumber(order.tracking_number || '');
+                                setEditCourierName(order.courier_name || 'Delhivery');
+                            }} className="btn btn-outline">Cancel</button>
                             <button onClick={handleSave} disabled={saving} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 <Save size={16} /> {saving ? 'Saving...' : 'Save Changes'}
                             </button>
@@ -177,6 +191,33 @@ export default function OrderDetailsPage() {
                                 <select value={editStatus} onChange={e => setEditStatus(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid #CBD5E1' }}>
                                     {statuses.map(s => <option key={s} value={s}>{s}</option>)}
                                 </select>
+                            </div>
+                        )}
+
+                        {editMode && editStatus === 'dispatched' && (
+                            <div style={{ marginBottom: '16px', background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+                                <h3 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '12px', color: '#1E293B' }}>Logistics Details</h3>
+                                <div style={{ marginBottom: '12px' }}>
+                                    <label style={{ fontSize: '0.8rem', color: '#64748B', display: 'block', marginBottom: '4px' }}>Courier Service</label>
+                                    <select value={editCourierName} onChange={e => setEditCourierName(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid #CBD5E1' }}>
+                                        <option value="Delhivery">Delhivery</option>
+                                        <option value="BlueDart">BlueDart</option>
+                                        <option value="DTDC">DTDC</option>
+                                        <option value="India Post">India Post</option>
+                                        <option value="DHL">DHL</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '0.8rem', color: '#64748B', display: 'block', marginBottom: '4px' }}>Tracking Number</label>
+                                    <input type="text" placeholder="e.g. 100000001" value={editTrackingNumber} onChange={e => setEditTrackingNumber(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid #CBD5E1' }} />
+                                </div>
+                            </div>
+                        )}
+                        
+                        {!editMode && order.status === 'dispatched' && (
+                            <div style={{ marginTop: '16px', marginBottom: '16px', background: '#F0FDF4', padding: '16px', borderRadius: '8px', border: '1px solid #BBF7D0' }}>
+                                <div style={{ fontSize: '0.75rem', color: '#166534', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Dispatched via {order.courier_name}</div>
+                                <div style={{ fontWeight: 600, color: '#14532D', fontFamily: 'monospace', fontSize: '1.1rem' }}>{order.tracking_number}</div>
                             </div>
                         )}
 
@@ -246,9 +287,12 @@ export default function OrderDetailsPage() {
                     {/* Notes */}
                     {(order.notes || editMode) && (
                         <div style={{ background: '#FFF', borderRadius: '12px', border: '1px solid #E2E8F0', padding: '24px' }}>
-                            <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '12px' }}>Notes</h2>
+                            <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '12px' }}>
+                                Private Operational Notes
+                                <span style={{ fontSize: '0.7rem', color: '#EF4444', marginLeft: '12px', fontWeight: 'bold', border: '1px solid #FECACA', background: '#FEF2F2', padding: '2px 6px', borderRadius: '4px', textTransform: 'uppercase' }}>Staff Only</span>
+                            </h2>
                             {editMode ? (
-                                <textarea value={editNotes} onChange={e => setEditNotes(e.target.value)} rows={4} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #CBD5E1', resize: 'vertical' }} />
+                                <textarea placeholder="e.g. fabric sourcing delay, tailoring issues, urgent customer..." value={editNotes} onChange={e => setEditNotes(e.target.value)} rows={4} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #CBD5E1', resize: 'vertical' }} />
                             ) : (
                                 <p style={{ color: '#475569', whiteSpace: 'pre-wrap' }}>{order.notes}</p>
                             )}

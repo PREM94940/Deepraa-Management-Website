@@ -128,10 +128,10 @@ export default function TrackOrder() {
         setReturnLoading(false);
     };
 
-    // Milestone statuses definitions
     const milestones = [
         { key: 'placed', label: 'Consultation & Curation', desc: 'Order received & style consulting started' },
         { key: 'confirmed', label: 'Design Confirmed', desc: 'Sartorial choices & parameters approved' },
+        { key: 'sourcing', label: 'Sourcing & Preparation', desc: 'Procuring premium fabrics and trims' },
         { key: 'stitching', label: 'Artisan Stitching', desc: 'Handcrafted details and tailoring in progress' },
         { key: 'ready', label: 'Quality Inspected', desc: 'Finished, pressed & packaged at boutique' },
         { key: 'dispatched', label: 'In Transit', desc: 'Secure shipping by premium cargo logistics' },
@@ -142,10 +142,11 @@ export default function TrackOrder() {
         const s = status?.toLowerCase() || 'pending';
         if (s === 'pending' || s === 'pending approval' || s === 'payment pending') return 0;
         if (s === 'confirmed') return 1;
-        if (s === 'to stitching' || s === 'in stitching') return 2;
-        if (s === 'ready') return 3;
-        if (s === 'dispatched') return 4;
-        if (s === 'delivered') return 5;
+        if (s === 'awaiting fabric' || s === 'fabric sourcing') return 2;
+        if (s === 'to stitching' || s === 'in stitching') return 3;
+        if (s === 'ready') return 4;
+        if (s === 'dispatched') return 5;
+        if (s === 'delivered') return 6;
         return 0; // Default
     };
 
@@ -153,6 +154,32 @@ export default function TrackOrder() {
         if (!order) return 'https://wa.me/919999999999';
         const msg = `Hi! I need help with my Order ${order.order_number || order.id.substring(0,8)} (Current status: ${order.status || 'Pending'}).`;
         return `https://wa.me/919999999999?text=${encodeURIComponent(msg)}`;
+    };
+
+    const getTrackingUrl = (courier: string, trackingNum: string) => {
+        if (!trackingNum) return '#';
+        const c = (courier || '').toLowerCase();
+        if (c === 'bluedart') return `https://www.bluedart.com/tracking?track=${trackingNum}`;
+        if (c === 'dtdc') return `https://www.dtdc.in/tracking/tracking_results.asp?trackType=AWB&trackNo=${trackingNum}`;
+        if (c === 'india post' || c === 'indiapost') return `https://www.indiapost.gov.in/_layouts/15/dop.portal.tracking/trackconsignment.aspx`;
+        if (c === 'dhl') return `https://www.dhl.com/en/express/tracking.html?AWB=${trackingNum}`;
+        return `https://track.delhivery.com/tracking/${trackingNum}`;
+    };
+
+    const getHumanTicketStatus = (status: string) => {
+        switch (status) {
+            case 'New': return "Submitted to Boutique Team";
+            case 'Under Review': return "Our tailoring manager is reviewing your request.";
+            case 'Awaiting Customer Response': return "We need a bit more detail from you.";
+            case 'Tailoring Adjustment Approved': return "Your adjustment has been approved and assigned to our artisan team.";
+            case 'Replacement Approved': return "A replacement has been approved for you.";
+            case 'Awaiting Fabric Sourcing': return "We are currently sourcing the required fabric for your adjustment.";
+            case 'Tailor Rework In Progress': return "Our artisan team is actively reworking your piece.";
+            case 'Refund Approved': return "Refund processed according to policy.";
+            case 'Resolved': return "Issue resolved. We hope you love the final result!";
+            case 'Rejected': return "Request closed.";
+            default: return "Our boutique concierge team is on it.";
+        }
     };
 
     return (
@@ -417,14 +444,14 @@ export default function TrackOrder() {
                                 <div className="flex gap-3">
                                     <Truck className="w-8 h-8 text-amber-500 shrink-0" />
                                     <div className="space-y-1">
-                                        <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400">Shipment Out for Delivery</h4>
+                                        <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400">Shipment Out for Delivery via {order.courier_name || 'Delhivery'}</h4>
                                         <p className="text-[11px] text-amber-200/80 leading-normal">
                                             Tracking Number: <span className="font-extrabold text-white font-mono">{order.tracking_number}</span>
                                         </p>
                                     </div>
                                 </div>
                                 <button 
-                                    onClick={() => window.open(`https://track.delhivery.com/tracking/${order.tracking_number}`, '_blank')}
+                                    onClick={() => window.open(getTrackingUrl(order.courier_name, order.tracking_number), '_blank')}
                                     className="px-5 py-2.5 bg-amber-500 text-black font-extrabold uppercase tracking-widest hover:bg-amber-400 transition-colors text-[9px] rounded flex items-center gap-2"
                                 >
                                     Track Cargo <ArrowRight className="w-3.5 h-3.5" />
@@ -434,16 +461,59 @@ export default function TrackOrder() {
 
                         {/* Active Return Status Banner */}
                         {activeReturn && (
-                            <div className="bg-[#1C1510] border border-[#D4AF37]/30 p-6 rounded shadow-xl flex gap-4">
-                                <RefreshCw className="w-6 h-6 text-[#D4AF37] shrink-0 animate-pulse mt-0.5" />
-                                <div className="space-y-1">
-                                    <h4 className="text-xs font-bold uppercase tracking-wider text-[#D4AF37]">Active Return Request ({activeReturn.status})</h4>
-                                    <p className="text-[11px] text-[#A3A3A3] leading-relaxed">
-                                        Type: <span className="text-white font-bold">{activeReturn.issue_type}</span> • Submitted: {new Date(activeReturn.created_at).toLocaleDateString()}
-                                    </p>
-                                    <p className="text-[11px] text-[#E5E5E5]/80 leading-relaxed italic mt-1">
-                                        Reason: {activeReturn.issue_reason}
-                                    </p>
+                            <div className="bg-[#1C1510] border border-[#D4AF37]/30 rounded shadow-xl overflow-hidden">
+                                <div className="p-6 flex flex-col md:flex-row justify-between items-start gap-6 border-b border-[#D4AF37]/20">
+                                    <div className="flex gap-4">
+                                        <RefreshCw className="w-6 h-6 text-[#D4AF37] shrink-0 mt-0.5" />
+                                        <div className="space-y-1.5">
+                                            <h4 className="text-xs font-bold uppercase tracking-wider text-[#D4AF37]">
+                                                Support Request: {activeReturn.category}
+                                            </h4>
+                                            <p className="text-sm font-bold text-white">
+                                                {getHumanTicketStatus(activeReturn.status)}
+                                            </p>
+                                            <p className="text-[11px] text-[#A3A3A3] leading-relaxed mt-2">
+                                                Submitted: {new Date(activeReturn.created_at).toLocaleDateString()}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button 
+                                        onClick={() => window.open(getWhatsAppUrl(), '_blank')}
+                                        className="flex items-center gap-2 px-5 py-2.5 bg-[#25D366] text-black hover:bg-[#20bd5a] text-[10px] font-extrabold uppercase tracking-widest transition-all rounded whitespace-nowrap"
+                                    >
+                                        <MessageSquare className="w-3.5 h-3.5" /> Boutique Concierge
+                                    </button>
+                                </div>
+
+                                {/* Support Timeline / Replies */}
+                                <div className="p-6 bg-[#110d0a]">
+                                    <h5 className="text-[10px] font-bold uppercase tracking-widest text-[#737373] mb-4">Support Timeline</h5>
+                                    <div className="space-y-4">
+                                        <div className="flex gap-3">
+                                            <div className="w-6 h-6 rounded-full bg-[#222] border border-[#333] flex items-center justify-center shrink-0">
+                                                <span className="text-[9px] font-bold text-[#A3A3A3]">Me</span>
+                                            </div>
+                                            <div className="bg-[#222] border border-[#333] p-3 rounded text-xs text-[#E5E5E5] leading-relaxed">
+                                                {activeReturn.description}
+                                            </div>
+                                        </div>
+                                        
+                                        {activeReturn.ticket_replies && activeReturn.ticket_replies.map((reply: any) => (
+                                            <div key={reply.id} className="flex gap-3">
+                                                <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${reply.sender_type === 'staff' ? 'bg-[#D4AF37]/20 border border-[#D4AF37]/50' : 'bg-[#222] border border-[#333]'}`}>
+                                                    <span className={`text-[9px] font-bold ${reply.sender_type === 'staff' ? 'text-[#D4AF37]' : 'text-[#A3A3A3]'}`}>
+                                                        {reply.sender_type === 'staff' ? 'D' : 'Me'}
+                                                    </span>
+                                                </div>
+                                                <div className={`p-3 rounded text-xs leading-relaxed ${reply.sender_type === 'staff' ? 'bg-[#D4AF37]/10 border border-[#D4AF37]/30 text-[#D4AF37]' : 'bg-[#222] border border-[#333] text-[#E5E5E5]'}`}>
+                                                    {reply.message}
+                                                    <div className="text-[9px] opacity-60 mt-2 font-mono">
+                                                        {new Date(reply.created_at).toLocaleString('en-IN', { hour: 'numeric', minute: 'numeric', day: 'numeric', month: 'short' })}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
                         )}
@@ -556,15 +626,17 @@ export default function TrackOrder() {
                             </div>
                         )}
 
-                        {/* WhatsApp support concierge action */}
-                        <div className="flex justify-center pt-4">
-                            <button 
-                                onClick={() => window.open(getWhatsAppUrl(), '_blank')}
-                                className="flex items-center gap-2 px-6 py-3 border border-[#25D366]/40 text-[#25D366] hover:bg-[#25D366]/10 text-xs font-bold uppercase tracking-widest transition-all rounded"
-                            >
-                                <MessageSquare className="w-4 h-4" /> Connect with Personal Curation Concierge
-                            </button>
-                        </div>
+                        {/* Fallback WhatsApp support concierge action if no active return */}
+                        {!activeReturn && (
+                            <div className="flex justify-center pt-4">
+                                <button 
+                                    onClick={() => window.open(getWhatsAppUrl(), '_blank')}
+                                    className="flex items-center gap-2 px-6 py-3 border border-[#25D366]/40 text-[#25D366] hover:bg-[#25D366]/10 text-xs font-bold uppercase tracking-widest transition-all rounded"
+                                >
+                                    <MessageSquare className="w-4 h-4" /> Connect with Personal Curation Concierge
+                                </button>
+                            </div>
+                        )}
                     </motion.div>
                 )}
             </div>

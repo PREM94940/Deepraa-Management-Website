@@ -9,16 +9,19 @@ export async function middleware(request: NextRequest) {
     // 1. Rate Limiting (Pillar 6)
     const ip = request.headers.get('x-forwarded-for') || 'anonymous';
     const now = Date.now();
-    const rateLimitWindow = 60000; // 1 minute
-    const maxRequests = 100; // 100 requests per minute
+    const isAdminLogin = request.nextUrl.pathname === '/admin/login';
+    const rateLimitWindow = isAdminLogin ? 15 * 60 * 1000 : 60000; // 15 mins for login, 1 min otherwise
+    const maxRequests = isAdminLogin ? 5 : 100; // 5 attempts per 15 mins for login
 
-    let rateData = ipRequestCounts.get(ip);
+    // Use a composite key for specific rate limiting buckets
+    const rateKey = `${ip}_${isAdminLogin ? 'admin_login' : 'global'}`;
+    let rateData = ipRequestCounts.get(rateKey);
     if (!rateData || now > rateData.resetTime) {
         rateData = { count: 1, resetTime: now + rateLimitWindow };
     } else {
         rateData.count++;
     }
-    ipRequestCounts.set(ip, rateData);
+    ipRequestCounts.set(rateKey, rateData);
 
     if (rateData.count > maxRequests) {
         return new NextResponse("Too Many Requests. Please slow down.", { status: 429 });
@@ -56,13 +59,42 @@ export async function middleware(request: NextRequest) {
     // IMPORTANT: Do NOT use getSession() here — it reads from cookies without
     // contacting the Supabase Auth server. Use getUser() which validates the
     // token with the server and refreshes expired tokens automatically.
-    await supabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
 
-    // 3. Maintenance Mode Check (Pillar 6)
-    const isMaintenanceMode = process.env.MAINTENANCE_MODE === 'true';
+    // 3. Admin Route Protection
     const isApi = request.nextUrl.pathname.startsWith('/api');
     const isAdmin = request.nextUrl.pathname.startsWith('/admin');
     const isMaintenancePage = request.nextUrl.pathname === '/maintenance';
+
+    if (isAdmin && request.nextUrl.pathname !== '/admin/login') {
+        let isAuthorized = false;
+
+        if (user) {
+            const { data: roleData } = await supabase
+                .from('staff_roles')
+                .select('role')
+                .eq('id', user.id)
+                .maybeSingle();
+            
+            if (roleData && ['Staff', 'Manager'].includes(roleData.role)) {
+                isAuthorized = true;
+            }
+            
+            // Allow simulated role ONLY if the user is authenticated (developer logging in with real account but simulated role)
+            const simulatedRole = process.env.NEXT_PUBLIC_SIMULATE_ROLE;
+            if (!isAuthorized && simulatedRole && ['Staff', 'Manager'].includes(simulatedRole) && process.env.NODE_ENV === 'development') {
+                isAuthorized = true;
+            }
+        }
+
+        if (!isAuthorized) {
+            // Redirect unauthorized users
+            return NextResponse.redirect(new URL(user ? '/' : '/admin/login', request.url));
+        }
+    }
+
+    // 4. Maintenance Mode Check (Pillar 6)
+    const isMaintenanceMode = process.env.MAINTENANCE_MODE === 'true';
 
     if (isMaintenanceMode && !isAdmin && !isApi && !isMaintenancePage) {
         return NextResponse.redirect(new URL('/maintenance', request.url));

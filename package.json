@@ -10,11 +10,13 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^3.0.66",
     "@sentry/nextjs": "^10.53.1",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.106.1",
     "@types/papaparse": "^5.5.2",
     "@vercel/analytics": "^2.0.1",
+    "ai": "^6.0.191",
     "csv-parse": "^6.2.1",
     "framer-motion": "^12.39.0",
     "lucide-react": "^1.16.0",

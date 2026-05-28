@@ -7,6 +7,7 @@ import './admin.css';
 
 import { getCurrentUserRoleAction } from '@/lib/actions/auth';
 import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
 
 function AdminSidebar({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -61,6 +62,34 @@ function AdminSidebar({ children }: { children: React.ReactNode }) {
     return () => { mounted = false; };
   }, [router, pathname]);
 
+  // IDLE SESSION EXPIRATION (Priority 1: Admin Security)
+  useEffect(() => {
+    if (pathname === '/admin/login' || isVerifying) return;
+
+    let timeoutId: NodeJS.Timeout;
+    const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+
+    const resetTimer = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(async () => {
+        // Log out user due to inactivity
+        try {
+          await supabase.auth.signOut();
+        } catch (err) {}
+        router.replace('/admin/login?reason=idle');
+      }, IDLE_TIMEOUT_MS);
+    };
+
+    const events = ['mousemove', 'keydown', 'mousedown', 'touchstart'];
+    events.forEach(e => window.addEventListener(e, resetTimer));
+    resetTimer(); // Init
+
+    return () => {
+      clearTimeout(timeoutId);
+      events.forEach(e => window.removeEventListener(e, resetTimer));
+    };
+  }, [pathname, isVerifying, router]);
+
   let sidebarItems = [
     { id: 'overview', label: config.tabLabels.overview || 'Overview', icon: 'fa-chart-line', path: '/admin' },
     { id: 'editor', label: 'Theme Editor', icon: 'fa-paint-roller', path: '/admin/editor' },
@@ -69,7 +98,7 @@ function AdminSidebar({ children }: { children: React.ReactNode }) {
     { id: 'workflow', label: config.tabLabels.workflow || 'Workflow', icon: 'fa-tasks', path: '/admin/workflow' },
     { id: 'products', label: config.tabLabels.products || 'Products', icon: 'fa-tshirt', path: '/admin/products' },
     { id: 'customers', label: config.tabLabels.customers || 'Customers CRM', icon: 'fa-users', path: '/admin/customers' },
-    { id: 'complaints', label: config.tabLabels.complaints || 'Complaints', icon: 'fa-exclamation-triangle', path: '/admin/complaints' },
+    { id: 'complaints', label: config.tabLabels.complaints || 'Support & Returns', icon: 'fa-headset', path: '/admin/support' },
     { id: 'analytics', label: config.tabLabels.analytics || 'Analytics', icon: 'fa-chart-bar', path: '/admin/analytics' },
     { id: 'settings', label: config.tabLabels.settings || 'Settings', icon: 'fa-cog', path: '/admin/settings' },
   ];
