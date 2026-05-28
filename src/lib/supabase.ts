@@ -1,9 +1,27 @@
 import { createBrowserClient } from '@supabase/ssr';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder_key';
+export function createClient() {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder_key';
+    
+    // Debug logging to ensure environment variables are present on the client
+    if (typeof window !== 'undefined') {
+        console.log("[FRONTEND-DEBUG] supabaseUrl starts with https:", supabaseUrl.startsWith('https'));
+    }
 
-// Use createBrowserClient from @supabase/ssr so auth tokens are stored
-// in cookies (not just localStorage). This is CRITICAL: it allows the
-// Next.js middleware and server actions to read the authenticated session.
-export const supabase = createBrowserClient(supabaseUrl, supabaseKey);
+    return createBrowserClient(supabaseUrl, supabaseKey, {
+        auth: {
+            persistSession: true,
+            autoRefreshToken: true,
+            detectSessionInUrl: false,
+            // Provide a mock lock to prevent navigator.locks deadlocks in headless browsers or Safari
+            lock: async (name, acquireTimeout, fn) => {
+                return await fn();
+            }
+        }
+    });
+}
+
+// Keep the singleton for backwards compatibility but warn if it hangs
+export const supabase = createClient();
+
