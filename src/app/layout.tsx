@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Playfair_Display, Poppins } from "next/font/google";
 import { WhatsAppConcierge } from "@/components/WhatsAppConcierge";
 import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 import dynamic from "next/dynamic";
 import { getCurrentTheme } from "@/themes/themeRegistry";
@@ -45,6 +46,7 @@ export default function RootLayout({
           <AuthModal />
           <WhatsAppConcierge />
           <Analytics />
+          <SpeedInsights />
         </AuthProvider>
       </body>
     </html>
