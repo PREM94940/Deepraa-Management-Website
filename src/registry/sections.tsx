@@ -265,8 +265,8 @@ export const BrandStory = ({ data }: { data?: any }) => {
                 </div>
                 <div className="w-full md:w-[50%] md:-ml-[10%] z-20 relative flex items-center justify-center p-6 md:p-12 lg:p-20 xl:p-24">
                     <div className="bg-surface/95 premium-blur p-8 md:p-16 lg:p-20 shadow-2xl w-full border border-border/50 max-w-2xl">
-                        <span className="text-[#997415] font-bold tracking-[0.2em] uppercase text-xs mb-6 block">{data?.tagline || 'The Deepra Journey'}</span>
-                        <h2 className="text-3xl md:text-5xl font-display leading-[1.2] mb-8 text-fg" dangerouslySetInnerHTML={{ __html: data?.headline || "We don't just sell fabrics. <br/> <span class=\"italic font-light text-[#997415]\">We weave emotions.</span>" }} />
+                        <span className="text-[#7A5C0F] font-bold tracking-[0.2em] uppercase text-xs mb-6 block">{data?.tagline || 'The Deepra Journey'}</span>
+                        <h2 className="text-3xl md:text-5xl font-display leading-[1.2] mb-8 text-fg" dangerouslySetInnerHTML={{ __html: data?.headline || "We don't just sell fabrics. <br/> <span class=\"italic font-light text-[#7A5C0F]\">We weave emotions.</span>" }} />
                         <p className="text-base md:text-lg text-muted font-light leading-relaxed mb-10" dangerouslySetInnerHTML={{ __html: data?.description || '<span class="text-4xl float-left mr-2 font-display text-fg leading-none pt-2">E</span>very piece at Deeprastore tells a story of Indian craftsmanship. From the intricate Zari work of Kanchipuram to the delicate flow of georgette, our boutique is a homage to the modern woman who cherishes her roots. Handloom weaving is a legacy passed down through generations, and we are proud to bring that heritage to your wardrobe.' }} />
                         <Link href={data?.cta_link || "/brand-story"} className="inline-flex items-center gap-3 text-xs font-bold uppercase tracking-widest border-b border-black pb-1 hover:text-gold hover:border-gold transition-colors">
                             {data?.cta_text || 'Meet The Artisans'}
