@@ -125,7 +125,7 @@ export const CollectionGrid = ({
                     <div className="p-6 lg:p-0 h-full overflow-y-auto lg:overflow-visible lg:sticky lg:top-32 space-y-12 pb-32 lg:pb-0">
                         {/* Search */}
                         <div className="group">
-                            <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted mb-4 group-hover:text-black transition-colors">Search</h3>
+                            <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted mb-4 group-hover:text-black transition-colors">Search</h2>
                             <div className="relative">
                                 <input 
                                     type="text"
@@ -140,7 +140,7 @@ export const CollectionGrid = ({
 
                         {/* Category */}
                         <div>
-                            <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted mb-5">Curations</h3>
+                            <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted mb-5">Curations</h2>
                             <div className="space-y-4">
                                 {currentCategories.map(cat => (
                                     <label key={cat} className="flex items-center gap-4 cursor-pointer group">
@@ -163,7 +163,7 @@ export const CollectionGrid = ({
 
                         {/* Availability */}
                         <div>
-                            <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted mb-5">Availability</h3>
+                            <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted mb-5">Availability</h2>
                             <div className="space-y-4">
                                 <label className="flex items-center gap-4 cursor-pointer group">
                                     <input 
@@ -199,7 +199,7 @@ export const CollectionGrid = ({
                         {/* Max Price */}
                         <div>
                             <div className="flex justify-between items-end mb-5">
-                                <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted">Max Price</h3>
+                                <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted">Max Price</h2>
                                 <span className="text-xs font-medium tracking-wider">₹{currentPriceRange.toLocaleString('en-IN')}</span>
                             </div>
                             <input 
@@ -215,8 +215,9 @@ export const CollectionGrid = ({
                         
                         {/* Mobile Sort */}
                         <div className="lg:hidden border-t border-border pt-8 mt-8">
-                            <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted mb-5">Sort By</h3>
+                            <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted mb-5">Sort By</h2>
                             <select 
+                                aria-label="Sort products"
                                 value={currentSortBy}
                                 onChange={(e) => changeSortBy(e.target.value)}
                                 className="w-full bg-transparent border border-border p-4 text-sm font-bold uppercase tracking-widest focus:outline-none focus:border-black cursor-pointer appearance-none"
@@ -245,6 +246,7 @@ export const CollectionGrid = ({
                 <div className="hidden lg:flex justify-between items-center mb-10 pb-6 border-b border-border">
                     <span className="text-xs font-medium text-muted tracking-widest uppercase">{filteredProductsToRender.length} Results</span>
                     <select 
+                        aria-label="Sort products"
                         value={currentSortBy}
                         onChange={(e) => changeSortBy(e.target.value)}
                         className="bg-transparent text-xs font-bold uppercase tracking-widest focus:outline-none cursor-pointer text-right appearance-none hover:text-black transition-colors"

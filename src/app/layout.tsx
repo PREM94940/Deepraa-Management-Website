@@ -24,8 +24,6 @@ const poppins = Poppins({
   weight: ["300", "400", "500", "600"],
 });
 
-const EditorialBoutique = dynamic(() => import("@/themes/editorial_boutique/index"));
-
 import { AuthProvider } from "@/context/AuthContext";
 import AuthModal from "@/components/AuthModal";
 import { OperationalShortcut } from "@/components/admin/OperationalShortcut";
@@ -41,7 +39,6 @@ export default function RootLayout({
     <html lang="en" className={`${playfair.variable} ${poppins.variable}`}>
       <body className="font-body min-h-screen bg-bg text-fg">
         <AuthProvider>
-          {theme === 'editorial_boutique' ? <EditorialBoutique /> : null}
           {/* Preserve global UI elements */}
           {children}
           <OperationalShortcut />

@@ -55,7 +55,7 @@ export const ProductCard = ({ product, aspectRatio }: { product: any; aspectRati
                                 Available
                             </span>
                             {product.compare_at_price && product.compare_at_price > product.price && (
-                                <span className="bg-red-500 text-white px-2 py-1 text-[10px] font-bold tracking-widest uppercase">
+                                <span className="bg-red-700 text-white px-2 py-1 text-[10px] font-bold tracking-widest uppercase">
                                     Sale
                                 </span>
                             )}
