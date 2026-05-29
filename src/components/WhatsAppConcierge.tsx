@@ -29,7 +29,7 @@ export const WhatsAppConcierge = () => {
                         className="mb-4 bg-white p-4 rounded-2xl shadow-2xl border border-border w-64 origin-bottom-right"
                     >
                         <div className="mb-4 border-b border-border pb-3">
-                            <h4 className="font-display font-bold text-lg leading-tight">Deepra Concierge</h4>
+                            <h2 className="font-display font-bold text-lg leading-tight">Deepra Concierge</h2>
                             <p className="text-xs text-muted">How can we assist you today?</p>
                         </div>
                         <div className="space-y-2">
@@ -64,6 +64,7 @@ export const WhatsAppConcierge = () => {
 
             <button 
                 onClick={() => setIsOpen(!isOpen)}
+                aria-label={isOpen ? "Close WhatsApp Support" : "Open WhatsApp Support"}
                 className={`w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-105 ${isOpen ? 'bg-black text-white' : 'bg-green-500 text-white'}`}
             >
                 {isOpen ? (
