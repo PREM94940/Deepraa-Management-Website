@@ -42,12 +42,13 @@ export const CartDrawer = () => {
             }
 
             const totalAmount = getTotal() * 100; // in paise
+            const currentItems = useCartStore.getState().items;
 
             // 2. Create Order API
             const result = await fetch('/api/razorpay', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ amount: totalAmount })
+                body: JSON.stringify({ amount: totalAmount, items: currentItems })
             });
             
             const data = await result.json();
@@ -68,34 +69,14 @@ export const CartDrawer = () => {
                 order_id: data.id,
                 handler: async function (response: any) {
                     try {
-                        const items = useCartStore.getState().items;
-                        const total = useCartStore.getState().getTotal();
-                        
-                        // Hand off to secure backend verification and order creation
-                        const verifyRes = await fetch('/api/razorpay/verify', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                paymentId: response.razorpay_payment_id,
-                                orderId: response.razorpay_order_id,
-                                signature: response.razorpay_signature,
-                                total,
-                                items
-                            })
-                        });
-
-                        const verifyData = await verifyRes.json();
-                        
-                        if (!verifyRes.ok) {
-                            throw new Error(verifyData.error || 'Payment verified but order creation failed.');
-                        }
-
-                        alert(`Payment & Order successful! Order ID: ${verifyData.order_number}`);
+                        // The server-side webhook will handle inventory deduction and status updates.
+                        // We simply clear the cart and congratulate the user.
+                        alert(`Payment successful! Your order has been placed securely.`);
                         useCartStore.getState().clearCart();
                         setIsOpen(false);
+                        window.location.href = '/account/orders'; // Redirect to orders dashboard
                     } catch (err: any) {
-                        console.error('Failed to finalize order:', err);
-                        alert(`Error finalizing order: ${err.message}. Please contact support with Payment ID: ${response.razorpay_payment_id}`);
+                        console.error('Failed to finalize frontend state:', err);
                     }
                 },
                 theme: { color: "#D4AF37" }
