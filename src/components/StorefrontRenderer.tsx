@@ -13,13 +13,7 @@ const EditorialBoutique = dynamic(() => import('@/themes/editorial_boutique/inde
 export const StorefrontRenderer = ({ initialConfig, pageIdentifier, isSlug }: { initialConfig: any, pageIdentifier: string, isSlug: boolean }) => {
     const { sections, globalSettings, pageData, loading } = useStorefrontCMS(pageIdentifier, isSlug, initialConfig);
 
-    if (loading) {
-        return (
-            <main className="min-h-screen bg-surface flex items-center justify-center">
-                <div className="animate-pulse text-xl font-bold italic font-display text-muted">Preparing your luxury experience...</div>
-            </main>
-        );
-    }
+
 
     if (!pageData && isSlug) {
         return (
@@ -41,43 +35,49 @@ export const StorefrontRenderer = ({ initialConfig, pageIdentifier, isSlug }: { 
         <main className="relative bg-surface min-h-screen w-full pb-16 md:pb-0">
             <Navbar globalSettings={globalSettings} />
             
-            <div className="flex flex-col">
-                {sections && sections.length > 0 ? (
-                    sections.map((section, idx) => {
-                        const ComponentMap = SECTION_REGISTRY[section.type];
-                        if (!ComponentMap) {
-                            console.warn(`Unknown section type: ${section.type}`);
-                            return null;
-                        }
-                        
-                        const Component = ComponentMap.component;
+            {loading ? (
+                <div className="min-h-[60vh] flex items-center justify-center">
+                    <div className="animate-pulse text-xl font-bold italic font-display text-muted">Preparing your luxury experience...</div>
+                </div>
+            ) : (
+                <div className="flex flex-col">
+                    {sections && sections.length > 0 ? (
+                        sections.map((section, idx) => {
+                            const ComponentMap = SECTION_REGISTRY[section.type];
+                            if (!ComponentMap) {
+                                console.warn(`Unknown section type: ${section.type}`);
+                                return null;
+                            }
+                            
+                            const Component = ComponentMap.component;
 
-                        // Visibility Controls
-                        let visibilityClass = '';
-                        if (section.settings?.visibility === 'desktop_only') visibilityClass = 'hidden md:block';
-                        if (section.settings?.visibility === 'mobile_only') visibilityClass = 'block md:hidden';
+                            // Visibility Controls
+                            let visibilityClass = '';
+                            if (section.settings?.visibility === 'desktop_only') visibilityClass = 'hidden md:block';
+                            if (section.settings?.visibility === 'mobile_only') visibilityClass = 'block md:hidden';
 
-                        // Spacing Controls
-                        let spacingClass = '';
-                        if (section.settings?.padding === 'none') spacingClass = '!py-0';
-                        else if (section.settings?.padding === 'small') spacingClass = '!py-4 md:!py-6';
-                        else if (section.settings?.padding === 'large') spacingClass = '!py-12 md:!py-20';
+                            // Spacing Controls
+                            let spacingClass = '';
+                            if (section.settings?.padding === 'none') spacingClass = '!py-0';
+                            else if (section.settings?.padding === 'small') spacingClass = '!py-4 md:!py-6';
+                            else if (section.settings?.padding === 'large') spacingClass = '!py-12 md:!py-20';
 
-                        return (
-                            <div key={idx} id={`section-${section.type}-${idx}`} className={`${visibilityClass} ${spacingClass}`}>
-                                <Component data={section.settings} variant={section.variant} />
-                            </div>
-                        );
-                    })
-                ) : pageIdentifier === 'homepage' ? (
-                    <EditorialBoutique />
-                ) : (
-                    <div className="py-32 text-center text-muted max-w-md mx-auto">
-                        <h2 className="text-xl font-bold uppercase tracking-wider mb-2">Empty Layout</h2>
-                        <p className="text-sm">No sections have been added to this campaign template yet. Customize it in the Admin CMS.</p>
-                    </div>
-                )}
-            </div>
+                            return (
+                                <div key={idx} id={`section-${section.type}-${idx}`} className={`${visibilityClass} ${spacingClass}`}>
+                                    <Component data={section.settings} variant={section.variant} />
+                                </div>
+                            );
+                        })
+                    ) : pageIdentifier === 'homepage' ? (
+                        <EditorialBoutique />
+                    ) : (
+                        <div className="py-32 text-center text-muted max-w-md mx-auto">
+                            <h2 className="text-xl font-bold uppercase tracking-wider mb-2">Empty Layout</h2>
+                            <p className="text-sm">No sections have been added to this campaign template yet. Customize it in the Admin CMS.</p>
+                        </div>
+                    )}
+                </div>
+            )}
 
             <Footer globalSettings={globalSettings} />
             <CartDrawer />

@@ -1,7 +1,6 @@
 // src/app/layout.tsx
 import type { Metadata } from "next";
 import { Playfair_Display, Poppins } from "next/font/google";
-import { WhatsAppConcierge } from "@/components/WhatsAppConcierge";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
@@ -26,8 +25,7 @@ const poppins = Poppins({
 });
 
 import { AuthProvider } from "@/context/AuthContext";
-import AuthModal from "@/components/AuthModal";
-import { OperationalShortcut } from "@/components/admin/OperationalShortcut";
+import { GlobalClientComponents } from "@/components/GlobalClientComponents";
 
 export default function RootLayout({
   children,
@@ -42,9 +40,7 @@ export default function RootLayout({
         <AuthProvider>
           {/* Preserve global UI elements */}
           {children}
-          <OperationalShortcut />
-          <AuthModal />
-          <WhatsAppConcierge />
+          <GlobalClientComponents />
           <Analytics />
           <SpeedInsights />
         </AuthProvider>

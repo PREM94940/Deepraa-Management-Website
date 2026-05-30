@@ -86,65 +86,63 @@ export default function Collections() {
         fetchProducts();
     }, [selectedCategory, priceRange, sortBy, searchQuery]);
 
-    if (cmsLoading) {
-        return (
-            <main className="min-h-screen bg-surface flex items-center justify-center">
-                <div className="animate-pulse text-xl font-bold italic font-display text-muted">Preparing your luxury collection...</div>
-            </main>
-        );
-    }
-
     return (
         <main className="relative bg-surface min-h-screen w-full">
             <Navbar globalSettings={globalSettings} />
             
-            <div className="flex flex-col">
-                {sections.length > 0 ? (
-                    sections.map((section, idx) => {
-                        const ComponentMap = SECTION_REGISTRY[section.type];
-                        if (!ComponentMap) {
-                            console.warn(`Unknown section type: ${section.type}`);
-                            return null;
-                        }
-                        
-                        const Component = ComponentMap.component;
-                        
-                        // Pass active state handlers to CollectionGrid dynamically
-                        const extraProps = section.type === 'collection_grid' ? {
-                            products,
-                            loading,
-                            searchQuery,
-                            setSearchQuery,
-                            sortBy,
-                            setSortBy,
-                            selectedCategory,
-                            setSelectedCategory,
-                            priceRange,
-                            setPriceRange,
-                            categories
-                        } : {};
+            {cmsLoading ? (
+                <div className="min-h-[60vh] flex items-center justify-center">
+                    <div className="animate-pulse text-xl font-bold italic font-display text-muted">Preparing your luxury collection...</div>
+                </div>
+            ) : (
+                <div className="flex flex-col">
+                    {sections.length > 0 ? (
+                        sections.map((section, idx) => {
+                            const ComponentMap = SECTION_REGISTRY[section.type];
+                            if (!ComponentMap) {
+                                console.warn(`Unknown section type: ${section.type}`);
+                                return null;
+                            }
+                            
+                            const Component = ComponentMap.component;
+                            
+                            // Pass active state handlers to CollectionGrid dynamically
+                            const extraProps = section.type === 'collection_grid' ? {
+                                products,
+                                loading,
+                                searchQuery,
+                                setSearchQuery,
+                                sortBy,
+                                setSortBy,
+                                selectedCategory,
+                                setSelectedCategory,
+                                priceRange,
+                                setPriceRange,
+                                categories
+                            } : {};
 
-                        // Visibility Controls
-                        let visibilityClass = '';
-                        if (section.settings?.visibility === 'desktop_only') visibilityClass = 'hidden md:block';
-                        if (section.settings?.visibility === 'mobile_only') visibilityClass = 'block md:hidden';
+                            // Visibility Controls
+                            let visibilityClass = '';
+                            if (section.settings?.visibility === 'desktop_only') visibilityClass = 'hidden md:block';
+                            if (section.settings?.visibility === 'mobile_only') visibilityClass = 'block md:hidden';
 
-                        // Spacing Controls
-                        let spacingClass = '';
-                        if (section.settings?.padding === 'none') spacingClass = '!py-0';
-                        else if (section.settings?.padding === 'small') spacingClass = '!py-8 md:!py-12';
-                        else if (section.settings?.padding === 'large') spacingClass = '!py-32 md:!py-48';
+                            // Spacing Controls
+                            let spacingClass = '';
+                            if (section.settings?.padding === 'none') spacingClass = '!py-0';
+                            else if (section.settings?.padding === 'small') spacingClass = '!py-8 md:!py-12';
+                            else if (section.settings?.padding === 'large') spacingClass = '!py-32 md:!py-48';
 
-                        return (
-                            <div key={idx} id={`section-${section.type}`} className={`${visibilityClass} ${spacingClass}`}>
-                                <Component data={section.settings} {...extraProps} />
-                            </div>
-                        );
-                    })
-                ) : (
-                    <div className="py-20 text-center text-muted">No sections configured for this template.</div>
-                )}
-            </div>
+                            return (
+                                <div key={idx} id={`section-${section.type}`} className={`${visibilityClass} ${spacingClass}`}>
+                                    <Component data={section.settings} {...extraProps} />
+                                </div>
+                            );
+                        })
+                    ) : (
+                        <div className="py-20 text-center text-muted">No sections configured for this template.</div>
+                    )}
+                </div>
+            )}
 
             <Footer globalSettings={globalSettings} />
             <CartDrawer />

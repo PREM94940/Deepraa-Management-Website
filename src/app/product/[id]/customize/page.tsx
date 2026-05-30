@@ -316,31 +316,28 @@ export default function CustomizeBlousePage() {
     router.push('/collections');
   };
 
-  if (pageLoading || cmsLoading) {
-    return (
-      <main className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-[#D4AF37] border-t-transparent rounded-full animate-spin"></div>
-          <p className="font-display font-medium text-[#D4AF37]/80 tracking-widest text-sm uppercase">Loading custom tailor shop...</p>
-        </div>
-      </main>
-    );
-  }
-
   // Header display variables
   const title = contextType === 'order_item' 
     ? `Tailor Blouse for Order Item` 
     : (productData ? `Customize ${productData.title}` : 'Bespoke Blouse Customizer');
 
   const subtitle = contextType === 'order_item' 
-    ? `Order ID: ${orderItemData.order_id.slice(0, 8)}...` 
+    ? `Order ID: ${orderItemData?.order_id?.slice(0, 8) || ''}...` 
     : (productData ? `SKU: ${productData.sku}` : 'Deeprastore Luxury Atelier');
 
   return (
     <main className="min-h-screen bg-[#0A0A0A] text-gray-100 flex flex-col selection:bg-[#D4AF37]/30 selection:text-white">
       <Navbar globalSettings={globalSettings} />
       
-      <div className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-12 flex flex-col lg:flex-row gap-12 items-start">
+      {pageLoading || cmsLoading ? (
+        <div className="flex-1 min-h-[60vh] flex items-center justify-center">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-12 h-12 border-4 border-[#D4AF37] border-t-transparent rounded-full animate-spin"></div>
+            <p className="font-display font-medium text-[#D4AF37]/80 tracking-widest text-sm uppercase">Loading custom tailor shop...</p>
+          </div>
+        </div>
+      ) : (
+        <div className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-12 flex flex-col lg:flex-row gap-12 items-start">
         
         {/* Left Side: Step Progress & Workspace */}
         <div className="flex-1 w-full flex flex-col gap-8">
@@ -929,6 +926,7 @@ export default function CustomizeBlousePage() {
         </div>
 
       </div>
+      )}
 
       <Footer globalSettings={globalSettings} />
       <CartDrawer />

@@ -40,7 +40,7 @@ export const CategoryStoryGrid: React.FC<Props> = ({ layout = 'bento', items }) 
           <a
             href={item.link}
             key={idx}
-            className={`relative overflow-hidden rounded-sm ${spanForIndex(idx)}`}
+            className={`relative overflow-hidden rounded-sm min-h-[250px] md:min-h-[300px] ${spanForIndex(idx)}`}
           >
             <Image
               src={item.image}
