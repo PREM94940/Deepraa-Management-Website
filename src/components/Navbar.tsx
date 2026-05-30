@@ -1,5 +1,6 @@
 "use client";
 import Link from 'next/link';
+import Image from 'next/image';
 import { useCartStore } from '@/store/useCartStore';
 import { useNavigationManager } from '@/hooks/useCMSContent';
 import { useAuth } from '@/context/AuthContext';
@@ -39,22 +40,24 @@ export const Navbar = ({ globalSettings }: { globalSettings?: any }) => {
 
     return (
         <div className="w-full relative z-50">
-            {globalSettings?.announcement_text && (
-                <div className="bg-black text-white text-[10px] md:text-xs font-bold uppercase tracking-widest text-center py-2 px-4">
-                    {globalSettings.announcement_link ? (
-                        <Link href={globalSettings.announcement_link} className="hover:text-gold transition-colors">
-                            {globalSettings.announcement_text}
-                        </Link>
-                    ) : (
-                        <span>{globalSettings.announcement_text}</span>
-                    )}
-                </div>
-            )}
-            <nav className="flex justify-between items-center p-4 md:p-6 lg:px-12 bg-surface sticky top-0 border-b border-border premium-blur">
+            <div className={`w-full bg-black text-white overflow-hidden transition-all duration-300 ${globalSettings?.announcement_text ? 'min-h-[32px] md:min-h-[36px]' : 'h-0'}`}>
+                {globalSettings?.announcement_text && (
+                    <div className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-center py-2 px-4 flex items-center justify-center min-h-[32px] md:min-h-[36px]">
+                        {globalSettings.announcement_link ? (
+                            <Link href={globalSettings.announcement_link} className="hover:text-gold transition-colors">
+                                {globalSettings.announcement_text}
+                            </Link>
+                        ) : (
+                            <span>{globalSettings.announcement_text}</span>
+                        )}
+                    </div>
+                )}
+            </div>
+            <nav className="flex justify-between items-center px-4 md:px-6 lg:px-12 h-[73px] md:h-[89px] bg-surface sticky top-0 border-b border-border premium-blur">
                 <div className="flex items-center gap-3">
                     <Link href="/">
                         {globalSettings?.logo_url ? (
-                            <img src={globalSettings.logo_url} alt="Logo" className="h-10 object-contain" />
+                            <Image src={globalSettings.logo_url} alt="Logo" width={150} height={40} unoptimized className="h-10 w-auto object-contain" />
                         ) : (
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-accent rounded-xl flex items-center justify-center cursor-pointer shadow-lg shadow-accent/20 hover:scale-105 transition-transform">
@@ -78,14 +81,15 @@ export const Navbar = ({ globalSettings }: { globalSettings?: any }) => {
                 <div className="relative group py-2">
                     {user ? (
                         <div className="flex items-center gap-2 cursor-pointer hover:text-accent transition-colors">
-                            <span className="text-xs md:text-sm font-semibold max-w-[120px] truncate">
+                            <span className="text-xs md:text-sm font-semibold w-[80px] md:w-[120px] truncate text-right inline-block">
                                 {user.user_metadata?.full_name || user.email?.split('@')[0]}
                             </span>
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-80"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="transition-transform duration-200 group-hover:rotate-180"><path d="m6 9 6 6 6-6"/></svg>
                         </div>
                     ) : (
-                        <button onClick={() => openLoginModal('/account')} aria-label="Account Login" className="hover:text-accent transition-colors cursor-pointer block">
+                        <button onClick={() => openLoginModal('/account')} aria-label="Account Login" className="hover:text-accent transition-colors cursor-pointer flex items-center gap-2">
+                            <span className="text-xs md:text-sm font-semibold w-[80px] md:w-[120px] truncate text-right inline-block opacity-0 lg:opacity-100 lg:group-hover:opacity-100 transition-opacity">Account</span>
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                         </button>
                     )}
