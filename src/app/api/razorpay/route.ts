@@ -93,7 +93,7 @@ export async function POST(req: Request) {
     // 5. Update the pending order with the razorpay order id reference
     await supabase.from('orders').update({ payment_screenshot: razorpayOrder.id }).eq('id', order.id);
 
-    return NextResponse.json(razorpayOrder);
+    return NextResponse.json({ ...razorpayOrder, key_id: process.env.RAZORPAY_KEY_ID });
   } catch (error) {
     console.error("Razorpay order creation error:", error);
     return NextResponse.json({ error: "Failed to create order" }, { status: 500 });
