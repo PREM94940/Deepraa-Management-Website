@@ -6,9 +6,7 @@ import { CartDrawer } from '@/components/CartDrawer';
 import { MobileBottomNav } from '@/components/MobileBottomNav';
 import { SECTION_REGISTRY } from '@/registry/sections';
 import { useStorefrontCMS } from '@/hooks/useStorefrontCMS';
-import dynamic from 'next/dynamic';
-
-const EditorialBoutique = dynamic(() => import('@/themes/editorial_boutique/index'));
+import EditorialBoutiqueTheme from '@/themes/editorial_boutique/index';
 
 export const StorefrontRenderer = ({ initialConfig, pageIdentifier, isSlug }: { initialConfig: any, pageIdentifier: string, isSlug: boolean }) => {
     const { sections, globalSettings, pageData, loading } = useStorefrontCMS(pageIdentifier, isSlug, initialConfig);
@@ -36,8 +34,8 @@ export const StorefrontRenderer = ({ initialConfig, pageIdentifier, isSlug }: { 
             <Navbar globalSettings={globalSettings} />
             
             {loading ? (
-                <div className="min-h-[60vh] flex items-center justify-center">
-                    <div className="animate-pulse text-xl font-bold italic font-display text-muted">Preparing your luxury experience...</div>
+                <div className="w-full h-[100svh] min-h-[600px] bg-zinc-900 flex items-center justify-center">
+                    <div className="animate-pulse text-xl font-bold italic font-display text-zinc-500">Preparing your luxury experience...</div>
                 </div>
             ) : (
                 <div className="flex flex-col">
@@ -69,7 +67,7 @@ export const StorefrontRenderer = ({ initialConfig, pageIdentifier, isSlug }: { 
                             );
                         })
                     ) : pageIdentifier === 'homepage' ? (
-                        <EditorialBoutique />
+                        <EditorialBoutiqueTheme />
                     ) : (
                         <div className="py-32 text-center text-muted max-w-md mx-auto">
                             <h2 className="text-xl font-bold uppercase tracking-wider mb-2">Empty Layout</h2>
