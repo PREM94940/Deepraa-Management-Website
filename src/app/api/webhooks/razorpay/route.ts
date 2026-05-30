@@ -67,10 +67,20 @@ export async function POST(req: Request) {
 
       if (items && items.length > 0) {
         for (const item of items) {
-          await supabaseServer.rpc('decrement_product_inventory', {
-            p_product_id: item.product_id,
-            p_quantity: item.quantity
-          });
+          // Fetch current stock
+          const { data: product } = await supabaseServer
+            .from('products')
+            .select('stock_quantity')
+            .eq('id', item.product_id)
+            .single();
+            
+          if (product && product.stock_quantity >= item.quantity) {
+             // Decrement
+             await supabaseServer
+               .from('products')
+               .update({ stock_quantity: product.stock_quantity - item.quantity })
+               .eq('id', item.product_id);
+          }
         }
       }
 
