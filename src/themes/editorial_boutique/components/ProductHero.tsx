@@ -299,7 +299,6 @@ export const ProductHero = ({
                         <span className="text-xs font-bold uppercase tracking-widest">Authentic Handloom</span>
                         <span className="block text-xs text-muted mt-1 font-light">Certified Weaves</span>
                     </div>
-                    </div>
                 </div>
             </div>
             
