@@ -67,8 +67,8 @@ export default function AccountOrders() {
                                     <h3 className="text-lg font-bold text-white font-display">
                                         {o.order_number || o.id.substring(0,8)}
                                     </h3>
-                                    <span className="text-[9px] font-bold uppercase tracking-wider text-[#D4AF37] bg-[#D4AF37]/10 px-2 py-1 rounded">
-                                        {o.status || 'Pending'}
+                                    <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-1 rounded ${o.status === 'Pending' ? 'text-rose-500 bg-rose-500/10 border border-rose-500/20' : 'text-[#D4AF37] bg-[#D4AF37]/10'}`}>
+                                        {o.status === 'Pending' ? 'Payment Pending' : (o.status || 'Confirmed')}
                                     </span>
                                 </div>
                                 <div className="text-[11px] text-[#A3A3A3] flex flex-wrap gap-x-4 gap-y-1">
@@ -82,7 +82,7 @@ export default function AccountOrders() {
                                     href={`/track/${o.id}`} 
                                     className="w-full md:w-auto text-center px-6 py-3 bg-[#222] hover:bg-[#333] border border-[#333] hover:border-[#D4AF37]/50 text-white font-extrabold uppercase tracking-widest text-[9px] transition-all rounded flex items-center justify-center gap-2 group"
                                 >
-                                    Manage Curation <ArrowRight size={14} className="text-[#D4AF37] group-hover:translate-x-1 transition-transform" />
+                                    {o.status === 'Pending' ? 'Complete Payment' : 'Manage Curation'} <ArrowRight size={14} className="text-[#D4AF37] group-hover:translate-x-1 transition-transform" />
                                 </Link>
                             </div>
                             

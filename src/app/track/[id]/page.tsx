@@ -10,9 +10,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
     Package, Calendar, Clock, Truck, ArrowRight, AlertCircle, 
     CheckCircle, MessageSquare, RefreshCw, Scissors, ShieldCheck, 
-    Lock, ChevronRight, CheckCircle2, AlertTriangle, Layers
+    Lock, ChevronRight, CheckCircle2, AlertTriangle, Layers, CreditCard
 } from 'lucide-react';
-import { trackOrderPublicAction } from '@/lib/actions/returns';
+import Script from 'next/script';
+import { trackOrderPublicAction, submitReturnRequestAction } from '@/lib/actions/returns';
 
 // CMS tracking stage type
 interface CmsStage {
@@ -195,6 +196,13 @@ function TrackingContent() {
     // CMS tracking stages
     const [cmsStages, setCmsStages] = useState<CmsStage[]>([]);
 
+    // Refund & Retry State
+    const [retryingPayment, setRetryingPayment] = useState(false);
+    const [showRefundForm, setShowRefundForm] = useState(false);
+    const [refundReason, setRefundReason] = useState('');
+    const [submittingRefund, setSubmittingRefund] = useState(false);
+    const [refundSuccess, setRefundSuccess] = useState(false);
+
     // Fetch CMS tracking stages
     useEffect(() => {
         async function fetchStages() {
@@ -206,6 +214,68 @@ function TrackingContent() {
         }
         fetchStages();
     }, []);
+
+    const handleRetryPayment = async () => {
+        setRetryingPayment(true);
+        setError('');
+        try {
+            const res = await fetch('/api/razorpay/retry', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ order_id: order.id })
+            });
+            const data = await res.json();
+            
+            if (!res.ok) {
+                setError(data.error || 'Failed to initialize payment.');
+                setRetryingPayment(false);
+                return;
+            }
+
+            const options = {
+                key: data.key_id,
+                amount: data.amount,
+                currency: data.currency,
+                name: "Deeprastore Curation",
+                description: `Order ${order.order_number || order.id.substring(0,8)}`,
+                order_id: data.id,
+                handler: function (response: any) {
+                    window.location.reload();
+                },
+                theme: { color: "#D4AF37" }
+            };
+
+            const rzp = new (window as any).Razorpay(options);
+            rzp.on('payment.failed', function (response: any) {
+                setError("Payment failed. Please try again.");
+            });
+            rzp.open();
+
+        } catch (err) {
+            setError("Network error occurred.");
+        }
+        setRetryingPayment(false);
+    };
+
+    const handleRequestRefund = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setSubmittingRefund(true);
+        const res = await submitReturnRequestAction({
+            orderId: order.id,
+            phone: phoneOrEmailInput || order.customers?.phone_number || '',
+            issueType: 'Refund',
+            reason: refundReason,
+            resolution: 'Refund Requested'
+        });
+
+        if (res.success) {
+            setRefundSuccess(true);
+            setShowRefundForm(false);
+        } else {
+            setError(res.error || "Failed to submit request.");
+        }
+        setSubmittingRefund(false);
+    };
 
     // Fetch session or run automatic verification
     useEffect(() => {
@@ -416,7 +486,8 @@ function TrackingContent() {
             )}
 
             {/* Dynamic Luxury Timeline */}
-            <div className="bg-[#121212] border border-[#222] p-8 rounded shadow-xl">
+            {order.status !== 'Pending' && (
+                <div className="bg-[#121212] border border-[#222] p-8 rounded shadow-xl">
                 <h3 className="text-xs font-bold uppercase tracking-widest text-[#D4AF37] mb-8 border-b border-[#222] pb-3 flex items-center gap-2">
                     <Layers className="w-4 h-4" /> Sartorial Journey Log
                 </h3>
@@ -449,9 +520,11 @@ function TrackingContent() {
                     })}
                 </div>
             </div>
+            )}
 
             {/* Specifications Grid */}
-            <div className="grid md:grid-cols-2 gap-8">
+            {order.status !== 'Pending' && (
+                <div className="grid md:grid-cols-2 gap-8">
                 {/* Tailoring & Master Details */}
                 <div className="bg-[#121212] border border-[#222] p-6 rounded shadow-xl space-y-5">
                     <h3 className="text-xs font-bold uppercase tracking-widest text-[#D4AF37] border-b border-[#222] pb-2 flex items-center gap-2">
@@ -500,9 +573,11 @@ function TrackingContent() {
                     </div>
                 </div>
             </div>
+            )}
 
             {/* SLA Curation Timeline */}
-            <div className="grid md:grid-cols-2 gap-6">
+            {order.status !== 'Pending' && (
+                <div className="grid md:grid-cols-2 gap-6">
                 <div className="bg-[#121212] border border-[#222] p-6 rounded shadow-xl flex items-center gap-4">
                     <div className="w-10 h-10 rounded bg-[#D4AF37]/10 flex items-center justify-center border border-[#D4AF37]/20 text-[#D4AF37]">
                         <Calendar className="w-5 h-5" />
@@ -526,7 +601,8 @@ function TrackingContent() {
                         </span>
                     </div>
                 </div>
-            </div>
+                </div>
+            )}
 
             {/* Float Concierge Trigger Button */}
             <div className="flex justify-center pt-4">
@@ -540,22 +616,80 @@ function TrackingContent() {
                 </a>
             </div>
 
-            {/* Refund & Support Reassurance Block */}
-            <div className="mt-8 pt-8 border-t border-zinc-900 flex justify-center">
-                <div className="max-w-2xl bg-[#0A0A0A] border border-[#222] p-6 rounded shadow-xl text-center space-y-3">
-                    <h4 className="text-xs font-bold uppercase tracking-widest text-zinc-300 flex items-center justify-center gap-2">
-                        <Scissors className="w-4 h-4 text-[#D4AF37]" /> Atelier Adjustment Protocol
-                    </h4>
-                    <p className="text-[11px] text-zinc-500 leading-relaxed font-light px-4">
-                        Because this piece was meticulously hand-crafted to your unique measurements, we prioritize complimentary Atelier Adjustments to perfect the fit. Direct refunds are restricted pending master tailor evaluation.
-                    </p>
-                    <div className="pt-2">
-                        <button onClick={() => window.open(waUrl, '_blank')} className="text-[10px] text-[#D4AF37] uppercase tracking-wider font-bold hover:underline underline-offset-4">
-                            Request Fit Adjustment
-                        </button>
+            {/* Failed Payment Recovery / Refund Workflows */}
+            {order.status === 'Pending' ? (
+                <div className="mt-8 pt-8 border-t border-zinc-900 flex justify-center">
+                    <div className="max-w-2xl bg-rose-950/20 border border-rose-900/50 p-6 rounded shadow-xl text-center space-y-4 w-full">
+                        <h4 className="text-sm font-bold uppercase tracking-widest text-rose-500 flex items-center justify-center gap-2">
+                            <CreditCard className="w-5 h-5 text-rose-500" /> Payment Incomplete
+                        </h4>
+                        <p className="text-xs text-zinc-400 leading-relaxed max-w-md mx-auto">
+                            Your payment was interrupted. This curation is not yet confirmed and stock is not reserved. 
+                            Complete the transaction to secure your unique item before it sells out.
+                        </p>
+                        <div className="pt-2">
+                            <button 
+                                onClick={handleRetryPayment}
+                                disabled={retryingPayment}
+                                className="px-8 py-3 bg-[#D4AF37] text-black font-extrabold uppercase tracking-widest hover:bg-[#B8962B] transition-colors rounded text-[10px] disabled:opacity-40"
+                            >
+                                {retryingPayment ? 'Initializing...' : 'Complete Payment Now'}
+                            </button>
+                        </div>
+                        {error && (
+                            <p className="text-rose-500 text-[10px] uppercase tracking-widest mt-2">{error}</p>
+                        )}
                     </div>
                 </div>
-            </div>
+            ) : (
+                <div className="mt-8 pt-8 border-t border-zinc-900 flex justify-center flex-col items-center gap-4">
+                    <div className="max-w-2xl bg-[#0A0A0A] border border-[#222] p-6 rounded shadow-xl text-center space-y-3 w-full">
+                        <h4 className="text-xs font-bold uppercase tracking-widest text-zinc-300 flex items-center justify-center gap-2">
+                            <Scissors className="w-4 h-4 text-[#D4AF37]" /> Atelier Adjustment Protocol
+                        </h4>
+                        <p className="text-[11px] text-zinc-500 leading-relaxed font-light px-4">
+                            Because this piece was meticulously hand-crafted to your unique measurements, we prioritize complimentary Atelier Adjustments to perfect the fit. Direct refunds are restricted pending master tailor evaluation.
+                        </p>
+                        <div className="pt-2 flex gap-4 justify-center">
+                            <button onClick={() => window.open(waUrl, '_blank')} className="text-[10px] text-[#D4AF37] uppercase tracking-wider font-bold hover:underline underline-offset-4">
+                                Request Fit Adjustment
+                            </button>
+                            <span className="text-zinc-700">|</span>
+                            {refundSuccess ? (
+                                <span className="text-[10px] text-green-500 uppercase tracking-wider font-bold">Refund Requested Successfully</span>
+                            ) : (
+                                <button onClick={() => setShowRefundForm(!showRefundForm)} className="text-[10px] text-zinc-400 uppercase tracking-wider font-bold hover:text-white transition-colors">
+                                    Request Cancellation / Refund
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    {showRefundForm && !refundSuccess && (
+                        <form onSubmit={handleRequestRefund} className="max-w-2xl bg-[#121212] border border-[#333] p-6 rounded shadow-xl space-y-4 w-full">
+                            <div>
+                                <label className="block text-[9px] font-bold uppercase tracking-widest text-zinc-500 mb-2">Reason for Refund/Cancellation</label>
+                                <textarea 
+                                    required
+                                    rows={3}
+                                    value={refundReason}
+                                    onChange={(e) => setRefundReason(e.target.value)}
+                                    placeholder="Please provide details so our master tailor can evaluate your request..."
+                                    className="w-full bg-[#1A1A1A] border border-zinc-800 py-3 px-4 text-xs focus:outline-none focus:border-[#D4AF37] text-white rounded transition-colors resize-none"
+                                />
+                            </div>
+                            <div className="flex justify-end gap-3">
+                                <button type="button" onClick={() => setShowRefundForm(false)} className="px-4 py-2 border border-zinc-700 text-zinc-400 text-[10px] uppercase font-bold tracking-wider rounded hover:bg-zinc-800 transition-colors">
+                                    Cancel
+                                </button>
+                                <button type="submit" disabled={submittingRefund} className="px-4 py-2 bg-rose-900/40 text-rose-300 border border-rose-900/50 hover:bg-rose-900/60 text-[10px] uppercase font-bold tracking-wider rounded transition-colors disabled:opacity-50">
+                                    {submittingRefund ? 'Submitting...' : 'Submit Request'}
+                                </button>
+                            </div>
+                        </form>
+                    )}
+                </div>
+            )}
         </div>
     );
 }
@@ -563,6 +697,7 @@ function TrackingContent() {
 export default function OrderTrackingPage() {
     return (
         <main className="relative bg-[#0A0A0A] text-white min-h-screen flex flex-col font-sans">
+            <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
             <Navbar />
 
             <div className="flex-1 max-w-4xl mx-auto px-6 py-28 w-full">

@@ -12,7 +12,9 @@ export async function POST(req: Request) {
     }
 
     if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
-      return NextResponse.json({ error: "Razorpay keys not configured" }, { status: 500 });
+      if (process.env.NODE_ENV !== 'development') {
+        return NextResponse.json({ error: "Razorpay keys not configured" }, { status: 500 });
+      }
     }
 
     // 1. Authenticate user via Supabase SSR
@@ -34,7 +36,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized. You must be logged in to checkout." }, { status: 401 });
     }
 
-    // 2. Create Pending Order in Deeprastore
+    // 2. Pre-Check Stock before creating anything
+    if (process.env.NODE_ENV !== 'development') {
+      for (const item of items) {
+        const { data: product } = await supabase.from('products').select('stock_quantity').eq('id', item.id).single();
+        if (!product || product.stock_quantity < item.qty) {
+          return NextResponse.json({ error: "Sold out", product: item.name }, { status: 400 });
+        }
+      }
+    }
+
+    // 3. Create Pending Order in Deeprastore
     const orderNumber = `WEB-${Date.now().toString().slice(-6)}`;
     
     // total is passed in paise, store in DB as INR
@@ -59,7 +71,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Failed to initialize order." }, { status: 500 });
     }
 
-    // 3. Create Order Items
+    // 4. Create Order Items
     const orderItems = items.map((item: any) => ({
       order_id: order.id,
       product_id: item.id,
@@ -67,7 +79,7 @@ export async function POST(req: Request) {
       price: item.price,
       quantity: item.qty
     }));
-    
+
     const { error: itemsErr } = await supabase.from('order_items').insert(orderItems);
     if (itemsErr) {
       console.error("Order Items Pre-Creation Error:", itemsErr);
@@ -75,25 +87,30 @@ export async function POST(req: Request) {
     }
 
     // 4. Create Razorpay Order and link metadata
-    const razorpay = new Razorpay({
-      key_id: process.env.RAZORPAY_KEY_ID,
-      key_secret: process.env.RAZORPAY_KEY_SECRET,
-    });
+    let razorpayOrder;
+    if (process.env.NODE_ENV === 'development' && (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET)) {
+        razorpayOrder = { id: `fake_order_${orderNumber}` };
+    } else {
+        const razorpay = new Razorpay({
+          key_id: process.env.RAZORPAY_KEY_ID,
+          key_secret: process.env.RAZORPAY_KEY_SECRET,
+        });
 
-    const razorpayOrder = await razorpay.orders.create({
-      amount: amount, // already in paisa
-      currency: 'INR',
-      receipt: `receipt_${orderNumber}`,
-      notes: {
-        deeprastore_order_id: order.id,
-        user_id: session.user.id
-      }
-    });
+        razorpayOrder = await razorpay.orders.create({
+          amount: amount, // already in paisa
+          currency: 'INR',
+          receipt: `receipt_${orderNumber}`,
+          notes: {
+            deeprastore_order_id: order.id,
+            user_id: session.user.id
+          }
+        });
+    }
 
     // 5. Update the pending order with the razorpay order id reference
     await supabase.from('orders').update({ payment_screenshot: razorpayOrder.id }).eq('id', order.id);
 
-    return NextResponse.json({ ...razorpayOrder, key_id: process.env.RAZORPAY_KEY_ID });
+    return NextResponse.json({ ...razorpayOrder, key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_fakekey' });
   } catch (error) {
     console.error("Razorpay order creation error:", error);
     return NextResponse.json({ error: "Failed to create order" }, { status: 500 });

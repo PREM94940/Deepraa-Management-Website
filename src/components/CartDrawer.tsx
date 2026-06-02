@@ -54,7 +54,7 @@ export const CartDrawer = () => {
             const data = await result.json();
 
             if (data.error) {
-                alert("Payment configuration missing. Server error.");
+                alert(data.error === "Sold out" ? `Sorry, ${data.product || 'an item'} is out of stock.` : data.error);
                 setLoading(false);
                 return;
             }

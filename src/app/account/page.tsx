@@ -132,7 +132,9 @@ export default function AccountDashboard() {
                                             {o.status || 'Pending'}
                                         </span>
                                         <div className="mt-2">
-                                            <Link href={`/track/${o.id}`} className="text-[9px] text-white hover:text-[#D4AF37] underline underline-offset-2">Track & Manage</Link>
+                                            <Link href={`/track/${o.id}`} className="text-[9px] text-white hover:text-[#D4AF37] underline underline-offset-2">
+                                                {o.status === 'Pending' ? 'Complete Payment' : 'Track & Manage'}
+                                            </Link>
                                         </div>
                                     </div>
                                 </div>

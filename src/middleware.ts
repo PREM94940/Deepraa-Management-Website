@@ -11,7 +11,7 @@ export async function middleware(request: NextRequest) {
     const now = Date.now();
     const isAdminLogin = request.nextUrl.pathname === '/admin/login';
     const rateLimitWindow = isAdminLogin ? 15 * 60 * 1000 : 60000; // 15 mins for login, 1 min otherwise
-    const maxRequests = isAdminLogin ? 50 : 100; // Increased to 50 to prevent Server Action crash loops during dev
+    const maxRequests = isAdminLogin ? 50 : (process.env.NODE_ENV === 'development' ? 1000 : 100);
 
     // Use a composite key for specific rate limiting buckets
     const rateKey = `${ip}_${isAdminLogin ? 'admin_login' : 'global'}`;

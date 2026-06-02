@@ -134,7 +134,7 @@ export async function submitReturnRequestAction(payload: {
     resolution: string;
 }) {
     const { orderId, phone, issueType, reason, resolution } = payload;
-    if (!orderId || !phone || !issueType || !reason || !resolution) {
+    if (!orderId || !issueType || !reason || !resolution) {
         return { success: false, error: "All return details are required." };
     }
 

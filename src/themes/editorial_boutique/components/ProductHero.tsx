@@ -103,7 +103,7 @@ export const ProductHero = ({
                 >
                     <Image 
                         src={currentMainImage} 
-                        alt={p.title} 
+                        alt={p.title || 'Product Image'} 
                         fill 
                         sizes="(max-width: 768px) 100vw, 50vw" 
                         priority
@@ -126,7 +126,7 @@ export const ProductHero = ({
                                 onClick={() => changeMainImage(img)}
                                 className={`relative w-20 h-28 flex-shrink-0 overflow-hidden transition-all duration-300 ${currentMainImage === img ? 'ring-1 ring-black ring-offset-2 scale-100 opacity-100' : 'border border-transparent opacity-60 hover:opacity-100 hover:scale-[1.02]'}`}
                             >
-                                <Image src={img} alt={`${p.title} view ${idx + 1}`} fill sizes="80px" className="object-cover" />
+                                <Image src={img} alt={`${p.title || 'Product'} view ${idx + 1}`} fill sizes="80px" className="object-cover" />
                             </button>
                         ))}
                     </div>
@@ -250,7 +250,7 @@ export const ProductHero = ({
                             <button onClick={() => changeQty(currentQty + 1)} className="w-12 h-full flex items-center justify-center hover:bg-gray-100 transition-colors">+</button>
                         </div>
                         <button 
-                            onClick={onAddToCart}
+                            onClick={isOutOfStock ? handleWhatsAppOrder : onAddToCart}
                             className="flex-1 bg-black text-white h-14 font-bold text-xs uppercase tracking-widest hover:bg-gray-900 transition-all shadow-lg hover:shadow-xl active:scale-[0.98] flex items-center justify-center group relative overflow-hidden">
                             <span className="relative z-10">
                                 {isOutOfStock ? "Join Waitlist" : `Add to Cart • ₹${(p.price * currentQty + (currentNeedsStitching ? 1500 : 0) + (currentNeedsFallPico ? 300 : 0)).toLocaleString('en-IN')}`}
