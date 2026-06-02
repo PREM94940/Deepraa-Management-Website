@@ -10,6 +10,7 @@ export default function AccountDashboard() {
     const { user } = useAuth();
     const [stats, setStats] = useState({ totalOrders: 0, activeOrders: 0, activeTickets: 0 });
     const [recentOrders, setRecentOrders] = useState<any[]>([]);
+    const [supportTickets, setSupportTickets] = useState<any[]>([]);
     const [filterStatus, setFilterStatus] = useState('All');
     const [loading, setLoading] = useState(true);
 
@@ -28,23 +29,26 @@ export default function AccountDashboard() {
                 .eq('customer_id', user?.id)
                 .order('created_at', { ascending: false });
 
-            // Fetch Active Tickets
+            // Fetch All Tickets and their Replies
             const { data: tickets } = await supabase
                 .from('support_tickets')
-                .select('*')
+                .select('*, ticket_replies(*)')
                 .eq('customer_id', user?.id)
-                .not('status', 'in', '("Resolved","Rejected")');
+                .order('created_at', { ascending: false });
 
             const orderList = orders || [];
+            const ticketList = tickets || [];
             const activeCount = orderList.filter(o => !['Delivered', 'Cancelled'].includes(o.status || '')).length;
+            const activeTicketsCount = ticketList.filter(t => !['Resolved','Rejected'].includes(t.status || '')).length;
 
             setStats({
                 totalOrders: orderList.length,
                 activeOrders: activeCount,
-                activeTickets: tickets?.length || 0
+                activeTickets: activeTicketsCount
             });
 
             setRecentOrders(orderList);
+            setSupportTickets(ticketList);
         } catch (error) {
             console.error("Error fetching dashboard data:", error);
         } finally {
@@ -158,6 +162,50 @@ export default function AccountDashboard() {
                             </div>
                         );
                     })()}
+                </div>
+            </div>
+
+            {/* Support Tickets Snapshot */}
+            <div className="bg-[#161616] border border-[#222] rounded shadow-xl overflow-hidden mt-8">
+                <div className="p-6 border-b border-[#222]">
+                    <h3 className="text-xs font-bold uppercase tracking-widest text-rose-500">Support & Refunds</h3>
+                </div>
+                <div className="p-6">
+                    {supportTickets.length === 0 ? (
+                        <p className="text-[#737373] text-xs">No open support requests.</p>
+                    ) : (
+                        <div className="space-y-6">
+                            {supportTickets.map(t => (
+                                <div key={t.id} className="pb-6 border-b border-[#222] last:border-0 last:pb-0">
+                                    <div className="flex justify-between items-start mb-3">
+                                        <div>
+                                            <p className="text-xs font-bold text-white">{t.subject}</p>
+                                            <p className="text-[10px] text-[#A3A3A3] mt-1">{t.category} • {new Date(t.created_at).toLocaleDateString()}</p>
+                                        </div>
+                                        <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-1 rounded ${t.status === 'Resolved' || t.status === 'Rejected' ? 'bg-gray-800 text-gray-400' : 'text-rose-500 bg-rose-500/10'}`}>
+                                            {t.status || 'Open'}
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-gray-400 italic mb-4">"{t.description}"</p>
+                                    
+                                    {/* Admin Replies */}
+                                    {t.ticket_replies && t.ticket_replies.length > 0 && (
+                                        <div className="bg-[#111] border border-[#333] rounded p-4 space-y-3 mt-4">
+                                            <h4 className="text-[10px] font-bold uppercase tracking-widest text-[#D4AF37] mb-2">Staff Responses</h4>
+                                            {t.ticket_replies.map((reply: any) => (
+                                                <div key={reply.id} className="flex flex-col gap-1">
+                                                    <span className="text-[9px] font-bold uppercase tracking-wider text-white">
+                                                        {reply.sender_type === 'staff' ? 'Deepra Concierge' : 'You'}
+                                                    </span>
+                                                    <p className="text-xs text-gray-300">{reply.message}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </div>
         </motion.div>
