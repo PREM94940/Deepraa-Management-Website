@@ -42,27 +42,33 @@ ALTER TABLE public.support_tickets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ticket_replies ENABLE ROW LEVEL SECURITY;
 
 -- Set up basic policy grants for Authenticated (Staff) roles
+DROP POLICY IF EXISTS "Allow authenticated users to manage customizations" ON public.stitching_customizations;
 CREATE POLICY "Allow authenticated users to manage customizations" 
 ON public.stitching_customizations FOR ALL 
 USING (auth.role() = 'authenticated');
 
+DROP POLICY IF EXISTS "Allow authenticated users to manage tickets" ON public.support_tickets;
 CREATE POLICY "Allow authenticated users to manage tickets" 
 ON public.support_tickets FOR ALL 
 USING (auth.role() = 'authenticated');
 
+DROP POLICY IF EXISTS "Allow authenticated users to manage replies" ON public.ticket_replies;
 CREATE POLICY "Allow authenticated users to manage replies" 
 ON public.ticket_replies FOR ALL 
 USING (auth.role() = 'authenticated');
 
 -- Policies for public/anon users to create their own tickets & view them
+DROP POLICY IF EXISTS "Allow anon users to create tickets" ON public.support_tickets;
 CREATE POLICY "Allow anon users to create tickets"
 ON public.support_tickets FOR INSERT
 WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Allow anon users to add replies" ON public.ticket_replies;
 CREATE POLICY "Allow anon users to add replies"
 ON public.ticket_replies FOR INSERT
 WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Allow public users to read their customizations" ON public.stitching_customizations;
 CREATE POLICY "Allow public users to read their customizations"
 ON public.stitching_customizations FOR SELECT
 USING (true);

@@ -1,8 +1,8 @@
 -- Phase 13: Operational Observability - Immutable Publish Snapshots
 -- Creates a historical ledger of every live publish event for safe rollbacks.
 
-CREATE TABLE cms_publish_snapshots (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+CREATE TABLE IF NOT EXISTS cms_publish_snapshots (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     config JSONB NOT NULL,
     published_by UUID REFERENCES auth.users(id),
     published_at TIMESTAMPTZ DEFAULT NOW(),
@@ -12,6 +12,7 @@ CREATE TABLE cms_publish_snapshots (
 ALTER TABLE cms_publish_snapshots ENABLE ROW LEVEL SECURITY;
 
 -- Allow public read access to snapshots if necessary, or restrict to authenticated users
+DROP POLICY IF EXISTS "Managers can read snapshots" ON cms_publish_snapshots;
 CREATE POLICY "Managers can read snapshots" 
 ON cms_publish_snapshots
 FOR SELECT USING (true); -- simplified for now, can restrict later

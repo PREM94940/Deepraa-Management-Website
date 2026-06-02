@@ -43,20 +43,24 @@ ALTER TABLE public.measurement_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.alterations_history ENABLE ROW LEVEL SECURITY;
 
 -- 5. Set up RLS Policies for Staff
+DROP POLICY IF EXISTS "Allow authenticated staff to manage measurement profiles" ON public.measurement_profiles;
 CREATE POLICY "Allow authenticated staff to manage measurement profiles"
 ON public.measurement_profiles FOR ALL
 USING (auth.role() = 'authenticated');
 
+DROP POLICY IF EXISTS "Allow authenticated staff to manage alterations history" ON public.alterations_history;
 CREATE POLICY "Allow authenticated staff to manage alterations history"
 ON public.alterations_history FOR ALL
 USING (auth.role() = 'authenticated');
 
 -- Policies for public/anon users to select & insert their own profiles
+DROP POLICY IF EXISTS "Allow public users to read and insert measurement profiles" ON public.measurement_profiles;
 CREATE POLICY "Allow public users to read and insert measurement profiles"
 ON public.measurement_profiles FOR ALL
 USING (true)
 WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Allow public users to manage alterations" ON public.alterations_history;
 CREATE POLICY "Allow public users to manage alterations"
 ON public.alterations_history FOR ALL
 USING (true)

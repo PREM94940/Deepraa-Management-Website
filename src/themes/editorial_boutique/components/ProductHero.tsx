@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
+import { WaitlistModal } from '@/components/WaitlistModal';
 
 export const ProductHero = ({ 
     data, 
@@ -58,6 +59,7 @@ export const ProductHero = ({
     const [localNeedsFallPico, setLocalNeedsFallPico] = useState(false);
     const [localSelectedSize, setLocalSelectedSize] = useState('');
     const [isHoveringImage, setIsHoveringImage] = useState(false);
+    const [isWaitlistOpen, setIsWaitlistOpen] = useState(false);
 
     const currentMainImage = mainImage !== undefined ? mainImage : localMainImage;
     const currentQty = qty !== undefined ? qty : localQty;
@@ -250,7 +252,7 @@ export const ProductHero = ({
                             <button onClick={() => changeQty(currentQty + 1)} className="w-12 h-full flex items-center justify-center hover:bg-gray-100 transition-colors">+</button>
                         </div>
                         <button 
-                            onClick={isOutOfStock ? handleWhatsAppOrder : onAddToCart}
+                            onClick={isOutOfStock ? () => setIsWaitlistOpen(true) : onAddToCart}
                             className="flex-1 bg-black text-white h-14 font-bold text-xs uppercase tracking-widest hover:bg-gray-900 transition-all shadow-lg hover:shadow-xl active:scale-[0.98] flex items-center justify-center group relative overflow-hidden">
                             <span className="relative z-10">
                                 {isOutOfStock ? "Join Waitlist" : `Add to Cart • ₹${(p.price * currentQty + (currentNeedsStitching ? 1500 : 0) + (currentNeedsFallPico ? 300 : 0)).toLocaleString('en-IN')}`}
@@ -297,8 +299,16 @@ export const ProductHero = ({
                         <span className="text-xs font-bold uppercase tracking-widest">Authentic Handloom</span>
                         <span className="block text-xs text-muted mt-1 font-light">Certified Weaves</span>
                     </div>
+                    </div>
                 </div>
             </div>
+            
+            <WaitlistModal 
+                isOpen={isWaitlistOpen}
+                onClose={() => setIsWaitlistOpen(false)}
+                productTitle={p.title}
+                productSku={p.sku}
+            />
         </section>
     );
 };

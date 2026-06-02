@@ -116,32 +116,52 @@ ALTER TABLE public.navigation_manager ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.footer_manager ENABLE ROW LEVEL SECURITY;
 
 -- Setup policy permissions (Public read, Staff edit)
+DROP POLICY IF EXISTS "Allow public select on site_settings" ON public.site_settings;
 CREATE POLICY "Allow public select on site_settings" ON public.site_settings FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow staff updates on site_settings" ON public.site_settings;
 CREATE POLICY "Allow staff updates on site_settings" ON public.site_settings FOR ALL USING ((SELECT role FROM public.staff_roles WHERE id = auth.uid()) IN ('Staff', 'Manager'));
 
+DROP POLICY IF EXISTS "Allow public select on page_sections" ON public.page_sections;
 CREATE POLICY "Allow public select on page_sections" ON public.page_sections FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow staff updates on page_sections" ON public.page_sections;
 CREATE POLICY "Allow staff updates on page_sections" ON public.page_sections FOR ALL USING ((SELECT role FROM public.staff_roles WHERE id = auth.uid()) IN ('Staff', 'Manager'));
 
+DROP POLICY IF EXISTS "Allow public select on homepage_blocks" ON public.homepage_blocks;
 CREATE POLICY "Allow public select on homepage_blocks" ON public.homepage_blocks FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow staff updates on homepage_blocks" ON public.homepage_blocks;
 CREATE POLICY "Allow staff updates on homepage_blocks" ON public.homepage_blocks FOR ALL USING ((SELECT role FROM public.staff_roles WHERE id = auth.uid()) IN ('Staff', 'Manager'));
 
+DROP POLICY IF EXISTS "Allow public select on theme_configs" ON public.theme_configs;
 CREATE POLICY "Allow public select on theme_configs" ON public.theme_configs FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow staff updates on theme_configs" ON public.theme_configs;
 CREATE POLICY "Allow staff updates on theme_configs" ON public.theme_configs FOR ALL USING ((SELECT role FROM public.staff_roles WHERE id = auth.uid()) IN ('Staff', 'Manager'));
 
+DROP POLICY IF EXISTS "Allow public select on support_templates" ON public.support_templates;
 CREATE POLICY "Allow public select on support_templates" ON public.support_templates FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow staff updates on support_templates" ON public.support_templates;
 CREATE POLICY "Allow staff updates on support_templates" ON public.support_templates FOR ALL USING ((SELECT role FROM public.staff_roles WHERE id = auth.uid()) IN ('Staff', 'Manager'));
 
+DROP POLICY IF EXISTS "Allow public select on tracking_messages" ON public.tracking_messages;
 CREATE POLICY "Allow public select on tracking_messages" ON public.tracking_messages FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow staff updates on tracking_messages" ON public.tracking_messages;
 CREATE POLICY "Allow staff updates on tracking_messages" ON public.tracking_messages FOR ALL USING ((SELECT role FROM public.staff_roles WHERE id = auth.uid()) IN ('Staff', 'Manager'));
 
+DROP POLICY IF EXISTS "Allow public select on policy_content" ON public.policy_content;
 CREATE POLICY "Allow public select on policy_content" ON public.policy_content FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow staff updates on policy_content" ON public.policy_content;
 CREATE POLICY "Allow staff updates on policy_content" ON public.policy_content FOR ALL USING ((SELECT role FROM public.staff_roles WHERE id = auth.uid()) IN ('Staff', 'Manager'));
 
+DROP POLICY IF EXISTS "Allow public select on notification_templates" ON public.notification_templates;
 CREATE POLICY "Allow public select on notification_templates" ON public.notification_templates FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow staff updates on notification_templates" ON public.notification_templates;
 CREATE POLICY "Allow staff updates on notification_templates" ON public.notification_templates FOR ALL USING ((SELECT role FROM public.staff_roles WHERE id = auth.uid()) IN ('Staff', 'Manager'));
 
+DROP POLICY IF EXISTS "Allow public select on navigation_manager" ON public.navigation_manager;
 CREATE POLICY "Allow public select on navigation_manager" ON public.navigation_manager FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow staff updates on navigation_manager" ON public.navigation_manager;
 CREATE POLICY "Allow staff updates on navigation_manager" ON public.navigation_manager FOR ALL USING ((SELECT role FROM public.staff_roles WHERE id = auth.uid()) IN ('Staff', 'Manager'));
 
+DROP POLICY IF EXISTS "Allow public select on footer_manager" ON public.footer_manager;
 CREATE POLICY "Allow public select on footer_manager" ON public.footer_manager FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow staff updates on footer_manager" ON public.footer_manager;
 CREATE POLICY "Allow staff updates on footer_manager" ON public.footer_manager FOR ALL USING ((SELECT role FROM public.staff_roles WHERE id = auth.uid()) IN ('Staff', 'Manager'));

@@ -12,6 +12,7 @@ export const CartDrawer = () => {
 
     const handleCheckout = async () => {
         if (!user) {
+            setIsOpen(false);
             openLoginModal(window.location.pathname + window.location.search);
             return;
         }

@@ -1,12 +1,12 @@
 -- Phase 11 CMS Architecture Migrations
 
 -- 1. Create Enums
-CREATE TYPE cms_status AS ENUM ('draft', 'published', 'archived', 'scheduled');
-CREATE TYPE page_type AS ENUM ('homepage', 'lookbook', 'landing_page', 'collection_curated');
+DO $$ BEGIN CREATE TYPE cms_status AS ENUM ('draft', 'published', 'archived', 'scheduled'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE page_type AS ENUM ('homepage', 'lookbook', 'landing_page', 'collection_curated'); EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 -- 2. Create storefront_themes
-CREATE TABLE storefront_themes (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+CREATE TABLE IF NOT EXISTS storefront_themes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
     slug TEXT UNIQUE,
     status cms_status DEFAULT 'draft',
@@ -20,8 +20,8 @@ CREATE TABLE storefront_themes (
 );
 
 -- 3. Create storefront_pages
-CREATE TABLE storefront_pages (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+CREATE TABLE IF NOT EXISTS storefront_pages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     theme_id UUID REFERENCES storefront_themes(id) ON DELETE CASCADE,
     slug TEXT UNIQUE NOT NULL,
     type page_type DEFAULT 'landing_page',
@@ -33,8 +33,8 @@ CREATE TABLE storefront_pages (
 );
 
 -- 4. Create media_library
-CREATE TABLE media_library (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+CREATE TABLE IF NOT EXISTS media_library (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     url TEXT NOT NULL,
     dimensions JSONB,
     aspect_ratio TEXT,
@@ -46,8 +46,8 @@ CREATE TABLE media_library (
 );
 
 -- 5. Create page_audit_logs
-CREATE TABLE page_audit_logs (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+CREATE TABLE IF NOT EXISTS page_audit_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     theme_id UUID REFERENCES storefront_themes(id) ON DELETE CASCADE,
     action TEXT NOT NULL,
     previous_state JSONB,
@@ -65,14 +65,17 @@ ALTER TABLE page_audit_logs ENABLE ROW LEVEL SECURITY;
 
 -- 7. Add Policies (Public Read)
 -- We allow anyone to read published themes
+DROP POLICY IF EXISTS "Public themes viewable" ON storefront_themes;
 CREATE POLICY "Public themes viewable" ON storefront_themes
     FOR SELECT USING (status = 'published');
     
+DROP POLICY IF EXISTS "Public pages viewable" ON storefront_pages;
 CREATE POLICY "Public pages viewable" ON storefront_pages
     FOR SELECT USING (
         theme_id IN (SELECT id FROM storefront_themes WHERE status = 'published')
     );
 
+DROP POLICY IF EXISTS "Media viewable" ON media_library;
 CREATE POLICY "Media viewable" ON media_library
     FOR SELECT USING (true);
 
