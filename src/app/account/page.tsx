@@ -10,6 +10,7 @@ export default function AccountDashboard() {
     const { user } = useAuth();
     const [stats, setStats] = useState({ totalOrders: 0, activeOrders: 0, activeTickets: 0 });
     const [recentOrders, setRecentOrders] = useState<any[]>([]);
+    const [filterStatus, setFilterStatus] = useState('All');
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -43,7 +44,7 @@ export default function AccountDashboard() {
                 activeTickets: tickets?.length || 0
             });
 
-            setRecentOrders(orderList.slice(0, 3));
+            setRecentOrders(orderList);
         } catch (error) {
             console.error("Error fetching dashboard data:", error);
         } finally {
@@ -113,15 +114,30 @@ export default function AccountDashboard() {
             {/* Recent Orders Snapshot */}
             <div className="bg-[#161616] border border-[#222] rounded shadow-xl overflow-hidden">
                 <div className="p-6 border-b border-[#222] flex justify-between items-center">
-                    <h3 className="text-xs font-bold uppercase tracking-widest text-[#E5E5E5]">Recent Orders</h3>
+                    <div className="flex items-center gap-4">
+                        <h3 className="text-xs font-bold uppercase tracking-widest text-[#E5E5E5]">Recent Orders</h3>
+                        <select 
+                            value={filterStatus} 
+                            onChange={(e) => setFilterStatus(e.target.value)}
+                            className="bg-[#111] text-[#A3A3A3] text-[10px] uppercase tracking-widest p-1 border border-[#333] rounded outline-none"
+                        >
+                            <option value="All">All Statuses</option>
+                            <option value="Pending">Pending</option>
+                            <option value="Confirmed">Confirmed</option>
+                            <option value="Delivered">Delivered</option>
+                            <option value="Cancelled">Cancelled</option>
+                        </select>
+                    </div>
                     <Link href="/account/orders" className="text-[9px] font-bold uppercase tracking-widest text-[#D4AF37] hover:text-[#B8962B]">View All</Link>
                 </div>
                 <div className="p-6">
-                    {recentOrders.length === 0 ? (
-                        <p className="text-[#737373] text-xs">No orders found.</p>
-                    ) : (
-                        <div className="space-y-4">
-                            {recentOrders.map(o => (
+                    {(() => {
+                        const filtered = filterStatus === 'All' ? recentOrders : recentOrders.filter(o => (o.status || 'Pending') === filterStatus);
+                        const displayed = filtered.slice(0, 5);
+                        if (displayed.length === 0) return <p className="text-[#737373] text-xs">No {filterStatus !== 'All' ? filterStatus.toLowerCase() : ''} orders found.</p>;
+                        return (
+                            <div className="space-y-4">
+                                {displayed.map(o => (
                                 <div key={o.id} className="flex justify-between items-center pb-4 border-b border-[#222] last:border-0 last:pb-0">
                                     <div>
                                         <p className="text-xs font-bold text-white">{o.order_number || o.id.substring(0,8)}</p>
@@ -138,9 +154,10 @@ export default function AccountDashboard() {
                                         </div>
                                     </div>
                                 </div>
-                            ))}
-                        </div>
-                    )}
+                                ))}
+                            </div>
+                        );
+                    })()}
                 </div>
             </div>
         </motion.div>
