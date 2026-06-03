@@ -36,15 +36,59 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: true, warning: "Ignored: No internal order ID attached." });
       }
 
-      // Atomic Update Lock & Inventory Decrement via single RPC
-      const { error: rpcErr } = await supabaseServer.rpc('confirm_order_and_decrement_inventory', {
-        p_order_id: deeprastoreOrderId
-      });
+      // 1. Check if order is already confirmed
+      const { data: existingOrder } = await supabaseServer
+        .from('orders')
+        .select('status')
+        .eq('id', deeprastoreOrderId)
+        .single();
+      
+      if (existingOrder?.status === 'Confirmed') {
+        return NextResponse.json({ success: true, message: "Already processed" });
+      }
 
-      if (rpcErr) {
-        console.error("Webhook Error: Transaction Failed (Order Update & Inventory Decrement)", rpcErr);
-        // CRITICAL: Return 500 so Razorpay retries this webhook later
-        return NextResponse.json({ error: "Failed to confirm order and decrement inventory", details: rpcErr }, { status: 500 });
+      // 2. Fetch order items
+      const { data: orderItems, error: itemsErr } = await supabaseServer
+        .from('order_items')
+        .select('product_id, quantity')
+        .eq('order_id', deeprastoreOrderId);
+
+      if (itemsErr) {
+        console.error("Webhook Error: Failed to fetch order items", itemsErr);
+        return NextResponse.json({ error: "Failed to fetch order items" }, { status: 500 });
+      }
+
+      // 3. Decrement inventory for each item
+      if (orderItems && orderItems.length > 0) {
+        for (const item of orderItems) {
+            const { data: product } = await supabaseServer
+              .from('products')
+              .select('stock_quantity')
+              .eq('id', item.product_id)
+              .single();
+            
+            if (product) {
+              await supabaseServer
+                .from('products')
+                .update({ stock_quantity: product.stock_quantity - item.quantity })
+                .eq('id', item.product_id);
+            }
+        }
+      }
+
+      // 4. Update Order Status
+      const { error: updateErr } = await supabaseServer
+        .from('orders')
+        .update({
+            status: 'Confirmed',
+            payment_status: 'Paid',
+            approval_status: 'Approved'
+        })
+        .eq('id', deeprastoreOrderId);
+
+      if (updateErr) {
+        console.error("Webhook Error: Order Update Failed", updateErr);
+        return NextResponse.json({ error: "Failed to confirm order" }, { status: 500 });
       }
 
       return NextResponse.json({ success: true, order_id: deeprastoreOrderId });
