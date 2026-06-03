@@ -195,13 +195,14 @@ export default function AdminCatalogPage() {
             
             if (Object.keys(updates).length > 0) {
                 const { error } = await supabase.from('products').update(updates).in('id', Array.from(selectedIds));
-                if (error) throw error;
+                if (error) throw new Error(`Products update failed: ${error.message || error.details || JSON.stringify(error)}`);
             }
 
             if (bulkCollection) {
                 const inserts = Array.from(selectedIds).map(pid => ({ product_id: pid, collection_id: bulkCollection }));
-                const { error } = await supabase.from('product_collections').upsert(inserts, { onConflict: 'product_id,collection_id' });
-                if (error) throw error;
+                // Using ignoreDuplicates instead of onConflict string to prevent constraint resolution errors on composite PKs
+                const { error } = await supabase.from('product_collections').upsert(inserts, { ignoreDuplicates: true });
+                if (error) throw new Error(`Collections update failed: ${error.message || error.details || JSON.stringify(error)}`);
             }
             
             await fetchData();
@@ -211,9 +212,9 @@ export default function AdminCatalogPage() {
             setBulkModel('');
             setBulkCollection('');
             alert('Bulk update applied successfully!');
-        } catch (error) {
-            console.error(error);
-            alert('Failed to apply bulk update.');
+        } catch (error: any) {
+            console.error('Bulk update error:', error);
+            alert(`Failed to apply bulk update: ${error.message || JSON.stringify(error)}`);
         } finally {
             setIsBulkSaving(false);
         }
