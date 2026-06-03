@@ -199,10 +199,15 @@ export default function AdminCatalogPage() {
             }
 
             if (bulkCollection) {
-                const inserts = Array.from(selectedIds).map(pid => ({ product_id: pid, collection_id: bulkCollection }));
-                // Using ignoreDuplicates instead of onConflict string to prevent constraint resolution errors on composite PKs
-                const { error } = await supabase.from('product_collections').upsert(inserts, { ignoreDuplicates: true });
-                if (error) throw new Error(`Collections update failed: ${error.message || error.details || JSON.stringify(error)}`);
+                // Filter out products that already have this collection to avoid Unique Constraint errors and Upsert RLS requirements
+                const inserts = Array.from(selectedIds)
+                    .filter(pid => !(productCollections[pid]?.has(bulkCollection)))
+                    .map(pid => ({ product_id: pid, collection_id: bulkCollection }));
+
+                if (inserts.length > 0) {
+                    const { error } = await supabase.from('product_collections').insert(inserts);
+                    if (error) throw new Error(`Collections update failed: ${error.message || error.details || JSON.stringify(error)}`);
+                }
             }
             
             await fetchData();
