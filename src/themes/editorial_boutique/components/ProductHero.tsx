@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { WaitlistModal } from '@/components/WaitlistModal';
+import { trackAddToCart, trackWhatsAppClick, trackViewContent } from '@/lib/analytics';
 
 export const ProductHero = ({ 
     data, 
@@ -79,11 +80,19 @@ export const ProductHero = ({
         }
     }, [p.images, currentMainImage, changeMainImage]);
 
+    useEffect(() => {
+        if (p && p.id !== 'mock-product') {
+            trackViewContent(p);
+        }
+    }, [p.id]);
+
     const onAddToCart = handleAddToCart || (() => {
+        trackAddToCart(p, currentQty);
         alert(`Added to cart: ${p.title} (Qty: ${currentQty})`);
     });
 
     const onWhatsAppOrder = handleWhatsAppOrder || (() => {
+        trackWhatsAppClick('pdp_order', p.title);
         const msg = `Hello, I want to order ${p.title} (SKU: ${p.sku})`;
         window.open(`https://wa.me/919876543210?text=${encodeURIComponent(msg)}`, '_blank');
     });

@@ -204,7 +204,7 @@ export const BestSellersSlider = ({ data }: { data?: any }) => {
 
     useEffect(() => {
         async function fetchProducts() {
-            let query = supabase.from('products').select('*, categories!inner(name)');
+            let query = supabase.from('products').select('*, categories!inner(name)').eq('is_test_data', false);
             
             // Dynamic Merchandising Logic
             const category = data?.category;
@@ -313,7 +313,7 @@ export const RelatedProducts = ({ data }: { data?: any }) => {
 
     useEffect(() => {
         async function fetchRelated() {
-            const { data: prods } = await supabase.from('products').select('*').limit(3);
+            const { data: prods } = await supabase.from('products').select('*').eq('is_test_data', false).limit(3);
             if (prods) setProducts(prods);
         }
         fetchRelated();

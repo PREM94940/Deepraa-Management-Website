@@ -38,6 +38,7 @@ export interface Product {
     available_sizes?: string[];
     allow_backorders?: boolean;
     video_link?: string;
+    is_test_data?: boolean;
 }
 
 export interface Order {

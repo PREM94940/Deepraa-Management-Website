@@ -35,7 +35,7 @@ export default function DynamicCollection({ params }: { params: { slug: string }
                     if (coll.collection_type === 'smart') {
                         // Smart collection logic: fetch based on rules (tags)
                         const tags = coll.rules?.tags || [];
-                        let query = supabase.from('products').select('*, categories(name, slug)');
+                        let query = supabase.from('products').select('*, categories(name, slug)').eq('is_test_data', false);
                         
                         const { data: allProds } = await query;
                         if (allProds) {

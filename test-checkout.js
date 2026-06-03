@@ -43,7 +43,7 @@ async function testCheckout() {
         full_name: "Test User"
     }, { onConflict: 'id' });
 
-    console.log("Attempting checkout for out of stock item (DP168 UUID: 003636f2-f675-4502-8af1-9d7e63232920)");
+    console.log("Attempting checkout for Mock Silk Kurta (UUID: 10422987-3f58-4d7a-976d-df153259e5ba)");
     
     const res = await fetch('http://localhost:3000/api/razorpay', {
         method: 'POST',
@@ -52,11 +52,11 @@ async function testCheckout() {
             'Cookie': `sb-awyqinnivsvqsohfmmcj-auth-token=${JSON.stringify(session.data.session)}`
         },
         body: JSON.stringify({
-            amount: 4500000,
+            amount: 499900,
             items: [{
-                id: "003636f2-f675-4502-8af1-9d7e63232920",
-                name: "Test Lehenga",
-                price: 45000,
+                id: "10422987-3f58-4d7a-976d-df153259e5ba",
+                name: "Mock Silk Kurta - Midnight Blue",
+                price: 4999,
                 qty: 1
             }]
         })

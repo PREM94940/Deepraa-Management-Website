@@ -26,6 +26,7 @@ const poppins = Poppins({
 
 import { AuthProvider } from "@/context/AuthContext";
 import { GlobalClientComponents } from "@/components/GlobalClientComponents";
+import { TrackingPixels } from "@/components/TrackingPixels";
 
 export default function RootLayout({
   children,
@@ -43,6 +44,7 @@ export default function RootLayout({
           <GlobalClientComponents />
           <Analytics />
           <SpeedInsights />
+          <TrackingPixels />
         </AuthProvider>
       </body>
     </html>

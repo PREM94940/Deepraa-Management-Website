@@ -42,7 +42,7 @@ export default function Collections() {
     useEffect(() => {
         async function fetchProducts() {
             setLoading(true);
-            let query = supabase.from('products').select('*, categories(name, slug)');
+            let query = supabase.from('products').select('*, categories(name, slug)').eq('is_test_data', false);
             
             if (sortBy === 'price_asc') query = query.order('price', { ascending: true });
             else if (sortBy === 'price_desc') query = query.order('price', { ascending: false });
