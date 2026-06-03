@@ -44,6 +44,13 @@ export default function AdminCatalogPage() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState<Record<string, boolean>>({});
 
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [bulkCategory, setBulkCategory] = useState('');
+    const [bulkSubcategory, setBulkSubcategory] = useState('');
+    const [bulkModel, setBulkModel] = useState('');
+    const [bulkCollection, setBulkCollection] = useState('');
+    const [isBulkSaving, setIsBulkSaving] = useState(false);
+
     useEffect(() => {
         fetchData();
     }, []);
@@ -160,6 +167,58 @@ export default function AdminCatalogPage() {
         }
     };
 
+    const toggleSelectAll = () => {
+        if (selectedIds.size === products.length && products.length > 0) {
+            setSelectedIds(new Set());
+        } else {
+            setSelectedIds(new Set(products.map(p => p.id)));
+        }
+    };
+
+    const toggleSelect = (id: string) => {
+        setSelectedIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+
+    const handleBulkApply = async () => {
+        if (selectedIds.size === 0) return;
+        setIsBulkSaving(true);
+        try {
+            const updates: any = {};
+            if (bulkCategory) updates.business_category = bulkCategory;
+            if (bulkSubcategory) updates.business_subcategory = bulkSubcategory;
+            if (bulkModel) updates.fulfillment_model = bulkModel;
+            
+            if (Object.keys(updates).length > 0) {
+                const { error } = await supabase.from('products').update(updates).in('id', Array.from(selectedIds));
+                if (error) throw error;
+            }
+
+            if (bulkCollection) {
+                const inserts = Array.from(selectedIds).map(pid => ({ product_id: pid, collection_id: bulkCollection }));
+                const { error } = await supabase.from('product_collections').upsert(inserts, { onConflict: 'product_id,collection_id' });
+                if (error) throw error;
+            }
+            
+            await fetchData();
+            setSelectedIds(new Set());
+            setBulkCategory('');
+            setBulkSubcategory('');
+            setBulkModel('');
+            setBulkCollection('');
+            alert('Bulk update applied successfully!');
+        } catch (error) {
+            console.error(error);
+            alert('Failed to apply bulk update.');
+        } finally {
+            setIsBulkSaving(false);
+        }
+    };
+
     if (loading) return <div className="p-8 text-center">Loading catalog...</div>;
 
     return (
@@ -175,11 +234,48 @@ export default function AdminCatalogPage() {
                     </div>
                 </div>
 
+                {selectedIds.size > 0 && (
+                    <div className="bg-surface border border-accent rounded-xl p-4 flex flex-wrap items-center gap-4 sticky top-4 z-50 shadow-2xl">
+                        <span className="font-bold text-sm text-accent">{selectedIds.size} Selected</span>
+                        
+                        <select value={bulkCategory} onChange={e => { setBulkCategory(e.target.value); setBulkSubcategory(''); }} className="bg-white border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent">
+                            <option value="">Set Category...</option>
+                            {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+
+                        <select value={bulkSubcategory} onChange={e => setBulkSubcategory(e.target.value)} disabled={!bulkCategory} className="bg-white border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent disabled:opacity-50">
+                            <option value="">Set Subcategory...</option>
+                            {bulkCategory && SUBCATEGORIES[bulkCategory]?.map(sc => <option key={sc} value={sc}>{sc}</option>)}
+                        </select>
+
+                        <select value={bulkModel} onChange={e => setBulkModel(e.target.value)} className="bg-white border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent">
+                            <option value="">Set Model...</option>
+                            {MODELS.map(m => <option key={m} value={m}>{m}</option>)}
+                        </select>
+
+                        <select value={bulkCollection} onChange={e => setBulkCollection(e.target.value)} className="bg-white border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent">
+                            <option value="">Add to Collection...</option>
+                            {collections.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+
+                        <button 
+                            onClick={handleBulkApply} 
+                            disabled={isBulkSaving || (!bulkCategory && !bulkModel && !bulkCollection)}
+                            className="bg-accent text-white px-6 py-2 rounded-lg font-bold text-sm hover:opacity-90 disabled:opacity-50 transition-opacity ml-auto"
+                        >
+                            {isBulkSaving ? 'Applying...' : 'Apply Bulk Edit'}
+                        </button>
+                    </div>
+                )}
+
                 <div className="bg-white rounded-2xl shadow-xl shadow-black/5 overflow-hidden border border-border">
                     <div className="overflow-x-auto">
                         <table className="w-full text-left text-sm">
                             <thead className="bg-surface text-muted uppercase tracking-widest text-xs border-b border-border">
                                 <tr>
+                                    <th className="p-4 w-12 text-center border-r border-border/50">
+                                        <input type="checkbox" checked={products.length > 0 && selectedIds.size === products.length} onChange={toggleSelectAll} className="accent-accent w-4 h-4 cursor-pointer" />
+                                    </th>
                                     <th className="p-4 font-bold">Product</th>
                                     <th className="p-4 font-bold">Classification</th>
                                     <th className="p-4 font-bold">Collections</th>
@@ -189,7 +285,10 @@ export default function AdminCatalogPage() {
                             </thead>
                             <tbody className="divide-y divide-border">
                                 {products.map(product => (
-                                    <tr key={product.id} className="hover:bg-surface/50 transition-colors">
+                                    <tr key={product.id} className={`transition-colors ${selectedIds.has(product.id) ? 'bg-accent/5' : 'hover:bg-surface/50'}`}>
+                                        <td className="p-4 text-center border-r border-border/50 align-top">
+                                            <input type="checkbox" checked={selectedIds.has(product.id)} onChange={() => toggleSelect(product.id)} className="accent-accent w-4 h-4 cursor-pointer mt-2" />
+                                        </td>
                                         <td className="p-4 align-top w-64">
                                             <div className="flex gap-4">
                                                 <div className="w-16 h-20 bg-surface rounded-lg overflow-hidden border border-border flex-shrink-0 relative">
