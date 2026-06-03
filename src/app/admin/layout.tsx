@@ -97,6 +97,7 @@ function AdminSidebar({ children }: { children: React.ReactNode }) {
     { id: 'orders', label: config.tabLabels.orders || 'Orders', icon: 'fa-shopping-bag', path: '/admin/orders' },
     { id: 'workflow', label: config.tabLabels.workflow || 'Workflow', icon: 'fa-tasks', path: '/admin/workflow' },
     { id: 'products', label: config.tabLabels.products || 'Products', icon: 'fa-tshirt', path: '/admin/products' },
+    { id: 'catalog', label: 'Catalog Manager', icon: 'fa-tags', path: '/admin/catalog' },
     { id: 'customers', label: config.tabLabels.customers || 'Customers CRM', icon: 'fa-users', path: '/admin/customers' },
     { id: 'complaints', label: config.tabLabels.complaints || 'Support & Returns', icon: 'fa-headset', path: '/admin/support' },
     { id: 'analytics', label: config.tabLabels.analytics || 'Analytics', icon: 'fa-chart-bar', path: '/admin/analytics' },
