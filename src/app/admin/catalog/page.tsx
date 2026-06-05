@@ -283,7 +283,9 @@ export default function AdminCatalogPage() {
     }, [searchQuery, statusFilter, collectionFilter, sortOption]);
 
     const totalPages = Math.ceil(processedProducts.length / ITEMS_PER_PAGE);
-    const paginatedProducts = processedProducts.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+    const paginatedProducts = useMemo(() => {
+        return processedProducts.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+    }, [processedProducts, currentPage]);
 
     // Compute recommendations asynchronously to prevent blocking the main thread (Fixes INP issue)
     useEffect(() => {
