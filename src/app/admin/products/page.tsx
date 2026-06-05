@@ -2,9 +2,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Product } from '@/types';
-import { LayoutGrid, List as ListIcon, Plus, Edit, Copy, Check, X, Search, Save, Upload, Download, ImageIcon, AlertCircle } from 'lucide-react';
+import { LayoutGrid, List as ListIcon, Plus, Edit, Copy, Check, X, Search, Save, Upload, Download, ImageIcon, AlertCircle, Trash2 } from 'lucide-react';
 import Papa from 'papaparse';
-import { upsertProductAction, updateStockAction, processProductChunkAction } from '@/lib/actions/products';
+import { upsertProductAction, updateStockAction, processProductChunkAction, deleteProductAction } from '@/lib/actions/products';
 
 type EditableProduct = Partial<Product> & { id?: string };
 
@@ -143,6 +143,17 @@ export default function ProductsPage() {
             setInlineStock(newInline);
         } catch (err: any) {
             alert('Failed to update stock: ' + err.message);
+        }
+    }
+
+    async function handleDeleteProduct(id: string) {
+        if (!confirm('Are you sure you want to delete this product?')) return;
+        try {
+            const res = await deleteProductAction(id);
+            if (!res.success) throw new Error(res.error);
+            setProducts(products.filter(p => p.id !== id));
+        } catch (err: any) {
+            alert('Failed to delete product: ' + err.message);
         }
     }
 
@@ -452,6 +463,11 @@ export default function ProductsPage() {
                                 <button onClick={() => duplicateProduct(product)} className="btn btn-outline" style={{ flex: 1, padding: '6px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
                                     <Copy size={14} /> Copy
                                 </button>
+                                {userRole === 'Manager' && (
+                                    <button onClick={() => handleDeleteProduct(product.id!)} className="btn btn-outline" style={{ padding: '6px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#DC2626', borderColor: '#FEE2E2', background: '#FEF2F2' }} title="Delete">
+                                        <Trash2 size={14} />
+                                    </button>
+                                )}
                             </div>
                         </div>
                     ))}
@@ -525,6 +541,9 @@ export default function ProductsPage() {
                                         <div style={{ display: 'flex', gap: '8px' }}>
                                             <button onClick={() => openModal(product)} className="btn btn-outline btn-sm" title="Edit"><Edit size={14} /></button>
                                             <button onClick={() => duplicateProduct(product)} className="btn btn-outline btn-sm" title="Duplicate"><Copy size={14} /></button>
+                                            {userRole === 'Manager' && (
+                                                <button onClick={() => handleDeleteProduct(product.id!)} className="btn btn-outline btn-sm" title="Delete" style={{ color: '#DC2626', borderColor: '#FEE2E2', background: '#FEF2F2' }}><Trash2 size={14} /></button>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>

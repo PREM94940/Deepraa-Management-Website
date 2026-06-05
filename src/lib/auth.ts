@@ -6,6 +6,7 @@ export const PERMISSIONS = {
     CAN_EDIT_PRICE: ['Manager'] as StaffRole[],
     CAN_EDIT_INVENTORY: ['Manager', 'Staff'] as StaffRole[],
     CAN_BULK_IMPORT: ['Manager'] as StaffRole[],
+    CAN_DELETE_PRODUCTS: ['Manager'] as StaffRole[],
     
     // Orders
     CAN_APPROVE_ORDER: ['Manager', 'Staff'] as StaffRole[],

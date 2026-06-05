@@ -148,3 +148,32 @@ export async function processProductChunkAction(chunk: any[], chunkIndex: number
         return { success: false, error: safeMessage };
     }
 }
+
+export async function deleteProductAction(id: string) {
+    try {
+        await verifyAdminAccess(PERMISSIONS.CAN_DELETE_PRODUCTS, 'deleteProduct');
+        
+        const { data: oldData } = await supabaseServer.from('products').select('*').eq('id', id).single();
+        
+        const { error } = await supabaseServer.from('products').delete().eq('id', id);
+        if (error) throw error;
+
+        await logAuditAction({
+            tableName: 'products',
+            recordId: id,
+            action: 'DELETE',
+            oldData,
+            newData: null
+        });
+
+        revalidatePath('/admin/products');
+        return { success: true };
+    } catch (err: any) {
+        const safeMessage = captureOperationalError(err, {
+            classification: 'INFRASTRUCTURE_FAILURE',
+            actionName: 'deleteProductAction',
+            recordId: id
+        });
+        return { success: false, error: safeMessage };
+    }
+}
