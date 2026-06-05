@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import Image from 'next/image';
+import { generateRecommendation } from '@/lib/recommendationEngine';
 
 type Product = {
     id: string;
@@ -45,11 +46,13 @@ export default function AdminCatalogPage() {
     const [saving, setSaving] = useState<Record<string, boolean>>({});
 
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-    const [bulkCategory, setBulkCategory] = useState('');
-    const [bulkSubcategory, setBulkSubcategory] = useState('');
-    const [bulkModel, setBulkModel] = useState('');
-    const [bulkCollection, setBulkCollection] = useState('');
-    const [isBulkSaving, setIsBulkSaving] = useState(false);
+    
+    // NEW: Staged Updates State for local edits (Phase E)
+    const [stagedUpdates, setStagedUpdates] = useState<Record<string, Partial<Product>>>({});
+    const [stagedCollections, setStagedCollections] = useState<Record<string, Set<string>>>({});
+    
+    // NEW: Staged Telemetry Data
+    const [telemetryQueue, setTelemetryQueue] = useState<any[]>([]);
 
     useEffect(() => {
         fetchData();
@@ -58,16 +61,14 @@ export default function AdminCatalogPage() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            // Fetch products
             const { data: pData, error: pError } = await supabase
                 .from('products')
-                .select('id, sku, title, images, business_category, business_subcategory, fulfillment_model, display_order, is_featured, is_best_seller, is_new_arrival, is_hidden, seo_title, seo_description, canonical_url')
+                .select('*')
                 .eq('is_test_data', false)
                 .order('created_at', { ascending: false });
                 
             if (pError) throw pError;
             
-            // Fetch collections
             const { data: cData, error: cError } = await supabase
                 .from('collections')
                 .select('id, name')
@@ -75,13 +76,11 @@ export default function AdminCatalogPage() {
                 
             if (cError) throw cError;
 
-            // Fetch product_collections join table
             const { data: pcData, error: pcError } = await supabase
                 .from('product_collections')
                 .select('product_id, collection_id');
                 
             if (pcError && pcError.code !== '42P01') { 
-                // Ignore 42P01 (table does not exist) in case migration hasn't run yet
                 throw pcError;
             }
 
@@ -104,128 +103,183 @@ export default function AdminCatalogPage() {
         }
     };
 
-    const handleUpdate = async (productId: string, field: keyof Product, value: any) => {
-        setSaving(prev => ({ ...prev, [productId]: true }));
-        try {
-            const updatePayload: any = { [field]: value };
+    // Calculate fully classified products for the engine's training set
+    const classifiedProducts = useMemo(() => {
+        return products.filter(p => p.business_category && p.business_subcategory && p.fulfillment_model);
+    }, [products]);
+
+    // Handle local field change (No auto-save)
+    const handleLocalUpdate = (productId: string, field: keyof Product, value: any) => {
+        setStagedUpdates(prev => {
+            const currentProductStaged = prev[productId] || {};
+            const updatePayload: any = { ...currentProductStaged, [field]: value };
             
             // Auto-clear subcategory if category changes
             if (field === 'business_category') {
                 updatePayload['business_subcategory'] = null;
-                setProducts(prev => prev.map(p => p.id === productId ? { ...p, business_category: value, business_subcategory: null } : p));
-            } else {
-                setProducts(prev => prev.map(p => p.id === productId ? { ...p, [field]: value } : p));
             }
-
-            const { error } = await supabase.from('products').update(updatePayload).eq('id', productId);
-            if (error) throw error;
-        } catch (error) {
-            console.error('Update error:', error);
-            alert(`Failed to update ${field}.`);
-            await fetchData(); // Revert on failure
-        } finally {
-            setSaving(prev => ({ ...prev, [productId]: false }));
-        }
-    };
-
-    const handleCollectionToggle = async (productId: string, collectionId: string, currentStatus: boolean) => {
-        setSaving(prev => ({ ...prev, [productId]: true }));
-        try {
-            if (currentStatus) {
-                // Remove
-                const { error } = await supabase.from('product_collections').delete().match({ product_id: productId, collection_id: collectionId });
-                if (error) throw error;
-                
-                setProductCollections(prev => {
-                    const next = { ...prev };
-                    if (next[productId]) {
-                        const newSet = new Set(next[productId]);
-                        newSet.delete(collectionId);
-                        next[productId] = newSet;
-                    }
-                    return next;
-                });
-            } else {
-                // Add
-                const { error } = await supabase.from('product_collections').insert({ product_id: productId, collection_id: collectionId });
-                if (error) throw error;
-                
-                setProductCollections(prev => {
-                    const next = { ...prev };
-                    if (!next[productId]) next[productId] = new Set();
-                    const newSet = new Set(next[productId]);
-                    newSet.add(collectionId);
-                    next[productId] = newSet;
-                    return next;
-                });
-            }
-        } catch (error) {
-            console.error('Collection toggle error:', error);
-            alert('Failed to update collections.');
-        } finally {
-            setSaving(prev => ({ ...prev, [productId]: false }));
-        }
-    };
-
-    const toggleSelectAll = () => {
-        if (selectedIds.size === products.length && products.length > 0) {
-            setSelectedIds(new Set());
-        } else {
-            setSelectedIds(new Set(products.map(p => p.id)));
-        }
-    };
-
-    const toggleSelect = (id: string) => {
-        setSelectedIds(prev => {
-            const next = new Set(prev);
-            if (next.has(id)) next.delete(id);
-            else next.add(id);
-            return next;
+            
+            return { ...prev, [productId]: updatePayload };
         });
     };
 
-    const handleBulkApply = async () => {
-        if (selectedIds.size === 0) return;
-        setIsBulkSaving(true);
+    const handleLocalCollectionToggle = (productId: string, collectionId: string, isCurrentlySelected: boolean) => {
+        setStagedCollections(prev => {
+            const currentSet = new Set(prev[productId] || productCollections[productId] || new Set());
+            if (isCurrentlySelected) {
+                currentSet.delete(collectionId);
+            } else {
+                currentSet.add(collectionId);
+            }
+            return { ...prev, [productId]: currentSet };
+        });
+    };
+
+    const getDisplayValue = (productId: string, field: keyof Product) => {
+        const product = products.find(p => p.id === productId);
+        if (stagedUpdates[productId] && stagedUpdates[productId][field] !== undefined) {
+            return stagedUpdates[productId][field];
+        }
+        return product ? product[field] : null;
+    };
+
+    const getDisplayCollections = (productId: string) => {
+        if (stagedCollections[productId]) return stagedCollections[productId];
+        return productCollections[productId] || new Set();
+    };
+
+    const handleAcceptRecommendation = (productId: string, rec: any) => {
+        if (!rec) return;
+        
+        // Log the recommendation state for telemetry comparison later
+        setTelemetryQueue(prev => {
+            const next = [...prev.filter(t => t.productId !== productId)];
+            next.push({
+                productId,
+                recommended_state: rec
+            });
+            return next;
+        });
+
+        setStagedUpdates(prev => ({
+            ...prev,
+            [productId]: {
+                ...prev[productId],
+                business_category: rec.category,
+                business_subcategory: rec.subcategory,
+                fulfillment_model: rec.fulfillment
+            }
+        }));
+        
+        setStagedCollections(prev => ({
+            ...prev,
+            [productId]: rec.collections
+        }));
+    };
+
+    const handleSaveProduct = async (productId: string) => {
+        setSaving(prev => ({ ...prev, [productId]: true }));
         try {
-            const updates: any = {};
-            if (bulkCategory) updates.business_category = bulkCategory;
-            if (bulkSubcategory) updates.business_subcategory = bulkSubcategory;
-            if (bulkModel) updates.fulfillment_model = bulkModel;
+            const updates = stagedUpdates[productId];
+            const updatedCollections = stagedCollections[productId];
             
-            if (Object.keys(updates).length > 0) {
-                const { error } = await supabase.from('products').update(updates).in('id', Array.from(selectedIds));
-                if (error) throw new Error(`Products update failed: ${error.message || error.details || JSON.stringify(error)}`);
+            if (updates && Object.keys(updates).length > 0) {
+                const { error } = await supabase.from('products').update(updates).eq('id', productId);
+                if (error) throw error;
+                
+                // Update local products state
+                setProducts(prev => prev.map(p => p.id === productId ? { ...p, ...updates } : p));
             }
-
-            if (bulkCollection) {
-                // Filter out products that already have this collection to avoid Unique Constraint errors and Upsert RLS requirements
-                const inserts = Array.from(selectedIds)
-                    .filter(pid => !(productCollections[pid]?.has(bulkCollection)))
-                    .map(pid => ({ product_id: pid, collection_id: bulkCollection }));
-
+            
+            if (updatedCollections) {
+                // Delete old, insert new
+                await supabase.from('product_collections').delete().eq('product_id', productId);
+                const inserts = Array.from(updatedCollections).map(cid => ({ product_id: productId, collection_id: cid }));
                 if (inserts.length > 0) {
-                    const { error } = await supabase.from('product_collections').insert(inserts);
-                    if (error) throw new Error(`Collections update failed: ${error.message || error.details || JSON.stringify(error)}`);
+                    await supabase.from('product_collections').insert(inserts);
                 }
+                
+                // Update local collections state
+                setProductCollections(prev => ({ ...prev, [productId]: updatedCollections }));
             }
             
-            await fetchData();
-            setSelectedIds(new Set());
-            setBulkCategory('');
-            setBulkSubcategory('');
-            setBulkModel('');
-            setBulkCollection('');
-            alert('Bulk update applied successfully!');
-        } catch (error: any) {
-            console.error('Bulk update error:', error);
-            alert(`Failed to apply bulk update: ${error.message || JSON.stringify(error)}`);
+            // Handle Accuracy Telemetry
+            const telemetry = telemetryQueue.find(t => t.productId === productId);
+            if (telemetry) {
+                const form_state = {
+                    category: updates?.business_category !== undefined ? updates.business_category : products.find(p=>p.id===productId)?.business_category,
+                    subcategory: updates?.business_subcategory !== undefined ? updates.business_subcategory : products.find(p=>p.id===productId)?.business_subcategory,
+                    fulfillment: updates?.fulfillment_model !== undefined ? updates.fulfillment_model : products.find(p=>p.id===productId)?.fulfillment_model,
+                    collections: updatedCollections || productCollections[productId] || new Set()
+                };
+                
+                // Store telemetry event locally for script to read, or log to console
+                console.log('AI Telemetry Logged:', {
+                    productId,
+                    accuracy: {
+                        category: form_state.category === telemetry.recommended_state.category ? 'Accepted' : (form_state.category ? 'Modified' : 'Rejected'),
+                        subcategory: form_state.subcategory === telemetry.recommended_state.subcategory ? 'Accepted' : (form_state.subcategory ? 'Modified' : 'Rejected'),
+                        fulfillment: form_state.fulfillment === telemetry.recommended_state.fulfillment ? 'Accepted' : (form_state.fulfillment ? 'Modified' : 'Rejected')
+                    }
+                });
+            }
+
+            // Clear staged
+            setStagedUpdates(prev => { const next = { ...prev }; delete next[productId]; return next; });
+            setStagedCollections(prev => { const next = { ...prev }; delete next[productId]; return next; });
+            
+        } catch (error) {
+            console.error('Update error:', error);
+            alert(`Failed to save product.`);
         } finally {
-            setIsBulkSaving(false);
+            setSaving(prev => ({ ...prev, [productId]: false }));
         }
     };
 
+    const handleBulkAcceptAll = () => {
+        let halfSarees = 0;
+        let sarees = 0;
+        let lehengas = 0;
+        let other = 0;
+        
+        const recommendations: {id: string, rec: any}[] = [];
+
+        products.forEach(p => {
+            if (!p.business_category || !p.business_subcategory || !p.fulfillment_model) {
+                const rec = generateRecommendation(p, classifiedProducts, collections, productCollections);
+                if (rec) {
+                    recommendations.push({ id: p.id, rec });
+                    if (rec.category === 'Half Sarees') halfSarees++;
+                    else if (rec.category === 'Sarees') sarees++;
+                    else if (rec.category === 'Lehengas') lehengas++;
+                    else other++;
+                }
+            }
+        });
+
+        const confirmMsg = `AI recommends:\n${halfSarees} Half Sarees\n${sarees} Sarees\n${lehengas} Lehengas\n${other} Other\n\nApply these to local preview?`;
+        if (confirm(confirmMsg)) {
+            recommendations.forEach(({ id, rec }) => handleAcceptRecommendation(id, rec));
+        }
+    };
+
+    const handleBulkSave = async () => {
+        const productIdsToSave = new Set([...Object.keys(stagedUpdates), ...Object.keys(stagedCollections)]);
+        if (productIdsToSave.size === 0) return;
+        
+        const confirmSave = confirm(`Are you sure you want to save changes for ${productIdsToSave.size} products?`);
+        if (!confirmSave) return;
+
+        // Perform parallel saves (for demonstration, keeping simple for-loop)
+        for (const id of Array.from(productIdsToSave)) {
+            await handleSaveProduct(id);
+        }
+        alert('Bulk save completed!');
+    };
+
     if (loading) return <div className="p-8 text-center">Loading catalog...</div>;
+
+    const stagedCount = Object.keys(stagedUpdates).length + Object.keys(stagedCollections).length;
 
     return (
         <div className="min-h-screen bg-bg p-8">
@@ -233,209 +287,209 @@ export default function AdminCatalogPage() {
                 <div className="flex justify-between items-center">
                     <div>
                         <h1 className="text-3xl font-bold font-display italic">Catalog <span className="text-accent">Manager.</span></h1>
-                        <p className="text-muted mt-2">Manually classify products. Changes auto-save instantly.</p>
+                        <p className="text-muted mt-2">Manually classify products. Staged changes require explicit save.</p>
                     </div>
-                    <div className="text-sm font-bold bg-surface px-4 py-2 rounded-xl text-accent">
-                        {products.length} Products Loaded
+                    <div className="flex gap-4">
+                        <button 
+                            onClick={handleBulkAcceptAll}
+                            className="text-sm font-bold bg-accent/10 px-4 py-2 rounded-xl text-accent border border-accent/20 hover:bg-accent/20"
+                        >
+                            ✨ Auto-Fill Recommendations
+                        </button>
+                        {stagedCount > 0 && (
+                            <button 
+                                onClick={handleBulkSave}
+                                className="text-sm font-bold bg-accent px-4 py-2 rounded-xl text-white hover:opacity-90 shadow-lg shadow-accent/20"
+                            >
+                                💾 Save {stagedCount} Pending Changes
+                            </button>
+                        )}
+                        <div className="text-sm font-bold bg-surface px-4 py-2 rounded-xl text-accent">
+                            {products.length} Products Loaded
+                        </div>
                     </div>
                 </div>
-
-                {selectedIds.size > 0 && (
-                    <div className="bg-surface border border-accent rounded-xl p-4 flex flex-wrap items-center gap-4 sticky top-4 z-50 shadow-2xl">
-                        <span className="font-bold text-sm text-accent">{selectedIds.size} Selected</span>
-                        
-                        <select value={bulkCategory} onChange={e => { setBulkCategory(e.target.value); setBulkSubcategory(''); }} className="bg-white border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent">
-                            <option value="">Set Category...</option>
-                            {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
-
-                        <select value={bulkSubcategory} onChange={e => setBulkSubcategory(e.target.value)} disabled={!bulkCategory} className="bg-white border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent disabled:opacity-50">
-                            <option value="">Set Subcategory...</option>
-                            {bulkCategory && SUBCATEGORIES[bulkCategory]?.map(sc => <option key={sc} value={sc}>{sc}</option>)}
-                        </select>
-
-                        <select value={bulkModel} onChange={e => setBulkModel(e.target.value)} className="bg-white border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent">
-                            <option value="">Set Model...</option>
-                            {MODELS.map(m => <option key={m} value={m}>{m}</option>)}
-                        </select>
-
-                        <select value={bulkCollection} onChange={e => setBulkCollection(e.target.value)} className="bg-white border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent">
-                            <option value="">Add to Collection...</option>
-                            {collections.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                        </select>
-
-                        <button 
-                            onClick={handleBulkApply} 
-                            disabled={isBulkSaving || (!bulkCategory && !bulkModel && !bulkCollection)}
-                            className="bg-accent text-white px-6 py-2 rounded-lg font-bold text-sm hover:opacity-90 disabled:opacity-50 transition-opacity ml-auto"
-                        >
-                            {isBulkSaving ? 'Applying...' : 'Apply Bulk Edit'}
-                        </button>
-                    </div>
-                )}
 
                 <div className="bg-white rounded-2xl shadow-xl shadow-black/5 overflow-hidden border border-border">
                     <div className="overflow-x-auto">
                         <table className="w-full text-left text-sm">
                             <thead className="bg-surface text-muted uppercase tracking-widest text-xs border-b border-border">
                                 <tr>
-                                    <th className="p-4 w-12 text-center border-r border-border/50">
-                                        <input type="checkbox" checked={products.length > 0 && selectedIds.size === products.length} onChange={toggleSelectAll} className="accent-accent w-4 h-4 cursor-pointer" />
-                                    </th>
                                     <th className="p-4 font-bold">Product</th>
                                     <th className="p-4 font-bold">Classification</th>
                                     <th className="p-4 font-bold">Collections</th>
                                     <th className="p-4 font-bold">Business Controls</th>
-                                    <th className="p-4 font-bold">SEO</th>
+                                    <th className="p-4 font-bold text-center">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-border">
-                                {products.map(product => (
-                                    <tr key={product.id} className={`transition-colors ${selectedIds.has(product.id) ? 'bg-accent/5' : 'hover:bg-surface/50'}`}>
-                                        <td className="p-4 text-center border-r border-border/50 align-top">
-                                            <input type="checkbox" checked={selectedIds.has(product.id)} onChange={() => toggleSelect(product.id)} className="accent-accent w-4 h-4 cursor-pointer mt-2" />
-                                        </td>
-                                        <td className="p-4 align-top w-64">
-                                            <div className="flex gap-4">
-                                                <div className="w-16 h-20 bg-surface rounded-lg overflow-hidden border border-border flex-shrink-0 relative">
-                                                    {product.images?.[0] ? (
-                                                        <Image src={product.images[0]} alt={product.title} fill className="object-cover" />
-                                                    ) : (
-                                                        <div className="w-full h-full flex items-center justify-center text-xs text-muted">No Img</div>
-                                                    )}
+                                {products.map(product => {
+                                    const hasStaged = !!stagedUpdates[product.id] || !!stagedCollections[product.id];
+                                    const isFullyClassified = product.business_category && product.business_subcategory && product.fulfillment_model;
+                                    let recommendation: any = null;
+                                    
+                                    if (!isFullyClassified && !hasStaged) {
+                                        recommendation = generateRecommendation(product, classifiedProducts, collections, productCollections);
+                                    }
+
+                                    return (
+                                        <tr key={product.id} className={`transition-colors ${hasStaged ? 'bg-amber-50' : 'hover:bg-surface/50'}`}>
+                                            <td className="p-4 align-top w-64">
+                                                <div className="flex gap-4">
+                                                    <div className="w-16 h-20 bg-surface rounded-lg overflow-hidden border border-border flex-shrink-0 relative">
+                                                        {product.images?.[0] ? (
+                                                            <Image src={product.images[0]} alt={product.title} fill className="object-cover" />
+                                                        ) : (
+                                                            <div className="w-full h-full flex items-center justify-center text-xs text-muted">No Img</div>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex flex-col gap-1">
+                                                        <span className="font-bold text-fg line-clamp-2">{product.title}</span>
+                                                        <span className="text-xs text-muted font-mono">{product.sku || 'NO-SKU'}</span>
+                                                        {saving[product.id] && <span className="text-xs text-accent-emerald font-bold animate-pulse">Saving...</span>}
+                                                        {hasStaged && <span className="text-xs text-amber-600 font-bold">Unsaved Changes</span>}
+                                                    </div>
                                                 </div>
-                                                <div className="flex flex-col gap-1">
-                                                    <span className="font-bold text-fg line-clamp-2">{product.title}</span>
-                                                    <span className="text-xs text-muted font-mono">{product.sku || 'NO-SKU'}</span>
-                                                    {saving[product.id] && <span className="text-xs text-accent-emerald font-bold animate-pulse">Saving...</span>}
-                                                </div>
-                                            </div>
-                                        </td>
-                                        
-                                        <td className="p-4 align-top w-72 space-y-3">
-                                            <div className="flex flex-col gap-1">
-                                                <label className="text-[10px] font-bold uppercase tracking-widest text-muted">Category</label>
-                                                <select 
-                                                    value={product.business_category || ''}
-                                                    onChange={(e) => handleUpdate(product.id, 'business_category', e.target.value || null)}
-                                                    className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent"
-                                                >
-                                                    <option value="">Select Category</option>
-                                                    {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                                                </select>
-                                            </div>
+                                            </td>
                                             
-                                            <div className="flex flex-col gap-1">
-                                                <label className="text-[10px] font-bold uppercase tracking-widest text-muted">Subcategory</label>
-                                                <select 
-                                                    value={product.business_subcategory || ''}
-                                                    onChange={(e) => handleUpdate(product.id, 'business_subcategory', e.target.value || null)}
-                                                    disabled={!product.business_category}
-                                                    className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent disabled:opacity-50"
-                                                >
-                                                    <option value="">Select Subcategory</option>
-                                                    {product.business_category && SUBCATEGORIES[product.business_category]?.map(sc => (
-                                                        <option key={sc} value={sc}>{sc}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-
-                                            <div className="flex flex-col gap-1">
-                                                <label className="text-[10px] font-bold uppercase tracking-widest text-muted">Model</label>
-                                                <select 
-                                                    value={product.fulfillment_model || ''}
-                                                    onChange={(e) => handleUpdate(product.id, 'fulfillment_model', e.target.value || null)}
-                                                    className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent"
-                                                >
-                                                    <option value="">Select Model</option>
-                                                    {MODELS.map(m => <option key={m} value={m}>{m}</option>)}
-                                                </select>
-                                            </div>
-                                        </td>
-
-                                        <td className="p-4 align-top w-64">
-                                            <div className="flex flex-col gap-2">
-                                                <label className="text-[10px] font-bold uppercase tracking-widest text-muted">Marketing Collections</label>
-                                                <div className="flex flex-wrap gap-2">
-                                                    {collections.map(c => {
-                                                        const isSelected = productCollections[product.id]?.has(c.id) || false;
-                                                        return (
-                                                            <button
-                                                                key={c.id}
-                                                                onClick={() => handleCollectionToggle(product.id, c.id, isSelected)}
-                                                                className={`px-3 py-1 rounded-full text-[10px] font-bold tracking-wider transition-colors border ${
-                                                                    isSelected 
-                                                                        ? 'bg-accent/10 border-accent text-accent' 
-                                                                        : 'bg-surface border-border text-muted hover:border-accent/50'
-                                                                }`}
-                                                            >
-                                                                {c.name}
-                                                            </button>
-                                                        );
-                                                    })}
+                                            <td className="p-4 align-top w-72 space-y-3 relative">
+                                                {recommendation && (
+                                                    <div className="absolute inset-0 z-10 bg-blue-50/95 border border-blue-200 rounded-lg p-3 m-2 flex flex-col justify-between shadow-sm">
+                                                        <div>
+                                                            <div className="flex items-center justify-between mb-2">
+                                                                <span className="text-xs font-bold text-blue-700 flex items-center gap-1">✨ AI Suggestion</span>
+                                                                <span className="text-xs font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">{recommendation.confidence}% Match</span>
+                                                            </div>
+                                                            <div className="text-xs text-blue-900 mb-1"><span className="opacity-70">Category:</span> <b>{recommendation.category}</b></div>
+                                                            <div className="text-xs text-blue-900 mb-1"><span className="opacity-70">Subcat:</span> <b>{recommendation.subcategory || '?'}</b></div>
+                                                            <div className="text-xs text-blue-900 mb-2"><span className="opacity-70">Model:</span> <b>{recommendation.fulfillment}</b></div>
+                                                            
+                                                            <div className="text-[10px] text-blue-600/80 space-y-0.5">
+                                                                {recommendation.reasoning.map((r: string, i: number) => <div key={i}>{r}</div>)}
+                                                            </div>
+                                                        </div>
+                                                        <button 
+                                                            onClick={() => handleAcceptRecommendation(product.id, recommendation)}
+                                                            className="w-full mt-2 bg-blue-600 text-white text-xs font-bold py-1.5 rounded-md hover:bg-blue-700 transition-colors"
+                                                        >
+                                                            Accept Suggestion
+                                                        </button>
+                                                    </div>
+                                                )}
+                                                
+                                                <div className={`flex flex-col gap-1 ${recommendation ? 'opacity-20 pointer-events-none' : ''}`}>
+                                                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted">Category</label>
+                                                    <select 
+                                                        value={getDisplayValue(product.id, 'business_category') || ''}
+                                                        onChange={(e) => handleLocalUpdate(product.id, 'business_category', e.target.value || null)}
+                                                        className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent"
+                                                    >
+                                                        <option value="">Select Category</option>
+                                                        {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                                                    </select>
                                                 </div>
-                                            </div>
-                                        </td>
-
-                                        <td className="p-4 align-top space-y-3 w-48">
-                                            <div className="flex flex-col gap-2">
-                                                <label className="flex items-center gap-2 cursor-pointer group">
-                                                    <input type="checkbox" checked={product.is_featured || false} onChange={(e) => handleUpdate(product.id, 'is_featured', e.target.checked)} className="accent-accent w-4 h-4" />
-                                                    <span className="text-xs font-bold text-fg group-hover:text-accent transition-colors">Featured</span>
-                                                </label>
-                                                <label className="flex items-center gap-2 cursor-pointer group">
-                                                    <input type="checkbox" checked={product.is_best_seller || false} onChange={(e) => handleUpdate(product.id, 'is_best_seller', e.target.checked)} className="accent-accent w-4 h-4" />
-                                                    <span className="text-xs font-bold text-fg group-hover:text-accent transition-colors">Best Seller</span>
-                                                </label>
-                                                <label className="flex items-center gap-2 cursor-pointer group">
-                                                    <input type="checkbox" checked={product.is_new_arrival || false} onChange={(e) => handleUpdate(product.id, 'is_new_arrival', e.target.checked)} className="accent-accent w-4 h-4" />
-                                                    <span className="text-xs font-bold text-fg group-hover:text-accent transition-colors">New Arrival</span>
-                                                </label>
-                                                <label className="flex items-center gap-2 cursor-pointer group mt-2 pt-2 border-t border-border">
-                                                    <input type="checkbox" checked={product.is_hidden || false} onChange={(e) => handleUpdate(product.id, 'is_hidden', e.target.checked)} className="accent-red-500 w-4 h-4" />
-                                                    <span className="text-xs font-bold text-red-500 transition-colors">Hidden / Draft</span>
-                                                </label>
-                                                <div className="mt-2 flex items-center gap-2">
-                                                    <span className="text-xs font-bold text-muted w-16">Sort Order</span>
-                                                    <input type="number" value={product.display_order || 0} onChange={(e) => handleUpdate(product.id, 'display_order', parseInt(e.target.value) || 0)} className="w-16 bg-surface border border-border rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-accent" />
+                                                
+                                                <div className={`flex flex-col gap-1 ${recommendation ? 'opacity-20 pointer-events-none' : ''}`}>
+                                                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted">Subcategory</label>
+                                                    <select 
+                                                        value={getDisplayValue(product.id, 'business_subcategory') || ''}
+                                                        onChange={(e) => handleLocalUpdate(product.id, 'business_subcategory', e.target.value || null)}
+                                                        disabled={!getDisplayValue(product.id, 'business_category')}
+                                                        className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent disabled:opacity-50"
+                                                    >
+                                                        <option value="">Select Subcategory</option>
+                                                        {getDisplayValue(product.id, 'business_category') && SUBCATEGORIES[getDisplayValue(product.id, 'business_category') as string]?.map(sc => (
+                                                            <option key={sc} value={sc}>{sc}</option>
+                                                        ))}
+                                                    </select>
                                                 </div>
-                                            </div>
-                                        </td>
 
-                                        <td className="p-4 align-top w-64 space-y-3">
-                                            <div className="flex flex-col gap-1">
-                                                <label className="text-[10px] font-bold uppercase tracking-widest text-muted">SEO Title</label>
-                                                <input 
-                                                    type="text"
-                                                    value={product.seo_title || ''}
-                                                    onChange={(e) => handleUpdate(product.id, 'seo_title', e.target.value)}
-                                                    placeholder="Default product title used if empty"
-                                                    className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-accent"
-                                                />
-                                            </div>
-                                            <div className="flex flex-col gap-1">
-                                                <label className="text-[10px] font-bold uppercase tracking-widest text-muted">SEO Description</label>
-                                                <textarea 
-                                                    value={product.seo_description || ''}
-                                                    onChange={(e) => handleUpdate(product.id, 'seo_description', e.target.value)}
-                                                    placeholder="Meta description"
-                                                    rows={3}
-                                                    className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-accent resize-none"
-                                                />
-                                            </div>
-                                            <div className="flex flex-col gap-1">
-                                                <label className="text-[10px] font-bold uppercase tracking-widest text-muted">Canonical URL</label>
-                                                <input 
-                                                    type="text"
-                                                    value={product.canonical_url || ''}
-                                                    onChange={(e) => handleUpdate(product.id, 'canonical_url', e.target.value)}
-                                                    placeholder="https://deeprastore.com/..."
-                                                    className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-accent"
-                                                />
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
+                                                <div className={`flex flex-col gap-1 ${recommendation ? 'opacity-20 pointer-events-none' : ''}`}>
+                                                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted">Model</label>
+                                                    <select 
+                                                        value={getDisplayValue(product.id, 'fulfillment_model') || ''}
+                                                        onChange={(e) => handleLocalUpdate(product.id, 'fulfillment_model', e.target.value || null)}
+                                                        className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent"
+                                                    >
+                                                        <option value="">Select Model</option>
+                                                        {MODELS.map(m => <option key={m} value={m}>{m}</option>)}
+                                                    </select>
+                                                </div>
+                                            </td>
+
+                                            <td className="p-4 align-top w-64">
+                                                <div className="flex flex-col gap-2">
+                                                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted">Marketing Collections</label>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {collections.map(c => {
+                                                            const displayedCols = getDisplayCollections(product.id);
+                                                            const isSelected = displayedCols.has(c.id);
+                                                            return (
+                                                                <button
+                                                                    key={c.id}
+                                                                    onClick={() => handleLocalCollectionToggle(product.id, c.id, isSelected)}
+                                                                    className={`px-3 py-1 rounded-full text-[10px] font-bold tracking-wider transition-colors border ${
+                                                                        isSelected 
+                                                                            ? 'bg-accent/10 border-accent text-accent' 
+                                                                            : 'bg-surface border-border text-muted hover:border-accent/50'
+                                                                    }`}
+                                                                >
+                                                                    {c.name}
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            </td>
+
+                                            <td className="p-4 align-top space-y-3 w-48">
+                                                <div className="flex flex-col gap-2">
+                                                    <label className="flex items-center gap-2 cursor-pointer group">
+                                                        <input type="checkbox" checked={getDisplayValue(product.id, 'is_featured') || false} onChange={(e) => handleLocalUpdate(product.id, 'is_featured', e.target.checked)} className="accent-accent w-4 h-4" />
+                                                        <span className="text-xs font-bold text-fg group-hover:text-accent transition-colors">Featured</span>
+                                                    </label>
+                                                    <label className="flex items-center gap-2 cursor-pointer group">
+                                                        <input type="checkbox" checked={getDisplayValue(product.id, 'is_best_seller') || false} onChange={(e) => handleLocalUpdate(product.id, 'is_best_seller', e.target.checked)} className="accent-accent w-4 h-4" />
+                                                        <span className="text-xs font-bold text-fg group-hover:text-accent transition-colors">Best Seller</span>
+                                                    </label>
+                                                    <label className="flex items-center gap-2 cursor-pointer group">
+                                                        <input type="checkbox" checked={getDisplayValue(product.id, 'is_new_arrival') || false} onChange={(e) => handleLocalUpdate(product.id, 'is_new_arrival', e.target.checked)} className="accent-accent w-4 h-4" />
+                                                        <span className="text-xs font-bold text-fg group-hover:text-accent transition-colors">New Arrival</span>
+                                                    </label>
+                                                    <label className="flex items-center gap-2 cursor-pointer group mt-2 pt-2 border-t border-border">
+                                                        <input type="checkbox" checked={getDisplayValue(product.id, 'is_hidden') || false} onChange={(e) => handleLocalUpdate(product.id, 'is_hidden', e.target.checked)} className="accent-red-500 w-4 h-4" />
+                                                        <span className="text-xs font-bold text-red-500 transition-colors">Hidden / Draft</span>
+                                                    </label>
+                                                </div>
+                                            </td>
+
+                                            <td className="p-4 align-top w-32 text-center">
+                                                {hasStaged ? (
+                                                    <button 
+                                                        onClick={() => handleSaveProduct(product.id)}
+                                                        disabled={saving[product.id]}
+                                                        className="w-full bg-accent text-white font-bold text-xs px-3 py-2 rounded-lg hover:opacity-90 disabled:opacity-50"
+                                                    >
+                                                        {saving[product.id] ? 'Saving...' : '💾 Save'}
+                                                    </button>
+                                                ) : (
+                                                    <span className="text-xs text-muted font-bold block mt-2">Up to date</span>
+                                                )}
+                                                {hasStaged && (
+                                                    <button 
+                                                        onClick={() => {
+                                                            setStagedUpdates(prev => { const next = {...prev}; delete next[product.id]; return next; });
+                                                            setStagedCollections(prev => { const next = {...prev}; delete next[product.id]; return next; });
+                                                        }}
+                                                        className="w-full text-muted hover:text-red-500 font-bold text-[10px] uppercase tracking-wider mt-2 transition-colors"
+                                                    >
+                                                        Discard
+                                                    </button>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>

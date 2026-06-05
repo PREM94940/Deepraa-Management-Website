@@ -85,12 +85,12 @@ export async function middleware(request: NextRequest) {
             if (roleData && ['Staff', 'Manager'].includes(roleData.role)) {
                 isAuthorized = true;
             }
-            
-            // Allow simulated role ONLY if the user is authenticated (developer logging in with real account but simulated role)
-            const simulatedRole = process.env.NEXT_PUBLIC_SIMULATE_ROLE;
-            if (!isAuthorized && simulatedRole && ['Staff', 'Manager'].includes(simulatedRole) && process.env.NODE_ENV === 'development') {
-                isAuthorized = true;
-            }
+        }
+
+        // Allow simulated role for developers in local environment even without authentication
+        const simulatedRole = process.env.NEXT_PUBLIC_SIMULATE_ROLE;
+        if (!isAuthorized && simulatedRole && ['Staff', 'Manager'].includes(simulatedRole) && process.env.NODE_ENV === 'development') {
+            isAuthorized = true;
         }
 
         if (!isAuthorized) {
