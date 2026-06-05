@@ -62,6 +62,10 @@ export default function AdminCatalogPage() {
     const [currentPage, setCurrentPage] = useState(1);
     const ITEMS_PER_PAGE = 50;
 
+    // Async Recommendations State to fix INP (Interaction to Next Paint) issue
+    const [recommendations, setRecommendations] = useState<Record<string, any>>({});
+    const [isComputingRecs, setIsComputingRecs] = useState(false);
+
     useEffect(() => {
         fetchData();
     }, []);
@@ -208,20 +212,16 @@ export default function AdminCatalogPage() {
     };
 
     const handleBulkAcceptAll = () => {
-        let count = 0;
-        const recommendations: {id: string, rec: any}[] = [];
-        paginatedProducts.forEach(p => {
-            if (!p.business_category || !p.business_subcategory || !p.fulfillment_model) {
-                const rec = generateRecommendation(p, classifiedProducts, collections, productCollections);
-                if (rec) {
-                    recommendations.push({ id: p.id, rec });
-                    count++;
-                }
-            }
-        });
-        if (count === 0) return alert("No AI recommendations available for the current page.");
-        if (confirm(`Apply AI recommendations to ${count} products on this page?`)) {
-            recommendations.forEach(({ id, rec }) => handleAcceptRecommendation(id, rec));
+        const recsToApply = Object.entries(recommendations)
+            .filter(([id, rec]) => rec !== null && paginatedProducts.find(p => p.id === id))
+            .map(([id, rec]) => ({ id, rec }));
+
+        if (recsToApply.length === 0) {
+            return alert(isComputingRecs ? "Still computing recommendations, please wait a second..." : "No AI recommendations available for the current page.");
+        }
+        
+        if (confirm(`Apply AI recommendations to ${recsToApply.length} products on this page?`)) {
+            recsToApply.forEach(({ id, rec }) => handleAcceptRecommendation(id, rec));
         }
     };
 
@@ -285,6 +285,42 @@ export default function AdminCatalogPage() {
     const totalPages = Math.ceil(processedProducts.length / ITEMS_PER_PAGE);
     const paginatedProducts = processedProducts.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
+    // Compute recommendations asynchronously to prevent blocking the main thread (Fixes INP issue)
+    useEffect(() => {
+        let isMounted = true;
+        
+        const computeRecommendationsAsync = async () => {
+            setIsComputingRecs(true);
+            const newRecs: Record<string, any> = {};
+            
+            for (let i = 0; i < paginatedProducts.length; i++) {
+                if (!isMounted) return;
+                
+                const p = paginatedProducts[i];
+                const hasStaged = !!stagedUpdates[p.id] || !!stagedCollections[p.id];
+                const isFullyClassified = p.business_category && p.business_subcategory && p.fulfillment_model;
+                
+                if (!isFullyClassified && !hasStaged) {
+                    newRecs[p.id] = generateRecommendation(p, classifiedProducts, collections, productCollections);
+                }
+                
+                // Yield to the main thread every 5 items to keep the UI perfectly responsive
+                if (i % 5 === 0) {
+                    await new Promise(r => setTimeout(r, 0));
+                }
+            }
+            
+            if (isMounted) {
+                setRecommendations(newRecs);
+                setIsComputingRecs(false);
+            }
+        };
+
+        computeRecommendationsAsync();
+        
+        return () => { isMounted = false; };
+    }, [paginatedProducts, classifiedProducts, collections, productCollections, stagedUpdates, stagedCollections]);
+
     if (loading) return <div className="p-8 text-center">Loading catalog...</div>;
 
     const stagedCount = Object.keys(stagedUpdates).length + Object.keys(stagedCollections).length;
@@ -300,9 +336,14 @@ export default function AdminCatalogPage() {
                     <div className="flex flex-wrap gap-3">
                         <button 
                             onClick={handleBulkAcceptAll}
-                            className="text-xs md:text-sm font-bold bg-accent/10 px-4 py-2 rounded-xl text-accent border border-accent/20 hover:bg-accent/20 transition-colors"
+                            disabled={isComputingRecs}
+                            className="text-xs md:text-sm font-bold bg-accent/10 px-4 py-2 rounded-xl text-accent border border-accent/20 hover:bg-accent/20 transition-colors disabled:opacity-50 flex items-center gap-2"
                         >
-                            ✨ Auto-Fill Page
+                            {isComputingRecs ? (
+                                <><span className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin"></span> Computing...</>
+                            ) : (
+                                <>✨ Auto-Fill Page</>
+                            )}
                         </button>
                         {stagedCount > 0 && (
                             <button 
@@ -389,11 +430,7 @@ export default function AdminCatalogPage() {
                                 ) : paginatedProducts.map(product => {
                                     const hasStaged = !!stagedUpdates[product.id] || !!stagedCollections[product.id];
                                     const isFullyClassified = product.business_category && product.business_subcategory && product.fulfillment_model;
-                                    let recommendation: any = null;
-                                    
-                                    if (!isFullyClassified && !hasStaged) {
-                                        recommendation = generateRecommendation(product, classifiedProducts, collections, productCollections);
-                                    }
+                                    let recommendation: any = recommendations[product.id] || null;
 
                                     return (
                                         <tr key={product.id} className={`transition-colors ${hasStaged ? 'bg-amber-50/50' : 'hover:bg-surface/50'}`}>
