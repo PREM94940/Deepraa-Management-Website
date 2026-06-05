@@ -439,7 +439,7 @@ export default function AdminCatalogPage() {
                                                 <div className={`flex flex-col gap-1 ${recommendation ? 'opacity-20 pointer-events-none' : ''}`}>
                                                     <label className="text-[10px] font-bold uppercase tracking-widest text-muted">Category</label>
                                                     <select 
-                                                        value={getDisplayValue(product.id, 'business_category') || ''}
+                                                        value={(getDisplayValue(product.id, 'business_category') as string) || ''}
                                                         onChange={(e) => handleLocalUpdate(product.id, 'business_category', e.target.value || null)}
                                                         className="w-full bg-surface border border-border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-accent"
                                                     >
@@ -451,7 +451,7 @@ export default function AdminCatalogPage() {
                                                 <div className={`flex flex-col gap-1 ${recommendation ? 'opacity-20 pointer-events-none' : ''}`}>
                                                     <label className="text-[10px] font-bold uppercase tracking-widest text-muted">Subcategory</label>
                                                     <select 
-                                                        value={getDisplayValue(product.id, 'business_subcategory') || ''}
+                                                        value={(getDisplayValue(product.id, 'business_subcategory') as string) || ''}
                                                         onChange={(e) => handleLocalUpdate(product.id, 'business_subcategory', e.target.value || null)}
                                                         disabled={!getDisplayValue(product.id, 'business_category')}
                                                         className="w-full bg-surface border border-border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-accent disabled:opacity-50"
@@ -466,7 +466,7 @@ export default function AdminCatalogPage() {
                                                 <div className={`flex flex-col gap-1 ${recommendation ? 'opacity-20 pointer-events-none' : ''}`}>
                                                     <label className="text-[10px] font-bold uppercase tracking-widest text-muted">Model</label>
                                                     <select 
-                                                        value={getDisplayValue(product.id, 'fulfillment_model') || ''}
+                                                        value={(getDisplayValue(product.id, 'fulfillment_model') as string) || ''}
                                                         onChange={(e) => handleLocalUpdate(product.id, 'fulfillment_model', e.target.value || null)}
                                                         className="w-full bg-surface border border-border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-accent"
                                                     >
@@ -504,19 +504,19 @@ export default function AdminCatalogPage() {
                                             <td className="p-4 align-top space-y-3 w-48">
                                                 <div className="flex flex-col gap-2">
                                                     <label className="flex items-center gap-2 cursor-pointer group">
-                                                        <input type="checkbox" checked={getDisplayValue(product.id, 'is_featured') || false} onChange={(e) => handleLocalUpdate(product.id, 'is_featured', e.target.checked)} className="accent-accent w-4 h-4 rounded" />
+                                                        <input type="checkbox" checked={!!getDisplayValue(product.id, 'is_featured')} onChange={(e) => handleLocalUpdate(product.id, 'is_featured', e.target.checked)} className="accent-accent w-4 h-4 rounded" />
                                                         <span className="text-xs font-bold text-fg group-hover:text-accent transition-colors">Featured</span>
                                                     </label>
                                                     <label className="flex items-center gap-2 cursor-pointer group">
-                                                        <input type="checkbox" checked={getDisplayValue(product.id, 'is_best_seller') || false} onChange={(e) => handleLocalUpdate(product.id, 'is_best_seller', e.target.checked)} className="accent-accent w-4 h-4 rounded" />
+                                                        <input type="checkbox" checked={!!getDisplayValue(product.id, 'is_best_seller')} onChange={(e) => handleLocalUpdate(product.id, 'is_best_seller', e.target.checked)} className="accent-accent w-4 h-4 rounded" />
                                                         <span className="text-xs font-bold text-fg group-hover:text-accent transition-colors">Best Seller</span>
                                                     </label>
                                                     <label className="flex items-center gap-2 cursor-pointer group">
-                                                        <input type="checkbox" checked={getDisplayValue(product.id, 'is_new_arrival') || false} onChange={(e) => handleLocalUpdate(product.id, 'is_new_arrival', e.target.checked)} className="accent-accent w-4 h-4 rounded" />
+                                                        <input type="checkbox" checked={!!getDisplayValue(product.id, 'is_new_arrival')} onChange={(e) => handleLocalUpdate(product.id, 'is_new_arrival', e.target.checked)} className="accent-accent w-4 h-4 rounded" />
                                                         <span className="text-xs font-bold text-fg group-hover:text-accent transition-colors">New Arrival</span>
                                                     </label>
                                                     <label className="flex items-center gap-2 cursor-pointer group mt-2 pt-2 border-t border-border">
-                                                        <input type="checkbox" checked={getDisplayValue(product.id, 'is_hidden') || false} onChange={(e) => handleLocalUpdate(product.id, 'is_hidden', e.target.checked)} className="accent-red-500 w-4 h-4 rounded" />
+                                                        <input type="checkbox" checked={!!getDisplayValue(product.id, 'is_hidden')} onChange={(e) => handleLocalUpdate(product.id, 'is_hidden', e.target.checked)} className="accent-red-500 w-4 h-4 rounded" />
                                                         <span className="text-xs font-bold text-red-500 transition-colors">Hidden / Draft</span>
                                                     </label>
                                                 </div>
