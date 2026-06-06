@@ -7,11 +7,12 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const supabase = createClient(supabaseUrl, anonKey);
 
-export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+    const resolvedParams = await params;
     const { data: product } = await supabase
         .from('products')
         .select('*')
-        .eq('id', params.id)
+        .eq('id', resolvedParams.id)
         .single();
 
     if (!product) {
@@ -42,6 +43,7 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
     };
 }
 
-export default function Page({ params }: { params: { id: string } }) {
-    return <ProductClient id={params.id} />;
+export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+    const resolvedParams = await params;
+    return <ProductClient id={resolvedParams.id} />;
 }
