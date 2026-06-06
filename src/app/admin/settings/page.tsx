@@ -32,6 +32,7 @@ function AccordionItem({ title, icon: Icon, children, defaultOpen = false }: { t
 export default function SettingsPage() {
     const { config, refreshConfig } = useSettings();
     const [localConfig, setLocalConfig] = useState(config);
+    const [globalSettings, setGlobalSettings] = useState<any>(null);
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState('');
 
@@ -39,15 +40,25 @@ export default function SettingsPage() {
         setLocalConfig(config);
     }, [config]);
 
+    useEffect(() => {
+        async function fetchGlobal() {
+            const { data } = await supabase.from('store_ui_settings').select('globalSettings').eq('id', 1).single();
+            if (data?.globalSettings) {
+                setGlobalSettings(data.globalSettings);
+            }
+        }
+        fetchGlobal();
+    }, []);
+
     async function handleSave() {
         setSaving(true);
         setMessage('');
         try {
-            const { error } = await supabase.from('store_ui_settings').upsert({
-                id: 1,
+            const { error } = await supabase.from('store_ui_settings').update({
                 config: localConfig,
+                globalSettings: globalSettings,
                 updated_at: new Date().toISOString()
-            }, { onConflict: 'id' });
+            }).eq('id', 1);
             
             if (error) throw error;
             setMessage('Settings saved successfully!');
@@ -160,10 +171,25 @@ export default function SettingsPage() {
                 </AccordionItem>
 
                 <AccordionItem title="Business Information" icon={Store}>
-                    <div className="p-4 bg-[#1A1A1A] border border-[#262626] rounded text-sm text-gray-400">
-                        <p>Configure official Deeprastore business details, tax identification, and registered addresses.</p>
-                        <div className="mt-4 inline-flex items-center gap-2 px-3 py-1 bg-[#262626] text-xs rounded text-gray-300">
-                            <AlertTriangle size={14} className="text-amber-500" /> Coming in next platform update
+                    <div className="max-w-md">
+                        <p className="text-sm text-gray-400 mb-6 leading-relaxed">
+                            Configure official Deeprastore business details and communication channels.
+                        </p>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-[#A3A3A3] uppercase tracking-wider mb-2">Support WhatsApp Number</label>
+                                <input 
+                                    type="text" 
+                                    value={globalSettings?.whatsapp_number || ''} 
+                                    onChange={e => setGlobalSettings({
+                                        ...globalSettings, 
+                                        whatsapp_number: e.target.value
+                                    })}
+                                    placeholder="e.g. 919876543210"
+                                    className="w-full bg-[#1A1A1A] border border-[#333] text-white text-sm rounded px-3 py-2.5 outline-none focus:border-[#D4AF37] transition-colors"
+                                />
+                                <p className="text-xs text-gray-500 mt-2">Include country code without '+' (e.g., 91 for India). Used for automated order inquiries.</p>
+                            </div>
                         </div>
                     </div>
                 </AccordionItem>
