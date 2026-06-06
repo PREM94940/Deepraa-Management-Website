@@ -21,19 +21,49 @@ export const CuratedCollection: React.FC<Props> = ({
 
   useEffect(() => {
     async function fetch() {
-      // Assume a "collections" table mapping collectionKey to product IDs
-      const { data: coll } = await supabase
+      // Map legacy collectionKeys to actual slugs
+      const KEY_TO_SLUG: Record<string, string> = {
+        'bridal_picks': 'bridal-collection',
+        'trending_whatsapp': 'best-sellers',
+        'festival_edit': 'festival-collection',
+        'ready_dispatch': 'ready-to-ship-collection',
+        'new_arrivals': 'new-arrivals',
+        'premium_handpicked': 'premium-collection'
+      };
+      const slug = KEY_TO_SLUG[collectionKey] || collectionKey;
+
+      // 1. Get collection ID by slug
+      const { data: coll, error: collErr } = await supabase
         .from('collections')
-        .select('product_ids')
-        .eq('key', collectionKey)
+        .select('id')
+        .eq('slug', slug)
         .single();
-      if (coll && coll.product_ids?.length) {
-        const ids = coll.product_ids.slice(0, maxItems);
-        const { data: prods } = await supabase
-          .from('products')
-          .select('*')
-          .in('id', ids);
-        if (prods) setProducts(prods);
+        
+      if (coll && coll.id) {
+        // 2. Get product_ids from collection_products join table
+        const { data: mappings } = await supabase
+          .from('collection_products')
+          .select('product_id')
+          .eq('collection_id', coll.id)
+          .order('position', { ascending: true })
+          .limit(maxItems);
+
+        if (mappings && mappings.length > 0) {
+          const ids = mappings.map(m => m.product_id);
+          // 3. Fetch products
+          const { data: prods } = await supabase
+            .from('products')
+            .select('*')
+            .in('id', ids);
+            
+          if (prods) {
+            // Preserve the ordered sorting from the join table
+            const orderedProds = ids.map(id => prods.find(p => p.id === id)).filter(Boolean);
+            setProducts(orderedProds);
+          }
+        }
+      } else if (collErr) {
+        console.error('Failed to find collection slug:', slug, collErr.message);
       }
       setLoading(false);
     }
@@ -41,7 +71,7 @@ export const CuratedCollection: React.FC<Props> = ({
   }, [collectionKey, maxItems]);
 
   if (loading) {
-    return <p className="text-center py-8">Loading collection...</p>;
+    return <div className="text-center py-8 text-sm opacity-50">Loading curated pieces...</div>;
   }
 
   return (
