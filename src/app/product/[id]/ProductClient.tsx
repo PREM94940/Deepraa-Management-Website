@@ -70,7 +70,16 @@ export default function ProductClient({ id }: { id: string }) {
     const handleWhatsAppOrder = () => {
         if (!product) return;
         const number = globalSettings.whatsapp_number || '919876543210';
-        const message = `Hello Deeprastore, I want to order:\n*${product.title}* (SKU: ${product.sku})\nQuantity: ${qty}\nStitching Required: ${needsStitching ? 'Yes' : 'No'}\nFall & Pico: ${needsFallPico ? 'Yes' : 'No'}\nLink: ${window.location.href}`;
+
+        const stripHtml = (html: string) => {
+            if (!html) return '';
+            let text = html.replace(/<[^>]*>?/gm, ' ');
+            text = text.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/â€“/g, '-');
+            return text.replace(/\s\s+/g, ' ').trim();
+        };
+
+        const cleanTitle = stripHtml(product.title);
+        const message = `Hello Deeprastore, I want to order:\n*${cleanTitle}* (SKU: ${product.sku})\nQuantity: ${qty}\nStitching Required: ${needsStitching ? 'Yes' : 'No'}\nFall & Pico: ${needsFallPico ? 'Yes' : 'No'}\nLink: ${window.location.href}`;
         window.open(`https://wa.me/${number}?text=${encodeURIComponent(message)}`, '_blank');
 
         if (typeof window !== 'undefined') {

@@ -22,21 +22,32 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
         };
     }
 
+    const stripHtml = (html: string) => {
+        if (!html) return '';
+        // Remove HTML tags
+        let text = html.replace(/<[^>]*>?/gm, ' ');
+        // Decode common entities or mojibake
+        text = text.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/â€“/g, '-');
+        return text.replace(/\s\s+/g, ' ').trim();
+    };
+
     const imageUrl = product.images && product.images.length > 0 ? product.images[0] : '';
-    const desc = product.description ? product.description.substring(0, 160) : `Buy ${product.title} at Deeprastore. Luxury handcrafted ethnic wear.`;
+    const cleanTitle = stripHtml(product.title);
+    const rawDesc = product.description ? stripHtml(product.description) : `Buy ${cleanTitle} at Deeprastore. Luxury handcrafted ethnic wear.`;
+    const desc = rawDesc.substring(0, 160);
 
     return {
-        title: `${product.title} | Deeprastore`,
+        title: `${cleanTitle} | Deeprastore`,
         description: desc,
         openGraph: {
-            title: `${product.title} | Deeprastore`,
+            title: `${cleanTitle} | Deeprastore`,
             description: desc,
-            images: imageUrl ? [{ url: imageUrl, alt: product.title }] : [],
+            images: imageUrl ? [{ url: imageUrl, alt: cleanTitle }] : [],
             type: 'website',
         },
         twitter: {
             card: 'summary_large_image',
-            title: `${product.title} | Deeprastore`,
+            title: `${cleanTitle} | Deeprastore`,
             description: desc,
             images: imageUrl ? [imageUrl] : [],
         },
