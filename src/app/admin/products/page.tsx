@@ -37,6 +37,10 @@ export default function ProductsPage() {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const csvInputRef = useRef<HTMLInputElement>(null);
 
+    // Bulk selection state
+    const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
+    const [isDeletingBulk, setIsDeletingBulk] = useState(false);
+
     // Inline stock editing
     const [inlineStock, setInlineStock] = useState<Record<string, number>>({});
 
@@ -145,6 +149,43 @@ export default function ProductsPage() {
             alert('Failed to update stock: ' + err.message);
         }
     }
+
+    async function handleBulkDelete() {
+        if (selectedProducts.length === 0) return;
+        const confirmText = prompt(`Type "DELETE ${selectedProducts.length}" to confirm deleting ${selectedProducts.length} products.`);
+        if (confirmText !== `DELETE ${selectedProducts.length}`) {
+            alert('Bulk delete cancelled.');
+            return;
+        }
+
+        setIsDeletingBulk(true);
+        try {
+            for (const id of selectedProducts) {
+                await deleteProductAction(id);
+            }
+            setProducts(products.filter(p => !selectedProducts.includes(p.id!)));
+            setSelectedProducts([]);
+        } catch (err: any) {
+            alert('Failed during bulk delete: ' + err.message);
+            fetchProducts(false);
+        } finally {
+            setIsDeletingBulk(false);
+        }
+    }
+
+    const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.checked) {
+            setSelectedProducts(filteredProducts.map(p => p.id!));
+        } else {
+            setSelectedProducts([]);
+        }
+    };
+
+    const toggleProductSelection = (id: string) => {
+        setSelectedProducts(prev => 
+            prev.includes(id) ? prev.filter(pId => pId !== id) : [...prev, id]
+        );
+    };
 
     async function handleDeleteProduct(id: string) {
         if (!confirm('Are you sure you want to delete this product?')) return;
@@ -402,6 +443,21 @@ export default function ProductsPage() {
                 </div>
             </div>
 
+            {/* Bulk Actions Bar */}
+            {selectedProducts.length > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#FEF2F2', padding: '12px 16px', borderRadius: '8px', marginBottom: '24px', border: '1px solid #FEE2E2' }}>
+                    <div style={{ fontWeight: 600, color: '#991B1B' }}>
+                        {selectedProducts.length} products selected
+                    </div>
+                    <div style={{ display: 'flex', gap: '12px' }}>
+                        <button onClick={() => setSelectedProducts([])} className="btn btn-outline" style={{ background: '#FFF', borderColor: '#FCA5A5', color: '#B91C1C' }}>Cancel</button>
+                        <button onClick={handleBulkDelete} disabled={isDeletingBulk} className="btn btn-primary" style={{ background: '#DC2626', borderColor: '#DC2626', color: '#FFF' }}>
+                            {isDeletingBulk ? 'Deleting...' : 'Bulk Delete'}
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {loading ? (
                 <div style={{ padding: '40px', textAlign: 'center' }}>Loading inventory...</div>
             ) : errorMsg ? (
@@ -417,9 +473,17 @@ export default function ProductsPage() {
                 // GRID VIEW
                 <div className="products-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
                     {filteredProducts.map(product => (
-                        <div key={product.id} className="card" style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '16px', position: 'relative' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                                <span style={{ background: '#F1F5F9', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600 }}>{product.sku || 'NO-SKU'}</span>
+                        <div key={product.id} className="card" style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '16px', position: 'relative', border: selectedProducts.includes(product.id!) ? '2px solid #8B5CF6' : '1px solid #E2E8F0' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', alignItems: 'center' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <input 
+                                        type="checkbox" 
+                                        checked={selectedProducts.includes(product.id!)}
+                                        onChange={() => toggleProductSelection(product.id!)}
+                                        style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                                    />
+                                    <span style={{ background: '#F1F5F9', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600 }}>{product.sku || 'NO-SKU'}</span>
+                                </div>
                                 <span style={{ 
                                     background: product.status === 'Active' ? '#D1FAE5' : '#FEE2E2',
                                     color: product.status === 'Active' ? '#059669' : '#DC2626',
@@ -478,6 +542,14 @@ export default function ProductsPage() {
                     <table className="admin-table" style={{ width: '100%', minWidth: '900px' }}>
                         <thead>
                             <tr>
+                                <th style={{ width: '40px' }}>
+                                    <input 
+                                        type="checkbox" 
+                                        checked={selectedProducts.length > 0 && selectedProducts.length === filteredProducts.length}
+                                        onChange={handleSelectAll}
+                                        style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                                    />
+                                </th>
                                 <th style={{ width: '60px' }}>Image</th>
                                 <th>SKU</th>
                                 <th>Product Details</th>
@@ -490,7 +562,15 @@ export default function ProductsPage() {
                         </thead>
                         <tbody>
                             {filteredProducts.map(product => (
-                                <tr key={product.id}>
+                                <tr key={product.id} style={{ background: selectedProducts.includes(product.id!) ? '#F5F3FF' : 'transparent' }}>
+                                    <td>
+                                        <input 
+                                            type="checkbox" 
+                                            checked={selectedProducts.includes(product.id!)}
+                                            onChange={() => toggleProductSelection(product.id!)}
+                                            style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                                        />
+                                    </td>
                                     <td>
                                         <div style={{ width: '40px', height: '40px', borderRadius: '6px', background: '#F1F5F9', overflow: 'hidden' }}>
                                             {product.images && product.images.length > 0 && (

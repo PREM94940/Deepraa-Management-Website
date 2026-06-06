@@ -1,0 +1,98 @@
+[
+  {
+    "type": "error",
+    "text": "Failed to load resource: the server responded with a status of 400 ()",
+    "location": "https://awyqinnivsvqsohfmmcj.supabase.co/rest/v1/store_ui_settings?select=*&key=eq.admin_ui",
+    "lineNumber": "unknown"
+  },
+  {
+    "type": "error",
+    "text": "Failed to load resource: the server responded with a status of 400 ()",
+    "location": "https://awyqinnivsvqsohfmmcj.supabase.co/rest/v1/store_ui_settings?select=*&key=eq.admin_ui",
+    "lineNumber": "unknown"
+  },
+  {
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_CLOSED",
+    "location": "https://via.placeholder.com/800x1000?text=Mock+Dupatta+1",
+    "lineNumber": "unknown"
+  },
+  {
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_CLOSED",
+    "location": "https://via.placeholder.com/800x1000?text=Mock+Saree+1",
+    "lineNumber": "unknown"
+  },
+  {
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_CLOSED",
+    "location": "https://via.placeholder.com/800x1000?text=Mock+Kurta+1",
+    "lineNumber": "unknown"
+  },
+  {
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_CLOSED",
+    "location": "https://via.placeholder.com/800x1000?text=Mock+Tunic+1",
+    "lineNumber": "unknown"
+  },
+  {
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_CLOSED",
+    "location": "https://via.placeholder.com/800x1000?text=Mock+Anarkali+1",
+    "lineNumber": "unknown"
+  },
+  {
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_CLOSED",
+    "location": "https://via.placeholder.com/800x1000?text=Mock+Bridal+Gown+1",
+    "lineNumber": "unknown"
+  },
+  {
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_CLOSED",
+    "location": "https://via.placeholder.com/800x1000?text=Mock+Blouse+1",
+    "lineNumber": "unknown"
+  },
+  {
+    "type": "error",
+    "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "location": "http://localhost:3000/admin/collections",
+    "lineNumber": "unknown"
+  },
+  {
+    "type": "error",
+    "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "location": "http://localhost:3000/admin/collections",
+    "lineNumber": "unknown"
+  },
+  {
+    "type": "error",
+    "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "location": "http://localhost:3000/admin/collections",
+    "lineNumber": "unknown"
+  },
+  {
+    "type": "error",
+    "text": "Failed to load resource: the server responded with a status of 400 ()",
+    "location": "https://awyqinnivsvqsohfmmcj.supabase.co/rest/v1/store_ui_settings?select=*&key=eq.admin_ui",
+    "lineNumber": "unknown"
+  },
+  {
+    "type": "error",
+    "text": "Failed to load resource: the server responded with a status of 400 ()",
+    "location": "https://awyqinnivsvqsohfmmcj.supabase.co/rest/v1/store_ui_settings?select=*&key=eq.admin_ui",
+    "lineNumber": "unknown"
+  },
+  {
+    "type": "error",
+    "text": "Failed to load resource: the server responded with a status of 400 ()",
+    "location": "https://awyqinnivsvqsohfmmcj.supabase.co/rest/v1/store_ui_settings?select=*&key=eq.admin_ui",
+    "lineNumber": "unknown"
+  },
+  {
+    "type": "error",
+    "text": "Failed to load resource: the server responded with a status of 400 ()",
+    "location": "https://awyqinnivsvqsohfmmcj.supabase.co/rest/v1/store_ui_settings?select=*&key=eq.admin_ui",
+    "lineNumber": "unknown"
+  }
+]

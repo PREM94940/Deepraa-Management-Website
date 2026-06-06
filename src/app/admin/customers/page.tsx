@@ -1,8 +1,8 @@
 "use client";
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Customer } from '@/types';
-import { Plus, Phone, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { Plus, Phone, AlertTriangle, ShieldCheck, Edit, Trash2, X } from 'lucide-react';
 import DataTable from '@/components/admin/DataTable';
 import Link from 'next/link';
 
@@ -15,9 +15,34 @@ export default function CustomersPage() {
     // New customer form
     const [newCustomer, setNewCustomer] = useState({ full_name: '', phone_number: '', city: '' });
     const [adding, setAdding] = useState(false);
+    
+    // Edit customer form
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+    const [updating, setUpdating] = useState(false);
 
     useEffect(() => {
         fetchCustomers();
+
+        // Real-time sync
+        const channel = supabase.channel('schema-db-changes')
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'customers'
+                },
+                (payload) => {
+                    console.log('Real-time update received:', payload);
+                    fetchCustomers(); // Refetch to get updated relations and sorted data
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, [filterLoyalty]);
 
     async function fetchCustomers() {
@@ -54,7 +79,6 @@ export default function CustomersPage() {
             
             setIsAddModalOpen(false);
             setNewCustomer({ full_name: '', phone_number: '', city: '' });
-            fetchCustomers();
         } catch (err: any) {
             alert("Error adding customer: " + err.message);
         } finally {
@@ -62,19 +86,39 @@ export default function CustomersPage() {
         }
     }
 
-    const formatCurrency = (val: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(val);
+    async function handleUpdateCustomer(e: React.FormEvent) {
+        e.preventDefault();
+        if (!editingCustomer) return;
+        setUpdating(true);
+        try {
+            const { error } = await supabase.from('customers').update({
+                full_name: editingCustomer.full_name,
+                phone_number: editingCustomer.phone_number,
+                city: editingCustomer.city
+            }).eq('id', editingCustomer.id);
+            if (error) throw error;
+            
+            setIsEditModalOpen(false);
+            setEditingCustomer(null);
+        } catch (err: any) {
+            alert("Error updating customer: " + err.message);
+        } finally {
+            setUpdating(false);
+        }
+    }
+
+    const formatCurrency = useCallback((val: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(val), []);
 
     async function handleDeleteSelected(ids: string[]) {
         try {
             const { error } = await supabase.from('customers').delete().in('id', ids);
             if (error) throw error;
-            fetchCustomers();
         } catch (err: any) {
             alert('Error deleting customers: ' + err.message);
         }
     }
 
-    const columns = [
+    const columns = useMemo(() => [
         {
             key: 'full_name',
             header: 'Identity',
@@ -148,10 +192,24 @@ export default function CustomersPage() {
             key: 'actions',
             header: 'Actions',
             render: (c: Customer) => (
-                <Link href={`/admin/customers/${c.id}`} className="btn btn-outline" style={{ padding: '4px 12px', fontSize: '0.8rem', display: 'inline-block' }}>View Profile</Link>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <Link href={`/admin/customers/${c.id}`} className="btn btn-outline" style={{ padding: '4px 12px', fontSize: '0.8rem', display: 'inline-block' }}>View Profile</Link>
+                    <button 
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingCustomer(c);
+                            setIsEditModalOpen(true);
+                        }}
+                        className="btn btn-outline"
+                        style={{ padding: '4px 8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        title="Edit Customer"
+                    >
+                        <Edit size={14} />
+                    </button>
+                </div>
             )
         }
-    ];
+    ], [formatCurrency]);
 
     return (
         <div>
@@ -206,25 +264,58 @@ export default function CustomersPage() {
 
             {/* Add Customer Modal */}
             {isAddModalOpen && (
-                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-                    <div style={{ background: '#FFF', padding: '32px', borderRadius: '12px', width: '400px', maxWidth: '90%' }}>
-                        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '16px' }}>Add Customer Manually</h2>
-                        <form onSubmit={handleAddCustomer} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, animation: 'fadeIn 0.2s ease-out' }}>
+                    <div style={{ background: 'var(--surface-color, #1A1A1A)', border: '1px solid var(--border-color, #333)', padding: '32px', borderRadius: '16px', width: '400px', maxWidth: '90%', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                            <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-primary, #FFF)' }}>Add Customer Manually</h2>
+                            <button onClick={() => setIsAddModalOpen(false)} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer' }}><X size={20} /></button>
+                        </div>
+                        <form onSubmit={handleAddCustomer} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                             <div>
-                                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '4px' }}>Full Name *</label>
-                                <input required type="text" value={newCustomer.full_name} onChange={e => setNewCustomer({...newCustomer, full_name: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #E2E8F0', borderRadius: '6px' }} />
+                                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '8px', color: 'var(--text-secondary, #A0AEC0)' }}>Full Name *</label>
+                                <input required type="text" value={newCustomer.full_name} onChange={e => setNewCustomer({...newCustomer, full_name: e.target.value})} style={{ width: '100%', padding: '12px', background: 'var(--bg-color, #000)', border: '1px solid var(--border-color, #333)', borderRadius: '8px', color: '#FFF' }} />
                             </div>
                             <div>
-                                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '4px' }}>Phone Number *</label>
-                                <input required type="tel" value={newCustomer.phone_number} onChange={e => setNewCustomer({...newCustomer, phone_number: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #E2E8F0', borderRadius: '6px' }} />
+                                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '8px', color: 'var(--text-secondary, #A0AEC0)' }}>Phone Number *</label>
+                                <input required type="tel" value={newCustomer.phone_number} onChange={e => setNewCustomer({...newCustomer, phone_number: e.target.value})} style={{ width: '100%', padding: '12px', background: 'var(--bg-color, #000)', border: '1px solid var(--border-color, #333)', borderRadius: '8px', color: '#FFF' }} />
                             </div>
                             <div>
-                                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '4px' }}>City (Optional)</label>
-                                <input type="text" value={newCustomer.city} onChange={e => setNewCustomer({...newCustomer, city: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #E2E8F0', borderRadius: '6px' }} />
+                                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '8px', color: 'var(--text-secondary, #A0AEC0)' }}>City (Optional)</label>
+                                <input type="text" value={newCustomer.city} onChange={e => setNewCustomer({...newCustomer, city: e.target.value})} style={{ width: '100%', padding: '12px', background: 'var(--bg-color, #000)', border: '1px solid var(--border-color, #333)', borderRadius: '8px', color: '#FFF' }} />
                             </div>
-                            <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+                            <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
                                 <button type="button" onClick={() => setIsAddModalOpen(false)} className="btn btn-outline" style={{ flex: 1 }}>Cancel</button>
                                 <button type="submit" disabled={adding} className="btn btn-primary" style={{ flex: 1 }}>{adding ? 'Saving...' : 'Save Customer'}</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Customer Modal */}
+            {isEditModalOpen && editingCustomer && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, animation: 'fadeIn 0.2s ease-out' }}>
+                    <div style={{ background: 'var(--surface-color, #1A1A1A)', border: '1px solid var(--border-color, #333)', padding: '32px', borderRadius: '16px', width: '400px', maxWidth: '90%', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                            <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-primary, #FFF)' }}>Edit Customer</h2>
+                            <button onClick={() => setIsEditModalOpen(false)} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer' }}><X size={20} /></button>
+                        </div>
+                        <form onSubmit={handleUpdateCustomer} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '8px', color: 'var(--text-secondary, #A0AEC0)' }}>Full Name *</label>
+                                <input required type="text" value={editingCustomer.full_name} onChange={e => setEditingCustomer({...editingCustomer, full_name: e.target.value})} style={{ width: '100%', padding: '12px', background: 'var(--bg-color, #000)', border: '1px solid var(--border-color, #333)', borderRadius: '8px', color: '#FFF' }} />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '8px', color: 'var(--text-secondary, #A0AEC0)' }}>Phone Number *</label>
+                                <input required type="tel" value={editingCustomer.phone_number} onChange={e => setEditingCustomer({...editingCustomer, phone_number: e.target.value})} style={{ width: '100%', padding: '12px', background: 'var(--bg-color, #000)', border: '1px solid var(--border-color, #333)', borderRadius: '8px', color: '#FFF' }} />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '8px', color: 'var(--text-secondary, #A0AEC0)' }}>City (Optional)</label>
+                                <input type="text" value={editingCustomer.city} onChange={e => setEditingCustomer({...editingCustomer, city: e.target.value})} style={{ width: '100%', padding: '12px', background: 'var(--bg-color, #000)', border: '1px solid var(--border-color, #333)', borderRadius: '8px', color: '#FFF' }} />
+                            </div>
+                            <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
+                                <button type="button" onClick={() => setIsEditModalOpen(false)} className="btn btn-outline" style={{ flex: 1 }}>Cancel</button>
+                                <button type="submit" disabled={updating} className="btn btn-primary" style={{ flex: 1 }}>{updating ? 'Updating...' : 'Update Customer'}</button>
                             </div>
                         </form>
                     </div>

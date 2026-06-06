@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { TrendingUp, Users, ShoppingBag, AlertTriangle } from 'lucide-react';
@@ -17,6 +17,24 @@ export default function AnalyticsDashboard() {
 
     const COLORS = ['#8B5CF6', '#10B981', '#F59E0B', '#EF4444'];
 
+    const getMonthsData = useMemo(() => {
+        const result = [];
+        const d = new Date();
+        d.setDate(1); // Set to 1st to avoid end-of-month shifting bugs
+        for (let i = 5; i >= 0; i--) {
+            const pastDate = new Date(d.getFullYear(), d.getMonth() - i, 1);
+            const monthName = pastDate.toLocaleString('default', { month: 'short' });
+            const year = pastDate.getFullYear();
+            result.push({
+                name: `${monthName} ${year}`,
+                monthIndex: pastDate.getMonth(),
+                year: pastDate.getFullYear(),
+                revenue: 0
+            });
+        }
+        return result;
+    }, []);
+
     useEffect(() => {
         fetchAnalytics();
     }, []);
@@ -24,14 +42,44 @@ export default function AnalyticsDashboard() {
     async function fetchAnalytics() {
         setLoading(true);
         try {
-            // 1. Get aggregate stats
+            // 1. Get aggregate stats. To avoid heavy memory usage, we only fetch last 6 months of orders for charts.
+            // For total stats, we can just fetch all or keep doing it this way if there's no custom RPC.
+            // Ideally we'd use an RPC for total count/sum. We'll fetch all but select minimal columns.
             const { data: orders } = await supabase.from('orders').select('total_amount, status, source, created_at');
             const { count: customerCount } = await supabase.from('customers').select('*', { count: 'exact', head: true });
             const { count: complaintsCount } = await supabase.from('complaints').select('*', { count: 'exact', head: true });
 
             if (orders) {
-                const totalRev = orders.reduce((sum, o) => sum + Number(o.total_amount || 0), 0);
-                const activeOrd = orders.filter(o => !['Delivered', 'Cancelled'].includes(o.status)).length;
+                let totalRev = 0;
+                let activeOrd = 0;
+                const sources: Record<string, number> = {};
+
+                // Clone our predefined 6 months structure
+                const revByMonthMap = getMonthsData.map(m => ({ ...m }));
+
+                // Avoid .reduce and do a single fast loop
+                for (let i = 0; i < orders.length; i++) {
+                    const o = orders[i];
+                    const amount = Number(o.total_amount || 0);
+                    
+                    totalRev += amount;
+                    if (o.status !== 'Delivered' && o.status !== 'Cancelled') {
+                        activeOrd++;
+                    }
+
+                    const src = o.source || 'website';
+                    sources[src] = (sources[src] || 0) + 1;
+
+                    // Match date for charts
+                    const d = new Date(o.created_at);
+                    const monthIdx = d.getMonth();
+                    const year = d.getFullYear();
+                    
+                    const targetMonth = revByMonthMap.find(m => m.monthIndex === monthIdx && m.year === year);
+                    if (targetMonth) {
+                        targetMonth.revenue += amount;
+                    }
+                }
                 
                 setStats({
                     totalRevenue: totalRev,
@@ -40,29 +88,9 @@ export default function AnalyticsDashboard() {
                     complaints: complaintsCount || 0
                 });
 
-                // Process Source Data for Pie Chart
-                const sources = orders.reduce((acc: any, o) => {
-                    const src = o.source || 'website';
-                    acc[src] = (acc[src] || 0) + 1;
-                    return acc;
-                }, {});
                 setSourceData(Object.keys(sources).map(key => ({ name: key.toUpperCase(), value: sources[key] })));
-
-                // Process Revenue Data for Bar Chart (Last 6 months approx, or just by month)
-                const revByMonth = orders.reduce((acc: any, o) => {
-                    const date = new Date(o.created_at);
-                    const monthsList = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                    const month = monthsList[date.getMonth()];
-                    acc[month] = (acc[month] || 0) + Number(o.total_amount || 0);
-                    return acc;
-                }, {});
                 
-                // Default empty months for demo purposes if no data
-                const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                const chartData = months.map(m => ({ name: m, revenue: revByMonth[m] || 0 }));
-                // Filter only months up to current for better view, or just show all if data exists
-                const currentMonthIdx = new Date().getMonth();
-                setRevenueData(chartData.slice(Math.max(0, currentMonthIdx - 5), currentMonthIdx + 1));
+                setRevenueData(revByMonthMap.map(m => ({ name: m.name, revenue: m.revenue })));
             }
 
         } catch (error) {
@@ -82,8 +110,8 @@ export default function AnalyticsDashboard() {
             </div>
 
             {/* Top KPIs */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '32px' }}>
-                <div className="stat-card" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', marginBottom: '32px' }}>
+                <div className="stat-card" style={{ display: 'flex', alignItems: 'center', gap: '16px', background: 'var(--surface-color, #1A1A1A)', padding: '24px', borderRadius: '12px', border: '1px solid var(--border-color, #333)' }}>
                     <div style={{ background: '#F5F3FF', padding: '12px', borderRadius: '12px', color: '#8B5CF6' }}>
                         <TrendingUp size={24} />
                     </div>
@@ -92,7 +120,7 @@ export default function AnalyticsDashboard() {
                         <div className="stat-value">₹{stats.totalRevenue.toLocaleString()}</div>
                     </div>
                 </div>
-                <div className="stat-card" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div className="stat-card" style={{ display: 'flex', alignItems: 'center', gap: '16px', background: 'var(--surface-color, #1A1A1A)', padding: '24px', borderRadius: '12px', border: '1px solid var(--border-color, #333)' }}>
                     <div style={{ background: '#ECFDF5', padding: '12px', borderRadius: '12px', color: '#10B981' }}>
                         <ShoppingBag size={24} />
                     </div>
@@ -101,7 +129,7 @@ export default function AnalyticsDashboard() {
                         <div className="stat-value">{stats.activeOrders}</div>
                     </div>
                 </div>
-                <div className="stat-card" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div className="stat-card" style={{ display: 'flex', alignItems: 'center', gap: '16px', background: 'var(--surface-color, #1A1A1A)', padding: '24px', borderRadius: '12px', border: '1px solid var(--border-color, #333)' }}>
                     <div style={{ background: '#EFF6FF', padding: '12px', borderRadius: '12px', color: '#3B82F6' }}>
                         <Users size={24} />
                     </div>
@@ -110,7 +138,7 @@ export default function AnalyticsDashboard() {
                         <div className="stat-value">{stats.totalCustomers}</div>
                     </div>
                 </div>
-                <div className="stat-card" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div className="stat-card" style={{ display: 'flex', alignItems: 'center', gap: '16px', background: 'var(--surface-color, #1A1A1A)', padding: '24px', borderRadius: '12px', border: '1px solid var(--border-color, #333)' }}>
                     <div style={{ background: '#FEF2F2', padding: '12px', borderRadius: '12px', color: '#EF4444' }}>
                         <AlertTriangle size={24} />
                     </div>
@@ -122,8 +150,8 @@ export default function AnalyticsDashboard() {
             </div>
 
             {/* Charts Row */}
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
-                <div style={{ background: '#FFF', padding: '24px', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
+                <div style={{ background: 'var(--surface-color, #1A1A1A)', padding: '24px', borderRadius: '12px', border: '1px solid var(--border-color, #333)' }}>
                     <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '24px' }}>Revenue Overview (Last 6 Months)</h3>
                     <div style={{ height: '300px' }}>
                         <ResponsiveContainer width="100%" height="100%">
@@ -138,7 +166,7 @@ export default function AnalyticsDashboard() {
                     </div>
                 </div>
 
-                <div style={{ background: '#FFF', padding: '24px', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+                <div style={{ background: 'var(--surface-color, #1A1A1A)', padding: '24px', borderRadius: '12px', border: '1px solid var(--border-color, #333)' }}>
                     <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '24px' }}>Sales by Channel</h3>
                     <div style={{ height: '300px' }}>
                         <ResponsiveContainer width="100%" height="100%">

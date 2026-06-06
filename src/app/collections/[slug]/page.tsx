@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from 'react';
+import { use, useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
@@ -8,8 +8,8 @@ import { MobileBottomNav } from '@/components/MobileBottomNav';
 import { useStorefrontCMS } from '@/hooks/useStorefrontCMS';
 import { CollectionGrid } from '@/themes/editorial_boutique/components/CollectionGrid';
 
-export default function DynamicCollection({ params }: { params: { slug: string } }) {
-    const { slug } = params;
+export default function DynamicCollection({ params }: { params: Promise<{ slug: string }> }) {
+    const { slug } = use(params);
     const [collection, setCollection] = useState<any>(null);
     const [products, setProducts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);

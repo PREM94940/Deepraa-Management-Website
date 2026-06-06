@@ -89,7 +89,7 @@ export default function AdminCatalogPage() {
             if (cError) throw cError;
 
             const { data: pcData, error: pcError } = await supabase
-                .from('product_collections')
+                .from('collection_products')
                 .select('product_id, collection_id');
                 
             if (pcError && pcError.code !== '42P01') { 
@@ -192,10 +192,10 @@ export default function AdminCatalogPage() {
             }
             
             if (updatedCollections) {
-                await supabase.from('product_collections').delete().eq('product_id', productId);
-                const inserts = Array.from(updatedCollections).map(cid => ({ product_id: productId, collection_id: cid }));
+                await supabase.from('collection_products').delete().eq('product_id', productId);
+                const inserts = Array.from(updatedCollections).map((cid, idx) => ({ product_id: productId, collection_id: cid, position: idx }));
                 if (inserts.length > 0) {
-                    await supabase.from('product_collections').insert(inserts);
+                    await supabase.from('collection_products').insert(inserts);
                 }
                 setProductCollections(prev => ({ ...prev, [productId]: updatedCollections }));
             }

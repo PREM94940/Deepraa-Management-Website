@@ -2,21 +2,26 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useSettings } from '@/components/admin/SettingsProvider';
-import { ChevronDown, ChevronRight, Save, CheckCircle, AlertTriangle } from 'lucide-react';
+import { ChevronDown, ChevronRight, Save, CheckCircle, AlertTriangle, LayoutDashboard, Settings as SettingsIcon, Store, Webhook } from 'lucide-react';
 
-function AccordionItem({ title, children, defaultOpen = false }: { title: string, children: React.ReactNode, defaultOpen?: boolean }) {
+function AccordionItem({ title, icon: Icon, children, defaultOpen = false }: { title: string, icon?: any, children: React.ReactNode, defaultOpen?: boolean }) {
     const [isOpen, setIsOpen] = useState(defaultOpen);
     return (
-        <div style={{ border: '1px solid #E2E8F0', borderRadius: '8px', marginBottom: '16px', background: '#FFF' }}>
+        <div className="border border-[#262626] rounded bg-[#161616] mb-4 overflow-hidden shadow-sm">
             <button 
                 onClick={() => setIsOpen(!isOpen)}
-                style={{ width: '100%', display: 'flex', justifyContent: 'space-between', padding: '16px', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '1.05rem', color: '#1E293B', alignItems: 'center' }}
+                className="w-full flex justify-between items-center p-4 bg-[#1A1A1A] hover:bg-[#202020] transition-colors border-none cursor-pointer outline-none"
             >
-                {title}
-                {isOpen ? <ChevronDown size={20}/> : <ChevronRight size={20}/>}
+                <div className="flex items-center gap-3">
+                    {Icon && <Icon className="w-5 h-5 text-[#D4AF37]" />}
+                    <span className="font-semibold text-[15px] text-white tracking-wide">{title}</span>
+                </div>
+                <div className="text-gray-400">
+                    {isOpen ? <ChevronDown size={20}/> : <ChevronRight size={20}/>}
+                </div>
             </button>
             {isOpen && (
-                <div style={{ padding: '16px', borderTop: '1px solid #E2E8F0' }}>
+                <div className="p-6 border-t border-[#262626] bg-[#111111]">
                     {children}
                 </div>
             )}
@@ -56,83 +61,125 @@ export default function SettingsPage() {
     }
 
     return (
-        <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-            <div className="content-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                    <h1>Dynamic Settings Configuration</h1>
-                    <p>Customize tabs, warnings, and business integrations</p>
-                </div>
-                <button onClick={handleSave} disabled={saving} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Save size={16} /> {saving ? 'Saving...' : 'Save Settings'}
-                </button>
-            </div>
-
-            {message && (
-                <div style={{ padding: '12px 16px', marginBottom: '24px', borderRadius: '8px', background: message.includes('Error') ? '#FEE2E2' : '#DCFCE7', color: message.includes('Error') ? '#991B1B' : '#166534', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    {message.includes('Error') ? <AlertTriangle size={18} /> : <CheckCircle size={18} />}
-                    {message}
-                </div>
-            )}
-
-            <AccordionItem title="UI Layout & Navigation Controls" defaultOpen={true}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+        <div className="min-h-screen bg-[#111111] text-[#E5E5E5] font-sans p-8">
+            <div className="max-w-4xl mx-auto">
+                <div className="flex justify-between items-center mb-8 pb-4 border-b border-[#262626]">
                     <div>
-                        <h3 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: '12px' }}>Visibility Toggles</h3>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', cursor: 'pointer' }}>
-                            <input type="checkbox" checked={localConfig.hideProducts} onChange={e => setLocalConfig({...localConfig, hideProducts: e.target.checked})} />
-                            Hide 'Products' Tab
-                        </label>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                            <input type="checkbox" checked={localConfig.hideComplaints} onChange={e => setLocalConfig({...localConfig, hideComplaints: e.target.checked})} />
-                            Hide 'Complaints' Tab
-                        </label>
+                        <h1 className="text-2xl font-bold font-display uppercase tracking-widest text-white mb-2">Platform Settings</h1>
+                        <p className="text-sm text-[#A3A3A3]">Manage Deeprastore configuration, UI preferences, and integrations.</p>
                     </div>
-                    <div>
-                        <h3 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: '12px' }}>Tab Renaming</h3>
-                        {Object.entries(localConfig.tabLabels).map(([key, label]) => (
-                            <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                                <span style={{ width: '100px', fontSize: '0.85rem', color: '#64748B', textTransform: 'capitalize' }}>{key}</span>
-                                <input 
-                                    type="text" 
-                                    value={label}
-                                    onChange={e => setLocalConfig({
-                                        ...localConfig, 
-                                        tabLabels: { ...localConfig.tabLabels, [key]: e.target.value }
-                                    })}
-                                    style={{ flex: 1, padding: '6px 12px', border: '1px solid #E2E8F0', borderRadius: '6px', fontSize: '0.9rem' }}
-                                />
+                    <button 
+                        onClick={handleSave} 
+                        disabled={saving} 
+                        className="px-6 py-2.5 bg-[#D4AF37] hover:bg-[#b5952f] text-black font-semibold rounded text-sm transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <Save size={16} /> {saving ? 'Saving...' : 'Save Changes'}
+                    </button>
+                </div>
+
+                {message && (
+                    <div className={`p-4 mb-6 rounded flex items-center gap-3 text-sm font-medium border ${message.includes('Error') ? 'bg-red-950/30 border-red-900/50 text-red-400' : 'bg-green-950/30 border-green-900/50 text-green-400'}`}>
+                        {message.includes('Error') ? <AlertTriangle size={18} /> : <CheckCircle size={18} />}
+                        {message}
+                    </div>
+                )}
+
+                <AccordionItem title="UI Layout & Navigation Controls" icon={LayoutDashboard} defaultOpen={true}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div>
+                            <h3 className="text-sm uppercase tracking-widest text-[#D4AF37] font-semibold mb-4">Visibility Toggles</h3>
+                            <div className="space-y-4">
+                                <label className="flex items-center gap-3 cursor-pointer group">
+                                    <div className="relative flex items-center">
+                                        <input 
+                                            type="checkbox" 
+                                            checked={localConfig.hideProducts} 
+                                            onChange={e => setLocalConfig({...localConfig, hideProducts: e.target.checked})}
+                                            className="peer sr-only"
+                                        />
+                                        <div className="w-10 h-5 bg-[#262626] rounded-full peer-checked:bg-[#D4AF37] transition-colors"></div>
+                                        <div className="absolute left-1 top-1 w-3 h-3 bg-white rounded-full transition-transform peer-checked:translate-x-5"></div>
+                                    </div>
+                                    <span className="text-sm text-gray-300 group-hover:text-white transition-colors">Hide 'Products' Tab</span>
+                                </label>
+                                <label className="flex items-center gap-3 cursor-pointer group">
+                                    <div className="relative flex items-center">
+                                        <input 
+                                            type="checkbox" 
+                                            checked={localConfig.hideComplaints} 
+                                            onChange={e => setLocalConfig({...localConfig, hideComplaints: e.target.checked})}
+                                            className="peer sr-only"
+                                        />
+                                        <div className="w-10 h-5 bg-[#262626] rounded-full peer-checked:bg-[#D4AF37] transition-colors"></div>
+                                        <div className="absolute left-1 top-1 w-3 h-3 bg-white rounded-full transition-transform peer-checked:translate-x-5"></div>
+                                    </div>
+                                    <span className="text-sm text-gray-300 group-hover:text-white transition-colors">Hide 'Complaints' Tab</span>
+                                </label>
                             </div>
-                        ))}
+                        </div>
+                        
+                        <div>
+                            <h3 className="text-sm uppercase tracking-widest text-[#D4AF37] font-semibold mb-4">Tab Renaming</h3>
+                            <div className="space-y-3">
+                                {Object.entries(localConfig.tabLabels).map(([key, label]) => (
+                                    <div key={key} className="flex items-center gap-4">
+                                        <span className="w-24 text-xs font-bold text-[#A3A3A3] uppercase tracking-wider">{key}</span>
+                                        <input 
+                                            type="text" 
+                                            value={label as string}
+                                            onChange={e => setLocalConfig({
+                                                ...localConfig, 
+                                                tabLabels: { ...localConfig.tabLabels, [key]: e.target.value }
+                                            })}
+                                            className="flex-1 bg-[#1A1A1A] border border-[#333] text-white text-sm rounded px-3 py-2 outline-none focus:border-[#D4AF37] transition-colors"
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </AccordionItem>
+                </AccordionItem>
 
-            <AccordionItem title="Smart Warnings & Thresholds">
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    <p style={{ fontSize: '0.9rem', color: '#64748B' }}>Configure when the Dashboard should alert you about upcoming delivery dates.</p>
-                    <div>
-                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Delivery Warning Threshold (Days)</label>
-                        <input 
-                            type="number" 
-                            min="1" 
-                            value={localConfig.warningDays} 
-                            onChange={e => setLocalConfig({...localConfig, warningDays: parseInt(e.target.value) || 2})}
-                            style={{ padding: '8px 12px', border: '1px solid #E2E8F0', borderRadius: '6px', width: '150px' }}
-                        />
+                <AccordionItem title="Smart Alerts & Thresholds" icon={SettingsIcon}>
+                    <div className="max-w-md">
+                        <p className="text-sm text-gray-400 mb-6 leading-relaxed">
+                            Configure operational thresholds to ensure timely order fulfillment. The dashboard will highlight orders approaching these deadlines.
+                        </p>
+                        <div className="space-y-2">
+                            <label className="block text-xs font-bold text-[#A3A3A3] uppercase tracking-wider">Delivery Warning Threshold (Days)</label>
+                            <input 
+                                type="number" 
+                                min="1" 
+                                value={localConfig.warningDays} 
+                                onChange={e => setLocalConfig({...localConfig, warningDays: parseInt(e.target.value) || 2})}
+                                className="w-full bg-[#1A1A1A] border border-[#333] text-white text-sm rounded px-3 py-2.5 outline-none focus:border-[#D4AF37] transition-colors"
+                            />
+                            <p className="text-xs text-gray-500 mt-2">Alerts will trigger when an order is this many days away from its delivery date.</p>
+                        </div>
                     </div>
-                </div>
-            </AccordionItem>
+                </AccordionItem>
 
-            <AccordionItem title="Business Information">
-                <p style={{ fontSize: '0.9rem', color: '#64748B' }}>(Placeholder for Deeprastore business details, tax ID, and address info)</p>
-            </AccordionItem>
+                <AccordionItem title="Business Information" icon={Store}>
+                    <div className="p-4 bg-[#1A1A1A] border border-[#262626] rounded text-sm text-gray-400">
+                        <p>Configure official Deeprastore business details, tax identification, and registered addresses.</p>
+                        <div className="mt-4 inline-flex items-center gap-2 px-3 py-1 bg-[#262626] text-xs rounded text-gray-300">
+                            <AlertTriangle size={14} className="text-amber-500" /> Coming in next platform update
+                        </div>
+                    </div>
+                </AccordionItem>
 
-            <AccordionItem title="Shopify Sync & Integrations">
-                <div style={{ padding: '16px', background: '#F8FAFC', borderRadius: '8px', border: '1px dashed #CBD5E1' }}>
-                    <span className="badge badge-pending" style={{ marginBottom: '12px', display: 'inline-block' }}>Temporarily Disabled</span>
-                    <p style={{ fontSize: '0.9rem', color: '#64748B' }}>Shopify and AI configurations are hidden as we are moving to a fully custom site structure. Enable via source if required later.</p>
-                </div>
-            </AccordionItem>
+                <AccordionItem title="Integrations & Sync" icon={Webhook}>
+                    <div className="p-5 bg-amber-950/20 border border-amber-900/30 rounded">
+                        <div className="flex items-center gap-3 mb-2">
+                            <span className="px-2 py-0.5 bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[10px] uppercase font-bold tracking-widest rounded">Disabled</span>
+                            <h4 className="text-white font-medium text-sm">Shopify Headless Sync</h4>
+                        </div>
+                        <p className="text-sm text-amber-200/60 leading-relaxed">
+                            Shopify synchronization and legacy AI configurations are currently disabled as we finalize the migration to the fully custom Deeprastore architecture. Re-enable via source code if necessary.
+                        </p>
+                    </div>
+                </AccordionItem>
+            </div>
         </div>
     );
 }

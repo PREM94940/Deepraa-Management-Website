@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { getCurrentUserRoleAction } from '@/lib/actions/auth';
 import { Clock, Globe, ArrowLeftRight, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
@@ -7,6 +7,7 @@ import { Clock, Globe, ArrowLeftRight, CheckCircle2, XCircle, AlertTriangle } fr
 export default function ActivityDashboard() {
     const [role, setRole] = useState<string>('Staff');
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [snapshots, setSnapshots] = useState<any[]>([]);
     const [auditLogs, setAuditLogs] = useState<any[]>([]);
     const [activeTab, setActiveTab] = useState<'all' | 'publishes' | 'audits'>('all');
@@ -14,6 +15,7 @@ export default function ActivityDashboard() {
     useEffect(() => {
         async function init() {
             setLoading(true);
+            setError(null);
             let userRole = 'Staff';
             try {
                 const res = await getCurrentUserRoleAction();
@@ -50,36 +52,57 @@ export default function ActivityDashboard() {
                     .limit(100)
             ]);
 
+            if (snapRes.error) throw snapRes.error;
+            if (auditRes.error) throw auditRes.error;
+
             setSnapshots(snapRes.data || []);
             setAuditLogs(auditRes.data || []);
-        } catch (error) {
+        } catch (error: any) {
             console.error("Failed to fetch activity logs", error);
+            setError(error.message || "Failed to load activity logs.");
         }
     }
 
-    if (loading) {
-        return <div className="p-8 text-[#A3A3A3]">Loading observability dashboard...</div>;
-    }
+    const allEvents = useMemo(() => {
+        return [
+            ...snapshots.map(s => ({ ...s, type: 'snapshot', date: new Date(s.published_at) })),
+            ...auditLogs.map(a => ({ ...a, type: 'audit', date: new Date(a.created_at) }))
+        ].sort((a, b) => b.date.getTime() - a.date.getTime());
+    }, [snapshots, auditLogs]);
 
-    if (role !== 'Manager') {
+    const displayEvents = useMemo(() => {
+        if (activeTab === 'all') return allEvents;
+        if (activeTab === 'publishes') return allEvents.filter(e => e.type === 'snapshot');
+        return allEvents.filter(e => e.type === 'audit');
+    }, [allEvents, activeTab]);
+
+
+    if (loading) {
         return (
-            <div className="p-8 text-center text-red-500 font-bold">
-                Access Denied. Only Managers can view the Operational Activity Dashboard.
+            <div className="p-8 max-w-6xl mx-auto flex items-center justify-center min-h-[400px]">
+                <div className="flex flex-col items-center gap-4 text-[#A3A3A3]">
+                    <div className="w-8 h-8 border-2 border-[#D4AF37] border-t-transparent rounded-full animate-spin"></div>
+                    <p className="text-sm font-medium uppercase tracking-widest">Loading observability dashboard...</p>
+                </div>
             </div>
         );
     }
 
-    // Combine and sort events
-    const allEvents = [
-        ...snapshots.map(s => ({ ...s, type: 'snapshot', date: new Date(s.published_at) })),
-        ...auditLogs.map(a => ({ ...a, type: 'audit', date: new Date(a.created_at) }))
-    ].sort((a, b) => b.date.getTime() - a.date.getTime());
-
-    const displayEvents = activeTab === 'all' 
-        ? allEvents 
-        : activeTab === 'publishes' 
-            ? allEvents.filter(e => e.type === 'snapshot')
-            : allEvents.filter(e => e.type === 'audit');
+    if (role !== 'Manager') {
+        return (
+            <div className="p-8 max-w-6xl mx-auto min-h-[60vh] flex items-center justify-center">
+                <div className="bg-[#161616] border border-red-900/50 p-8 rounded max-w-md w-full text-center space-y-4">
+                    <div className="w-16 h-16 bg-red-950/30 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <AlertTriangle className="w-8 h-8" />
+                    </div>
+                    <h2 className="text-xl font-bold text-white tracking-wide">Access Denied</h2>
+                    <p className="text-[#A3A3A3] text-sm leading-relaxed">
+                        Only Managers have the required clearance to view the Operational Activity Dashboard and Audit Logs.
+                    </p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="p-8 max-w-6xl mx-auto space-y-8 text-[#E5E5E5]">
@@ -91,24 +114,31 @@ export default function ActivityDashboard() {
                 <div className="flex bg-[#161616] p-1 rounded border border-[#262626]">
                     <button 
                         onClick={() => setActiveTab('all')} 
-                        className={`px-4 py-2 text-xs font-bold uppercase tracking-widest rounded ${activeTab === 'all' ? 'bg-[#D4AF37] text-black' : 'text-[#A3A3A3] hover:text-white'}`}
+                        className={`px-4 py-2 text-xs font-bold uppercase tracking-widest rounded transition-colors ${activeTab === 'all' ? 'bg-[#D4AF37] text-black' : 'text-[#A3A3A3] hover:text-white'}`}
                     >
                         Timeline
                     </button>
                     <button 
                         onClick={() => setActiveTab('publishes')} 
-                        className={`px-4 py-2 text-xs font-bold uppercase tracking-widest rounded ${activeTab === 'publishes' ? 'bg-[#D4AF37] text-black' : 'text-[#A3A3A3] hover:text-white'}`}
+                        className={`px-4 py-2 text-xs font-bold uppercase tracking-widest rounded transition-colors ${activeTab === 'publishes' ? 'bg-[#D4AF37] text-black' : 'text-[#A3A3A3] hover:text-white'}`}
                     >
                         Releases
                     </button>
                     <button 
                         onClick={() => setActiveTab('audits')} 
-                        className={`px-4 py-2 text-xs font-bold uppercase tracking-widest rounded ${activeTab === 'audits' ? 'bg-[#D4AF37] text-black' : 'text-[#A3A3A3] hover:text-white'}`}
+                        className={`px-4 py-2 text-xs font-bold uppercase tracking-widest rounded transition-colors ${activeTab === 'audits' ? 'bg-[#D4AF37] text-black' : 'text-[#A3A3A3] hover:text-white'}`}
                     >
                         Editor Audit
                     </button>
                 </div>
             </div>
+
+            {error && (
+                <div className="bg-red-950/20 border border-red-900/50 text-red-400 p-4 rounded flex items-center gap-3">
+                    <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+                    <p className="text-sm">{error}</p>
+                </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <div className="bg-[#161616] border border-[#262626] p-6 rounded text-center">
@@ -126,7 +156,7 @@ export default function ActivityDashboard() {
             </div>
 
             <div className="space-y-4">
-                {displayEvents.length === 0 ? (
+                {displayEvents.length === 0 && !error ? (
                     <div className="text-center py-12 border border-dashed border-[#333] text-[#A3A3A3] text-sm rounded">
                         No activity recorded yet.
                     </div>
@@ -148,19 +178,22 @@ export default function ActivityDashboard() {
                             iconColor = isRollback ? 'text-red-400' : 'text-green-400';
                             borderColor = isRollback ? 'border-red-900/50' : 'border-green-900/50';
                             bgColor = isRollback ? 'bg-red-950/10' : 'bg-green-950/10';
-                        } else if (event.action.includes('Approved')) {
+                        } else if (event.action?.includes('Approved')) {
                             Icon = CheckCircle2;
                             iconColor = 'text-green-400';
-                        } else if (event.action.includes('Rejected')) {
+                        } else if (event.action?.includes('Rejected')) {
                             Icon = XCircle;
                             iconColor = 'text-rose-400';
-                        } else if (event.action.includes('Draft')) {
+                        } else if (event.action?.includes('Draft')) {
                             Icon = Clock;
                             iconColor = 'text-amber-400';
                         }
 
+                        // Generate a stable key
+                        const key = event.id ? `${event.type}-${event.id}` : `fallback-idx-${idx}`;
+
                         return (
-                            <div key={idx} className={`flex items-start gap-4 p-5 rounded border ${borderColor} ${bgColor}`}>
+                            <div key={key} className={`flex items-start gap-4 p-5 rounded border ${borderColor} ${bgColor}`}>
                                 <div className={`p-2 rounded bg-[#0C0C0C] border border-[#262626] ${iconColor}`}>
                                     <Icon className="w-5 h-5" />
                                 </div>

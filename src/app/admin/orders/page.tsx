@@ -1,7 +1,8 @@
 "use client";
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
+import Image from 'next/image';
 import DataTable from '@/components/admin/DataTable';
 import { approveOrderAction, deleteOrdersAction } from '@/lib/actions/orders';
 import { CheckCircle, XCircle, Eye, Edit3, CreditCard, Image as ImageIcon } from 'lucide-react';
@@ -10,9 +11,11 @@ export default function OrdersPage() {
     const [orders, setOrders] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('All');
+    const filterRef = useRef(filter);
     const [previewImg, setPreviewImg] = useState<string | null>(null);
 
     useEffect(() => {
+        filterRef.current = filter;
         fetchOrders();
     }, [filter]);
 
@@ -43,7 +46,7 @@ export default function OrdersPage() {
         };
     }, []);
 
-    async function fetchOrders() {
+    const fetchOrders = useCallback(async () => {
         setLoading(true);
         try {
             let query = supabase.from('orders').select(`
@@ -63,11 +66,12 @@ export default function OrdersPage() {
                 order_items ( product_name, quantity, price )
             `).order('created_at', { ascending: false });
 
-            if (filter !== 'All') {
-                if (filter === 'Pending Approval') {
+            const currentFilter = filterRef.current;
+            if (currentFilter !== 'All') {
+                if (currentFilter === 'Pending Approval') {
                     query = query.eq('approval_status', 'Pending Approval');
                 } else {
-                    query = query.eq('status', filter.toLowerCase());
+                    query = query.eq('status', currentFilter.toLowerCase());
                 }
             }
 
@@ -79,7 +83,7 @@ export default function OrdersPage() {
         } finally {
             setLoading(false);
         }
-    }
+    }, []);
 
     async function handleApproveOrder(id: string) {
         if (!confirm('Verify and Approve this order?')) return;
@@ -102,13 +106,13 @@ export default function OrdersPage() {
         }
     }
 
-    const formatCurrency = (val: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(val);
-    const formatDate = (d: string) => {
+    const formatCurrency = useCallback((val: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(val), []);
+    const formatDate = useCallback((d: string) => {
         const dt = new Date(d);
         return dt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-    };
+    }, []);
 
-    const columns = [
+    const columns = useMemo(() => [
         {
             key: 'thumbnail',
             header: '',
@@ -119,11 +123,11 @@ export default function OrdersPage() {
                         width: '48px', height: '48px', borderRadius: '8px', overflow: 'hidden', 
                         background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center',
                         cursor: o.reference_image ? 'pointer' : 'default', flexShrink: 0,
-                        border: '1px solid #E2E8F0'
+                        border: '1px solid #E2E8F0', position: 'relative'
                     }}
                 >
                     {o.reference_image ? (
-                        <img src={o.reference_image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <Image src={o.reference_image} alt="Reference" fill style={{ objectFit: 'cover' }} unoptimized />
                     ) : (
                         <ImageIcon size={18} color="#94A3B8" />
                     )}
@@ -233,7 +237,7 @@ export default function OrdersPage() {
                 </div>
             )
         }
-    ];
+    ], [formatDate, formatCurrency]);
 
     const [showWaModal, setShowWaModal] = useState(false);
     const waLink = 'https://deeprastore-web.vercel.app/whatsapp-form';
@@ -257,12 +261,17 @@ export default function OrdersPage() {
 
             {/* WhatsApp Modal */}
             {showWaModal && (
-                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div 
+                    role="dialog" 
+                    aria-modal="true" 
+                    aria-labelledby="wa-modal-title"
+                    style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
                     <div style={{ background: '#FFF', padding: '32px', borderRadius: '16px', width: '90%', maxWidth: '500px', position: 'relative' }}>
-                        <button onClick={() => setShowWaModal(false)} style={{ position: 'absolute', top: '16px', right: '16px', background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748B' }}>
+                        <button onClick={() => setShowWaModal(false)} aria-label="Close" style={{ position: 'absolute', top: '16px', right: '16px', background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748B' }}>
                             <XCircle size={24} />
                         </button>
-                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <h2 id="wa-modal-title" style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <i className="fab fa-whatsapp" style={{ color: '#10B981' }}></i> WhatsApp Order Form
                         </h2>
                         <p style={{ color: '#64748B', marginBottom: '24px' }}>Send this link to your customers so they can fill in their measurements and upload payment screenshots directly from their phone.</p>
@@ -320,7 +329,7 @@ export default function OrdersPage() {
                                 {/* Thumbnail header */}
                                 <div style={{ height: '80px', background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
                                     {o.reference_image ? (
-                                        <img src={o.reference_image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onClick={() => setPreviewImg(o.reference_image)} />
+                                        <Image src={o.reference_image} alt="Reference" fill style={{ objectFit: 'cover', cursor: 'pointer' }} onClick={() => setPreviewImg(o.reference_image)} unoptimized />
                                     ) : (
                                         <ImageIcon size={28} color="#CBD5E1" />
                                     )}
