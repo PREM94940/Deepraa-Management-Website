@@ -7,6 +7,9 @@ type UIConfig = {
     hideComplaints: boolean;
     tabLabels: Record<string, string>;
     warningDays: number;
+    globalSettings?: any;
+    pages?: any;
+    currentPageId?: string;
 };
 
 const defaultUIConfig: UIConfig = {

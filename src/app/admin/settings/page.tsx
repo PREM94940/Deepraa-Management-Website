@@ -32,7 +32,6 @@ function AccordionItem({ title, icon: Icon, children, defaultOpen = false }: { t
 export default function SettingsPage() {
     const { config, refreshConfig } = useSettings();
     const [localConfig, setLocalConfig] = useState(config);
-    const [globalSettings, setGlobalSettings] = useState<any>(null);
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState('');
 
@@ -40,25 +39,15 @@ export default function SettingsPage() {
         setLocalConfig(config);
     }, [config]);
 
-    useEffect(() => {
-        async function fetchGlobal() {
-            const { data } = await supabase.from('store_ui_settings').select('globalSettings').eq('id', 1).single();
-            if (data?.globalSettings) {
-                setGlobalSettings(data.globalSettings);
-            }
-        }
-        fetchGlobal();
-    }, []);
-
     async function handleSave() {
         setSaving(true);
         setMessage('');
         try {
-            const { error } = await supabase.from('store_ui_settings').update({
+            const { error } = await supabase.from('store_ui_settings').upsert({
+                id: 1,
                 config: localConfig,
-                globalSettings: globalSettings,
                 updated_at: new Date().toISOString()
-            }).eq('id', 1);
+            }, { onConflict: 'id' });
             
             if (error) throw error;
             setMessage('Settings saved successfully!');
@@ -180,10 +169,13 @@ export default function SettingsPage() {
                                 <label className="block text-xs font-bold text-[#A3A3A3] uppercase tracking-wider mb-2">Support WhatsApp Number</label>
                                 <input 
                                     type="text" 
-                                    value={globalSettings?.whatsapp_number || ''} 
-                                    onChange={e => setGlobalSettings({
-                                        ...globalSettings, 
-                                        whatsapp_number: e.target.value
+                                    value={localConfig.globalSettings?.whatsapp_number || ''} 
+                                    onChange={e => setLocalConfig({
+                                        ...localConfig, 
+                                        globalSettings: {
+                                            ...localConfig.globalSettings,
+                                            whatsapp_number: e.target.value
+                                        }
                                     })}
                                     placeholder="e.g. 919876543210"
                                     className="w-full bg-[#1A1A1A] border border-[#333] text-white text-sm rounded px-3 py-2.5 outline-none focus:border-[#D4AF37] transition-colors"
