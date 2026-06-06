@@ -44,10 +44,10 @@ export default function SettingsPage() {
         setMessage('');
         try {
             const { error } = await supabase.from('store_ui_settings').upsert({
-                key: 'admin_ui',
-                value: localConfig,
+                id: 1,
+                config: localConfig,
                 updated_at: new Date().toISOString()
-            }, { onConflict: 'key' });
+            }, { onConflict: 'id' });
             
             if (error) throw error;
             setMessage('Settings saved successfully!');

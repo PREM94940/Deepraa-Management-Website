@@ -60,6 +60,11 @@ export default function ProductClient({ id }: { id: string }) {
             qty: qty,
             img: mainImage || 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&q=80&w=600'
         });
+
+        if (typeof window !== 'undefined') {
+            (window as any).fbq?.('track', 'AddToCart', { value: finalPrice, currency: 'INR' });
+            (window as any).gtag?.('event', 'add_to_cart', { value: finalPrice, currency: 'INR', items: [{ item_id: product.id, item_name: product.title }] });
+        }
     };
 
     const handleWhatsAppOrder = () => {
@@ -67,6 +72,11 @@ export default function ProductClient({ id }: { id: string }) {
         const number = globalSettings.whatsapp_number || '919876543210';
         const message = `Hello Deeprastore, I want to order:\n*${product.title}* (SKU: ${product.sku})\nQuantity: ${qty}\nStitching Required: ${needsStitching ? 'Yes' : 'No'}\nFall & Pico: ${needsFallPico ? 'Yes' : 'No'}\nLink: ${window.location.href}`;
         window.open(`https://wa.me/${number}?text=${encodeURIComponent(message)}`, '_blank');
+
+        if (typeof window !== 'undefined') {
+            (window as any).fbq?.('track', 'Lead');
+            (window as any).gtag?.('event', 'generate_lead');
+        }
     };
 
     return (

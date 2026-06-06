@@ -36,9 +36,9 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
     async function refreshConfig() {
         try {
-            const { data, error } = await supabase.from('store_ui_settings').select('*').eq('key', 'admin_ui').single();
-            if (data && data.value) {
-                setConfig({ ...defaultUIConfig, ...data.value });
+            const { data, error } = await supabase.from('store_ui_settings').select('*').eq('id', 1).single();
+            if (data && data.config) {
+                setConfig({ ...defaultUIConfig, ...data.config });
             }
         } catch (e) {
             console.log('Using default UI settings', e);

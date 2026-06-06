@@ -8,8 +8,12 @@ import dynamic from "next/dynamic";
 import { getCurrentTheme } from "@/themes/themeRegistry";
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://deeprastore.com'),
   title: "Deeprastore | Premium Indian Fashion",
   description: "Premium sarees, lehengas and custom stitching services",
+  alternates: {
+    canonical: '/',
+  },
 };
 
 const playfair = Playfair_Display({
